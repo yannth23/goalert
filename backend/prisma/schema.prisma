@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String            @id @default(cuid())
+  email          String            @unique
+  password       String
+  name           String?
+  verified       Boolean           @default(false)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  favoriteTeams  FavoriteTeam[]
+  preferences    UserPreference?
+  refreshTokens  RefreshToken[]
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model FavoriteTeam {
+  id       String @id @default(cuid())
+  userId   String
+  teamName String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserPreference {
+  id                        String   @id @default(cuid())
+  userId                    String   @unique
+  receiveDailyNotifications Boolean  @default(true)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model FootballMatch {
+  id           String   @id @default(cuid())
+  date         DateTime
+  championship String
+  homeTeam     String
+  awayTeam     String
+  status       String
+  homeScore    Int?
+  awayScore    Int?
+  externalId   String?  @unique
+
+  @@index([date])
+  @@index([championship])
+}
