@@ -5,22 +5,18 @@ import { StandingsTable } from '../components/StandingsTable';
 import { TopScorers } from '../components/TopScorers';
 import { SignupForm } from '../components/SignupForm';
 import { MatchesSection } from '@/components/MatchesSection';
+import { ApiDebug } from '@/components/ApiDebug';
 
 export function HomePage() {
   return (
     <main className="min-h-screen bg-slate-950 text-white">
+      <ApiDebug />
       <Navbar />
-
       <Hero />
-
       <AlertBanner />
-
       <MatchesSection />
-
       <StandingsTable />
-
       <TopScorers />
-
       <SignupForm />
     </main>
   );
