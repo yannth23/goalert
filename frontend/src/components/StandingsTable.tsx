@@ -34,10 +34,10 @@ export function StandingsTable() {
                 </h3>
               </div>
 
-              <table className="w-full">
-                <thead className="bg-slate-900/50">
-                  <tr className="text-xs text-slate-500">
-                    <th className="p-3 text-left">#</th>
+              <table className="w-full bg-slate-950">
+                <thead className="bg-slate-900">
+                  <tr className="text-xs text-slate-400 uppercase tracking-wider">
+                    <th className="p-3 text-left w-8">#</th>
                     <th className="p-3 text-left">Time</th>
                     <th className="p-3 text-center">Pts</th>
                     <th className="p-3 text-center">J</th>
@@ -47,16 +47,16 @@ export function StandingsTable() {
                     <th className="p-3 text-center">SG</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="bg-slate-950">
                   {group.table.map((team) => (
-                    <tr key={team.teamId} className="border-t border-slate-800 hover:bg-slate-900/40 transition">
-                      <td className="p-3 text-slate-400 text-sm">{team.position}</td>
+                    <tr key={team.teamId} className="border-t border-slate-800 hover:bg-slate-900 transition">
+                      <td className="p-3 text-slate-500 text-sm">{team.position}</td>
                       <td className="p-3">
                         <div className="flex items-center gap-2">
                           {team.crest && (
                             <img src={team.crest} alt={team.teamName} className="w-5 h-5 object-contain" />
                           )}
-                          <span className="text-sm font-semibold text-white">{team.teamName}</span>
+                          <span className="text-sm font-semibold text-slate-100">{team.teamName}</span>
                         </div>
                       </td>
                       <td className="p-3 text-center font-black text-yellow-500">{team.points}</td>
