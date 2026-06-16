@@ -8,10 +8,24 @@ async function bootstrap() {
   const prisma = app.get(PrismaService);
   prisma.enableShutdownHooks(app);
 
-  // CORS configurado para produção
-  const corsOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3001').split(',');
+  // CORS — aceita origens do .env + qualquer deploy da Vercel
+  const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3001')
+    .split(',')
+    .map((o) => o.trim());
+
   app.enableCors({
-    origin: corsOrigins,
+    origin: (origin, callback) => {
+      // Sem origin = curl/Postman/server-side — libera
+      if (!origin) return callback(null, true);
+
+      // Vercel previews e produção
+      if (origin.endsWith('.vercel.app')) return callback(null, true);
+
+      // Origens explícitas no .env
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+
+      callback(new Error(`CORS bloqueado: ${origin}`));
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
