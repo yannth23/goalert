@@ -1,4 +1,9 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+
+// Debug em produção — remove depois
+if (typeof window !== 'undefined') {
+  console.log('[GoalAlert] API_URL:', API_URL);
+}
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -17,14 +22,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     throw new Error(error.message ?? 'Erro na requisição');
   }
 
-  // 204 No Content — sem body para parsear
   if (res.status === 204) return undefined as T;
 
   return res.json();
 }
 
 export const api = {
-  // Auth
   login: (email: string, password: string) =>
     request<{ accessToken: string; user: { id: string; email: string; name?: string } }>(
       '/auth/login',
@@ -37,7 +40,6 @@ export const api = {
       body: JSON.stringify({ email, password, name }),
     }),
 
-  // Matches
   getTodayMatches: () =>
     request<{
       id: string;
@@ -50,11 +52,9 @@ export const api = {
       team2Score?: number;
     }[]>('/matches'),
 
-  // Standings
   getStandings: () =>
     request<unknown[]>('/matches/standings'),
 
-  // Top Scorers
   getTopScorers: () =>
     request<{
       playerId: number;
@@ -64,7 +64,6 @@ export const api = {
       assists: number;
     }[]>('/matches/scorers'),
 
-  // Favorites
   getFavoriteTeams: (userId: string) =>
     request<{ id: string; teamName: string }[]>(`/users/${userId}/teams`),
 
@@ -79,14 +78,12 @@ export const api = {
       method: 'DELETE',
     }),
 
-  // Preferences
   updatePreferences: (userId: string, receiveDailyNotifications: boolean) =>
     request<{ receiveDailyNotifications: boolean }>(`/users/${userId}/preferences`, {
       method: 'PATCH',
       body: JSON.stringify({ receiveDailyNotifications }),
     }),
 
-  // User
   getUser: (userId: string) =>
     request<{
       id: string;

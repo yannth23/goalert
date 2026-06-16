@@ -1,13 +1,8 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  typescript: {
-    // Permite que o build termine mesmo com erros de TypeScript
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    // Permite que o build termine mesmo com erros de Linting
-    ignoreDuringBuilds: true,
+  env: {
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000',
   },
 };
 
