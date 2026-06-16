@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { translateTeam } from './translation.util';
 
 const BASE_URL = 'https://api.football-data.org/v4';
 const COMPETITION_WC = 'WC';
@@ -85,8 +86,8 @@ export class FootballApiService {
           externalId: match.id.toString(),
           date: new Date(match.utcDate),
           championship: match.competition.name,
-          homeTeam: match.homeTeam.name,
-          awayTeam: match.awayTeam.name,
+          homeTeam: translateTeam(match.homeTeam.name),
+          awayTeam: translateTeam(match.awayTeam.name),
           status: mappedStatus,
           homeScore,
           awayScore,
@@ -115,7 +116,7 @@ export class FootballApiService {
       table: group.table.map((entry: any) => ({
         position: entry.position,
         teamId: entry.team.id,
-        teamName: entry.team.name,
+        teamName: translateTeam(entry.team.name),
         crest: entry.team.crest,
         points: entry.points,
         played: entry.playedGames,
@@ -145,7 +146,7 @@ export class FootballApiService {
     const scorers = (response.data.scorers as any[]).map((entry) => ({
       playerId: entry.player.id,
       playerName: entry.player.name,
-      teamName: entry.team?.name ?? '—',
+      teamName: entry.team?.name ? translateTeam(entry.team.name) : '—',
       goals: entry.goals ?? 0,
       assists: entry.assists ?? 0,
     }));
