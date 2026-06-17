@@ -1,116 +1,90 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Redis } from '@upstash/redis';
 
 @Injectable()
 export class RedisService implements OnModuleInit {
   private readonly logger = new Logger(RedisService.name);
-  private restUrl: string;
-  private restToken: string;
-  private isConnected = false;
+  private client: Redis | null = null;
 
   constructor(private configService: ConfigService) {}
 
   async onModuleInit() {
-    this.restUrl = this.configService.get<string>('UPSTASH_REDIS_REST_URL');
-    this.restToken = this.configService.get<string>(
-      'UPSTASH_REDIS_REST_TOKEN',
-    );
+    const url   = this.configService.get<string>('UPSTASH_REDIS_REST_URL');
+    const token = this.configService.get<string>('UPSTASH_REDIS_REST_TOKEN');
 
-    if (!this.restUrl || !this.restToken) {
-      this.logger.warn(
-        'Upstash Redis credentials not configured. Redis caching will be disabled.',
-      );
+    if (!url || !token) {
+      this.logger.warn('Upstash Redis credentials not configured. Caching disabled.');
       return;
     }
 
-    try {
-      // Testar conexão com um PING
-      const result = await this.executeCommand(['PING']);
-      if (result === 'PONG') {
-        this.isConnected = true;
-        this.logger.log('✅ Connected to Upstash Redis (REST API)');
-      }
-    } catch (error) {
-      this.logger.error('Failed to connect to Upstash Redis:', error);
-      this.isConnected = false;
-    }
-  }
-
-  private async executeCommand(command: string[]): Promise<any> {
-    if (!this.restUrl || !this.restToken) {
-      return null;
-    }
+    this.client = new Redis({ url, token });
 
     try {
-      const response = await fetch(`${this.restUrl}/exec`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.restToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(command),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Upstash API error: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      return data.result;
-    } catch (error) {
-      this.logger.error('Error executing Redis command:', error);
-      return null;
+      await this.client.ping();
+      this.logger.log('✅ Connected to Upstash Redis');
+    } catch (err) {
+      this.logger.error('Failed to connect to Upstash Redis', err);
+      this.client = null;
     }
   }
 
   async get(key: string): Promise<string | null> {
-    if (!this.isConnected) return null;
+    if (!this.client) return null;
     try {
-      const result = await this.executeCommand(['GET', key]);
-      return result;
-    } catch (error) {
-      this.logger.error(`Error getting key ${key}:`, error);
+      return await this.client.get<string>(key);
+    } catch (err) {
+      this.logger.error(`Redis GET error [${key}]`, err);
       return null;
     }
   }
 
   async set(key: string, value: string, ttl?: number): Promise<void> {
-    if (!this.isConnected) return;
+    if (!this.client) return;
     try {
       if (ttl) {
-        await this.executeCommand(['SETEX', key, ttl.toString(), value]);
+        await this.client.set(key, value, { ex: ttl });
       } else {
-        await this.executeCommand(['SET', key, value]);
+        await this.client.set(key, value);
       }
-    } catch (error) {
-      this.logger.error(`Error setting key ${key}:`, error);
+    } catch (err) {
+      this.logger.error(`Redis SET error [${key}]`, err);
     }
   }
 
   async del(key: string): Promise<void> {
-    if (!this.isConnected) return;
+    if (!this.client) return;
     try {
-      await this.executeCommand(['DEL', key]);
-    } catch (error) {
-      this.logger.error(`Error deleting key ${key}:`, error);
+      await this.client.del(key);
+    } catch (err) {
+      this.logger.error(`Redis DEL error [${key}]`, err);
     }
   }
 
   async getJson<T>(key: string): Promise<T | null> {
-    const value = await this.get(key);
-    if (!value) return null;
+    if (!this.client) return null;
     try {
-      return JSON.parse(value) as T;
-    } catch {
+      return await this.client.get<T>(key);
+    } catch (err) {
+      this.logger.error(`Redis GET JSON error [${key}]`, err);
       return null;
     }
   }
 
   async setJson<T>(key: string, value: T, ttl?: number): Promise<void> {
-    await this.set(key, JSON.stringify(value), ttl);
+    if (!this.client) return;
+    try {
+      if (ttl) {
+        await this.client.set(key, value, { ex: ttl });
+      } else {
+        await this.client.set(key, value);
+      }
+    } catch (err) {
+      this.logger.error(`Redis SET JSON error [${key}]`, err);
+    }
   }
 
   isConnectedToRedis(): boolean {
-    return this.isConnected;
+    return this.client !== null;
   }
 }
