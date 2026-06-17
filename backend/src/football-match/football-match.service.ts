@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { FootballApiService } from './football-api.service';
+import { translateTeam } from './translation.util';
 
 @Injectable()
 export class FootballMatchService {
@@ -28,8 +29,8 @@ export class FootballMatchService {
       id: m.id,
       date: m.date,
       championship: m.championship,
-      team1: m.homeTeam,
-      team2: m.awayTeam,
+      team1: translateTeam(m.homeTeam),
+      team2: translateTeam(m.awayTeam),
       status: m.status,
       team1Score: m.homeScore ?? undefined,
       team2Score: m.awayScore ?? undefined,
@@ -49,8 +50,8 @@ export class FootballMatchService {
       id: m.id,
       date: m.date,
       championship: m.championship,
-      team1: m.homeTeam,
-      team2: m.awayTeam,
+      team1: translateTeam(m.homeTeam),
+      team2: translateTeam(m.awayTeam),
       status: m.status,
       team1Score: m.homeScore ?? undefined,
       team2Score: m.awayScore ?? undefined,
