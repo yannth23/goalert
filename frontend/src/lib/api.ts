@@ -1,6 +1,5 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
-// Debug em produção — remove depois
 if (typeof window !== 'undefined') {
   console.log('[GoalAlert] API_URL:', API_URL);
 }
@@ -84,12 +83,29 @@ export const api = {
       body: JSON.stringify({ receiveDailyNotifications }),
     }),
 
+  updateWhatsapp: (
+    userId: string,
+    whatsappNumber: string | null,
+    receiveWhatsappNotifications: boolean,
+  ) =>
+    request<{ whatsappNumber: string | null; receiveWhatsappNotifications: boolean }>(
+      `/users/${userId}/whatsapp`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ whatsappNumber, receiveWhatsappNotifications }),
+      },
+    ),
+
   getUser: (userId: string) =>
     request<{
       id: string;
       email: string;
       name?: string;
       favoriteTeams: { id: string; teamName: string }[];
-      preferences: { receiveDailyNotifications: boolean } | null;
+      preferences: {
+        receiveDailyNotifications: boolean;
+        receiveWhatsappNotifications: boolean;
+        whatsappNumber: string | null;
+      } | null;
     }>(`/users/${userId}`),
 };
