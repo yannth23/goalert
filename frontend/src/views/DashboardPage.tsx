@@ -26,6 +26,12 @@ export function DashboardPage() {
   const [filter, setFilter] = useState<'all' | 'favorites'>('all');
   const [toast, setToast] = useState('');
 
+  // WhatsApp
+  const [whatsappEnabled, setWhatsappEnabled] = useState(false);
+  const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [whatsappInput, setWhatsappInput] = useState('');
+  const [savingWhatsapp, setSavingWhatsapp] = useState(false);
+
   useEffect(() => {
     if (!isLoading && !user) router.replace('/login');
   }, [user, isLoading, router]);
@@ -39,6 +45,10 @@ export function DashboardPage() {
       setMatches(matchData);
       setFavoriteTeams(userData.favoriteTeams);
       setNotifications(userData.preferences?.receiveDailyNotifications ?? true);
+      setWhatsappEnabled(userData.preferences?.receiveWhatsappNotifications ?? false);
+      const num = userData.preferences?.whatsappNumber ?? '';
+      setWhatsappNumber(num);
+      setWhatsappInput(num);
     }).finally(() => setLoadingData(false));
   }, [user]);
 
@@ -79,6 +89,33 @@ export function DashboardPage() {
       setNotifications(newVal);
       showToast(newVal ? 'Notificações ativadas.' : 'Notificações desativadas.');
     } catch {
+      showToast('Erro ao salvar.');
+    }
+  }
+
+  async function handleSaveWhatsapp() {
+    if (!user) return;
+    setSavingWhatsapp(true);
+    try {
+      await api.updateWhatsapp(user.id, whatsappInput.trim() || null, whatsappEnabled);
+      setWhatsappNumber(whatsappInput.trim());
+      showToast('WhatsApp salvo!');
+    } catch {
+      showToast('Erro ao salvar WhatsApp.');
+    } finally {
+      setSavingWhatsapp(false);
+    }
+  }
+
+  async function handleToggleWhatsapp() {
+    if (!user) return;
+    const newVal = !whatsappEnabled;
+    setWhatsappEnabled(newVal);
+    try {
+      await api.updateWhatsapp(user.id, whatsappNumber || null, newVal);
+      showToast(newVal ? 'Alertas WhatsApp ativados.' : 'Alertas WhatsApp desativados.');
+    } catch {
+      setWhatsappEnabled(!newVal);
       showToast('Erro ao salvar.');
     }
   }
@@ -217,7 +254,7 @@ export function DashboardPage() {
         {tab === 'conta' && (
           <div className="space-y-4">
 
-            {/* Notificações */}
+            {/* Emails diários */}
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
               <div className="flex items-center justify-between">
                 <div>
@@ -237,6 +274,51 @@ export function DashboardPage() {
                   }`} />
                 </button>
               </div>
+            </div>
+
+            {/* WhatsApp */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-white flex items-center gap-2">
+                    <span>📱</span> Alertas via WhatsApp
+                  </h3>
+                  <p className="text-sm text-slate-400 mt-0.5">
+                    Gols, início e fim de jogo dos seus times
+                  </p>
+                </div>
+                <button
+                  onClick={handleToggleWhatsapp}
+                  className={`relative w-12 h-6 rounded-full transition-colors ${
+                    whatsappEnabled ? 'bg-green-600' : 'bg-slate-700'
+                  }`}
+                >
+                  <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                    whatsappEnabled ? 'translate-x-7' : 'translate-x-1'
+                  }`} />
+                </button>
+              </div>
+
+              <div className="flex gap-2">
+                <input
+                  type="tel"
+                  value={whatsappInput}
+                  onChange={e => setWhatsappInput(e.target.value)}
+                  placeholder="Ex: 81999990000"
+                  className="flex-1 p-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-green-600"
+                />
+                <button
+                  onClick={handleSaveWhatsapp}
+                  disabled={savingWhatsapp || whatsappInput === whatsappNumber}
+                  className="px-4 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white font-bold rounded-xl text-sm transition"
+                >
+                  {savingWhatsapp ? '...' : 'Salvar'}
+                </button>
+              </div>
+
+              <p className="text-xs text-slate-500">
+                Digite só os números com DDD, sem o +55. Ex: 81999990000
+              </p>
             </div>
 
             {/* Times favoritos */}
