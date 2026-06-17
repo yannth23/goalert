@@ -3,6 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { FootballApiService } from '../football-match/football-api.service';
+import { WhatsappService } from '../whatsapp/whatsapp.service';
 
 @Injectable()
 export class DailyEmailService implements OnApplicationBootstrap {
@@ -12,9 +13,9 @@ export class DailyEmailService implements OnApplicationBootstrap {
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
     private readonly footballApiService: FootballApiService,
+    private readonly whatsapp: WhatsappService,
   ) {}
 
-  // Roda uma vez assim que o app sobe
   async onApplicationBootstrap() {
     this.logger.log('Bootstrap sync: syncing today matches...');
     try {
@@ -25,7 +26,7 @@ export class DailyEmailService implements OnApplicationBootstrap {
     }
   }
 
-  // Sync das partidas às 7h UTC (4h Brasília)
+  // Sync diário às 7h UTC (4h Brasília)
   @Cron('0 7 * * *', { name: 'sync-matches-job' })
   async syncMatches(): Promise<void> {
     this.logger.log('Cron sync: syncing today matches...');
@@ -49,97 +50,99 @@ export class DailyEmailService implements OnApplicationBootstrap {
     }
   }
 
-  // Envio dos emails às 8h UTC (5h Brasília)
+  // Email diário às 8h UTC (5h Brasília)
   @Cron('0 8 * * *', { name: 'daily-email-job' })
   async runDailyEmailJob(): Promise<void> {
     this.logger.log('Starting daily email job...');
 
-    const users = await this.prisma.user.findMany({
-      where: {
-        preferences: { receiveDailyNotifications: true },
-      },
-      include: { favoriteTeams: true },
-    });
-
     const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-
+    startOfDay.setUTCHours(0, 0, 0, 0);
     const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
+    endOfDay.setUTCHours(23, 59, 59, 999);
 
     const matches = await this.prisma.footballMatch.findMany({
       where: { date: { gte: startOfDay, lte: endOfDay } },
       orderBy: { date: 'asc' },
     });
 
-    let sent = 0;
-    let skipped = 0;
+    const users = await this.prisma.user.findMany({
+      where: { preferences: { receiveDailyNotifications: true } },
+      include: { favoriteTeams: true, preferences: true },
+    });
+
+    let emailSent = 0;
+    let emailSkipped = 0;
+    let waSent = 0;
 
     for (const user of users) {
-      const favoriteTeams = user.favoriteTeams.map((t) => t.teamName);
-
+      const favoriteTeams   = user.favoriteTeams.map((t) => t.teamName);
       const filteredMatches = matches.filter(
-        (m) =>
-          favoriteTeams.includes(m.homeTeam) ||
-          favoriteTeams.includes(m.awayTeam),
+        (m) => favoriteTeams.includes(m.homeTeam) || favoriteTeams.includes(m.awayTeam),
       );
 
-      if (!filteredMatches.length) {
-        skipped++;
-        continue;
+      // Email
+      if (filteredMatches.length) {
+        try {
+          await this.emailService.sendDailyEmail(user.email, buildEmailHtml(filteredMatches));
+          emailSent++;
+        } catch (err) {
+          this.logger.error(`Failed to send email to ${user.email}`, err);
+        }
+      } else {
+        emailSkipped++;
       }
 
-      try {
-        await this.emailService.sendDailyEmail(
-          user.email,
-          buildEmailHtml(filteredMatches),
-        );
-        sent++;
-      } catch (err) {
-        this.logger.error(`Failed to send email to ${user.email}`, err);
+      // WhatsApp resumo diário
+      const phone = user.preferences?.whatsappNumber;
+      if (user.preferences?.receiveWhatsappNotifications && phone && filteredMatches.length) {
+        const msg = buildWhatsappSummary(filteredMatches);
+        await this.whatsapp.sendText(phone, msg);
+        waSent++;
       }
     }
 
-    this.logger.log(`Done — sent: ${sent}, skipped: ${skipped}`);
+    this.logger.log(`Done — emails sent: ${emailSent}, skipped: ${emailSkipped}, WhatsApp: ${waSent}`);
   }
+}
+
+function buildWhatsappSummary(
+  matches: { homeTeam: string; awayTeam: string; championship: string; date: Date }[],
+): string {
+  const lines = matches.map((m) => {
+    const time = m.date.toLocaleTimeString('pt-BR', {
+      hour: '2-digit', minute: '2-digit', timeZone: 'America/Recife',
+    });
+    return `▪ ${m.homeTeam} x ${m.awayTeam} — ${time}`;
+  });
+
+  return `⚽ *GoalAlert — Jogos de Hoje*\n\n${lines.join('\n')}\n\n_Boa sorte pro seu time!_ 🏆`;
 }
 
 function buildEmailHtml(
   matches: {
-    homeTeam: string;
-    awayTeam: string;
-    championship: string;
-    date: Date;
-    homeScore: number | null;
-    awayScore: number | null;
-    status: string;
+    homeTeam: string; awayTeam: string; championship: string;
+    date: Date; homeScore: number | null; awayScore: number | null; status: string;
   }[],
 ): string {
-  const rows = matches
-    .map((m) => {
-      const time = m.date.toLocaleTimeString('pt-BR', {
-        hour: '2-digit',
-        minute: '2-digit',
-        timeZone: 'America/Recife',
-      });
-
-      const scoreOrTime =
-        m.homeScore !== null && m.awayScore !== null
-          ? `${m.homeScore} x ${m.awayScore}`
-          : time;
-
-      return `
-        <tr>
-          <td style="padding:8px 12px;border-bottom:1px solid #eee;">${m.championship}</td>
-          <td style="padding:8px 12px;border-bottom:1px solid #eee;font-weight:600;">
-            ${m.homeTeam} vs ${m.awayTeam}
-          </td>
-          <td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">
-            ${scoreOrTime}
-          </td>
-        </tr>`;
-    })
-    .join('');
+  const rows = matches.map((m) => {
+    const time = m.date.toLocaleTimeString('pt-BR', {
+      hour: '2-digit', minute: '2-digit', timeZone: 'America/Recife',
+    });
+    const scoreOrTime =
+      m.homeScore !== null && m.awayScore !== null
+        ? `${m.homeScore} x ${m.awayScore}`
+        : time;
+    return `
+      <tr>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;">${m.championship}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;font-weight:600;">
+          ${m.homeTeam} vs ${m.awayTeam}
+        </td>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">
+          ${scoreOrTime}
+        </td>
+      </tr>`;
+  }).join('');
 
   return `
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
