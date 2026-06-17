@@ -54,4 +54,16 @@ export class UserController {
   ) {
     return this.userService.updatePreferences(id, body.receiveDailyNotifications);
   }
+
+  @Patch(':id/whatsapp')
+  updateWhatsapp(
+    @Param('id') id: string,
+    @Body() body: { whatsappNumber: string | null; receiveWhatsappNotifications: boolean },
+  ) {
+    return this.userService.updateWhatsapp(
+      id,
+      body.whatsappNumber,
+      body.receiveWhatsappNotifications,
+    );
+  }
 }
