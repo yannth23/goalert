@@ -11,11 +11,15 @@ export class FootballMatchService {
   ) {}
 
   async getTodayMatches() {
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
+    const now = new Date();
 
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
+    // Usa UTC para garantir consistência com as datas salvas no banco
+    const startOfDay = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0),
+    );
+    const endOfDay = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999),
+    );
 
     const matches = await this.prisma.footballMatch.findMany({
       where: {
