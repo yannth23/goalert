@@ -40,11 +40,13 @@ model FavoriteTeam {
 }
 
 model UserPreference {
-  id                        String   @id @default(cuid())
-  userId                    String   @unique
-  receiveDailyNotifications Boolean  @default(true)
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
+  id                           String   @id @default(cuid())
+  userId                       String   @unique
+  receiveDailyNotifications    Boolean  @default(true)
+  receiveWhatsappNotifications Boolean  @default(false)
+  whatsappNumber               String?
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
