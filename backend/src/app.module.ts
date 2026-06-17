@@ -8,11 +8,13 @@ import { JobsModule } from './jobs/jobs.module';
 import { FootballMatchModule } from './football-match/football-match.module';
 import { AuthModule } from './auth/auth.module';
 import { RedisModule } from './redis/redis.module';
+import { WhatsappModule } from './whatsapp/whatsapp.module';
 import { AppController } from './app.controller';
 import { PrismaService } from './prisma/prisma.service';
 import { EmailService } from './email/email.service';
 import { FootballApiService } from './football-match/football-api.service';
 import { DailyEmailService } from './jobs/daily-email.service';
+import { WhatsappService } from './whatsapp/whatsapp.service';
 
 @Module({
   imports: [
@@ -25,8 +27,9 @@ import { DailyEmailService } from './jobs/daily-email.service';
     JobsModule,
     FootballMatchModule,
     AuthModule,
+    WhatsappModule,
   ],
   controllers: [AppController],
-  providers: [PrismaService, EmailService, FootballApiService, DailyEmailService],
+  providers: [PrismaService, EmailService, FootballApiService, DailyEmailService, WhatsappService],
 })
 export class AppModule {}
