@@ -37,6 +37,18 @@ export class DailyEmailService implements OnApplicationBootstrap {
     }
   }
 
+  // Sync a cada 2 minutos das 12h às 23h UTC (9h às 20h Brasília)
+  @Cron('*/2 12-23 * * *', { name: 'sync-live-matches' })
+  async syncLiveMatches(): Promise<void> {
+    this.logger.log('Live sync: atualizando partidas...');
+    try {
+      const result = await this.footballApiService.syncTodayMatches();
+      this.logger.log(`Live sync done — ${result.synced} matches`);
+    } catch (err) {
+      this.logger.error('Live sync failed', err);
+    }
+  }
+
   // Envio dos emails às 8h UTC (5h Brasília)
   @Cron('0 8 * * *', { name: 'daily-email-job' })
   async runDailyEmailJob(): Promise<void> {
