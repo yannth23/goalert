@@ -48,22 +48,30 @@ export class UserService {
   }
 
   async addFavoriteTeam(userId: string, teamName: string) {
-    return this.prisma.favoriteTeam.create({
-      data: { userId, teamName },
-    });
+    return this.prisma.favoriteTeam.create({ data: { userId, teamName } });
   }
 
   async removeFavoriteTeam(userId: string, teamName: string) {
-    return this.prisma.favoriteTeam.deleteMany({
-      where: { userId, teamName },
-    });
+    return this.prisma.favoriteTeam.deleteMany({ where: { userId, teamName } });
   }
 
   async updatePreferences(userId: string, receiveDailyNotifications: boolean) {
     return this.prisma.userPreference.upsert({
-      where: { userId },
+      where:  { userId },
       update: { receiveDailyNotifications },
       create: { userId, receiveDailyNotifications },
+    });
+  }
+
+  async updateWhatsapp(
+    userId: string,
+    whatsappNumber: string | null,
+    receiveWhatsappNotifications: boolean,
+  ) {
+    return this.prisma.userPreference.upsert({
+      where:  { userId },
+      update: { whatsappNumber, receiveWhatsappNotifications },
+      create: { userId, whatsappNumber, receiveWhatsappNotifications },
     });
   }
 }
