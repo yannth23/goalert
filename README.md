@@ -62,7 +62,13 @@ REDIS_PORT=6379 # Or your Upstash port
 REDIS_PASSWORD="" # Your Upstash password, if applicable
 JWT_SECRET="YOUR_SUPER_SECRET_KEY" # A strong, random key for JWT
 RESEND_API_KEY="YOUR_RESEND_API_KEY"
-FOOTBALL_API_KEY="YOUR_FOOTBALL_API_KEY" # Key for the external soccer API
+RESEND_FROM_EMAIL="GoalAlert <noreply@yourdomain.com>"
+FOOTBALL_DATA_API_KEY="YOUR_FOOTBALL_API_KEY" # Key for football-data.org
+
+# WhatsApp via Z-API (app.z-api.io)
+ZAPI_INSTANCE_ID="YOUR_INSTANCE_ID"  # ID da instância no painel Z-API
+ZAPI_TOKEN="YOUR_INSTANCE_TOKEN"     # Token da instância
+ZAPI_CLIENT_TOKEN="YOUR_CLIENT_TOKEN" # Client Token da conta (Conta > Security)
 ```
 
 ### Installation

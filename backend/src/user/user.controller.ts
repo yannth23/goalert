@@ -8,8 +8,10 @@ import {
   Param,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { UserService } from './user.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('users')
 export class UserController {
@@ -31,6 +33,7 @@ export class UserController {
   }
 
   @Post(':id/teams')
+  @UseGuards(JwtAuthGuard)
   addFavoriteTeam(
     @Param('id') id: string,
     @Body() body: { teamName: string },
@@ -39,6 +42,7 @@ export class UserController {
   }
 
   @Delete(':id/teams/:teamName')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   removeFavoriteTeam(
     @Param('id') id: string,
@@ -48,6 +52,7 @@ export class UserController {
   }
 
   @Patch(':id/preferences')
+  @UseGuards(JwtAuthGuard)
   updatePreferences(
     @Param('id') id: string,
     @Body() body: { receiveDailyNotifications: boolean },
@@ -56,6 +61,7 @@ export class UserController {
   }
 
   @Patch(':id/whatsapp')
+  @UseGuards(JwtAuthGuard)
   updateWhatsapp(
     @Param('id') id: string,
     @Body() body: { whatsappNumber: string | null; receiveWhatsappNotifications: boolean },

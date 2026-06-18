@@ -10,11 +10,6 @@ import { AuthModule } from './auth/auth.module';
 import { RedisModule } from './redis/redis.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
 import { AppController } from './app.controller';
-import { PrismaService } from './prisma/prisma.service';
-import { EmailService } from './email/email.service';
-import { FootballApiService } from './football-match/football-api.service';
-import { DailyEmailService } from './jobs/daily-email.service';
-import { WhatsappService } from './whatsapp/whatsapp.service';
 
 @Module({
   imports: [
@@ -30,6 +25,6 @@ import { WhatsappService } from './whatsapp/whatsapp.service';
     WhatsappModule,
   ],
   controllers: [AppController],
-  providers: [PrismaService, EmailService, FootballApiService, DailyEmailService, WhatsappService],
+  providers: [],
 })
 export class AppModule {}

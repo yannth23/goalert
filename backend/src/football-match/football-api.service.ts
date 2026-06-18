@@ -127,10 +127,11 @@ export class FootballApiService {
       );
     }
 
-    // Gol marcado (placar mudou)
+    // Gol marcado (placar mudou) — só notifica se a partida já existia no banco
     const prevHome = prev?.homeScore ?? null;
     const prevAway = prev?.awayScore ?? null;
     if (
+      prev !== null &&
       curr.homeScore !== null &&
       curr.awayScore !== null &&
       (curr.homeScore !== prevHome || curr.awayScore !== prevAway)
