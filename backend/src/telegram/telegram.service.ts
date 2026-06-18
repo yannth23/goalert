@@ -17,6 +17,15 @@ export class TelegramService implements OnApplicationBootstrap {
       this.logger.warn('TELEGRAM_BOT_TOKEN not configured — polling disabled');
       return;
     }
+
+    // Remove webhook antes de iniciar polling (evita conflito 409)
+    try {
+      await axios.post(`${this.baseUrl}/deleteWebhook`);
+      this.logger.log('Webhook removido com sucesso');
+    } catch (err: any) {
+      this.logger.warn('Falha ao remover webhook', err?.message);
+    }
+
     this.logger.log('Starting Telegram polling...');
     this.startPolling();
   }
@@ -39,10 +48,21 @@ export class TelegramService implements OnApplicationBootstrap {
           await this.handleUpdate(update);
         }
       } catch (err: any) {
-        // Ignora erros de timeout (normais no long polling)
-        if (err?.code !== 'ECONNABORTED') {
-          this.logger.error('Polling error', err?.message);
+        const status = err?.response?.status;
+        const msg    = err?.response?.data?.description ?? err?.message;
+
+        if (status === 409) {
+          this.logger.warn('Conflito 409 — tentando remover webhook novamente...');
+          try {
+            await axios.post(`${this.baseUrl}/deleteWebhook`);
+            this.logger.log('Webhook removido, retomando polling...');
+          } catch (e: any) {
+            this.logger.error('Falha ao remover webhook no retry', e?.message);
+          }
+        } else if (err?.code !== 'ECONNABORTED') {
+          this.logger.error(`Polling error: ${msg}`);
         }
+
         await this.sleep(3000);
       }
     }
@@ -63,14 +83,13 @@ export class TelegramService implements OnApplicationBootstrap {
 Seu *Chat ID* é:
 \`${chatId}\`
 
-Copie esse número e cole em *Minha conta → Alertas via Telegram* no GoalAlert para receber notificações de gols e jogos dos seus times favoritos! ⚽`,
+Copie esse número e cole em *Minha conta → Alertas via Telegram* no GoalAlert para receber notificações de gols e jogos! ⚽`,
       );
       return;
     }
 
     if (text === '/id') {
       await this.sendMessage(chatId, `Seu Chat ID: \`${chatId}\``);
-      return;
     }
   }
 
