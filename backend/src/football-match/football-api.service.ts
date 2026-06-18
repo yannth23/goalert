@@ -22,6 +22,21 @@ const STATUS_MAP: Record<string, string> = {
   AWARDED:          'FT',
 };
 
+/** Extrai o placar mais atualizado disponível na resposta da API */
+function extractScore(score: any): { home: number | null; away: number | null } {
+  const home =
+    score?.regularTime?.home ??
+    score?.halfTime?.home ??
+    score?.fullTime?.home ??
+    null;
+  const away =
+    score?.regularTime?.away ??
+    score?.halfTime?.away ??
+    score?.fullTime?.away ??
+    null;
+  return { home, away };
+}
+
 @Injectable()
 export class FootballApiService {
   private readonly logger = new Logger(FootballApiService.name);
@@ -59,11 +74,10 @@ export class FootballApiService {
     const matches = response.data.matches as any[];
 
     for (const match of matches) {
-      const mappedStatus = STATUS_MAP[match.status] ?? match.status;
-      const homeScore    = match.score?.fullTime?.home ?? null;
-      const awayScore    = match.score?.fullTime?.away ?? null;
-      const homeTeam     = translateTeam(match.homeTeam.name);
-      const awayTeam     = translateTeam(match.awayTeam.name);
+      const mappedStatus    = STATUS_MAP[match.status] ?? match.status;
+      const { home: homeScore, away: awayScore } = extractScore(match.score);
+      const homeTeam        = translateTeam(match.homeTeam.name);
+      const awayTeam        = translateTeam(match.awayTeam.name);
 
       const existing = await this.prisma.footballMatch.findUnique({
         where: { externalId: match.id.toString() },
@@ -105,28 +119,58 @@ export class FootballApiService {
 
     const messages: string[] = [];
 
+    // Jogo começou
     if (prev?.status === 'NS' && curr.status === '1H') {
-      messages.push(`⚽ *Jogo começou!*
+      messages.push(
+        `⚽ *Jogo começou!*
 ${homeTeam} x ${awayTeam}
-🏆 ${curr.championship}`);
+🏆 ${curr.championship}`,
+      );
     }
 
+    // Gol — placar mudou em relação ao sync anterior
     const prevHome = prev?.homeScore ?? null;
     const prevAway = prev?.awayScore ?? null;
-    if (
-      curr.homeScore !== null && curr.awayScore !== null &&
-      (curr.homeScore !== prevHome || curr.awayScore !== prevAway)
-    ) {
-      const scorer = curr.homeScore > (prevHome ?? 0) ? homeTeam : awayTeam;
-      messages.push(`🥅 *GOL!* ${scorer}
-${homeTeam} ${curr.homeScore} x ${curr.awayScore} ${awayTeam}
-🏆 ${curr.championship}`);
+    const currHome = curr.homeScore;
+    const currAway = curr.awayScore;
+
+    const placarDisponivel = currHome !== null && currAway !== null;
+    const placarMudou =
+      placarDisponivel && (currHome !== prevHome || currAway !== prevAway);
+
+    if (placarMudou) {
+      // Quantos gols cada time fez nesse intervalo
+      const golsHome = currHome - (prevHome ?? 0);
+      const golsAway = currAway - (prevAway ?? 0);
+
+      // Emite uma mensagem por gol (caso dois gols no mesmo sync)
+      for (let i = 0; i < golsHome; i++) {
+        const parcialHome = (prevHome ?? 0) + i + 1;
+        const parcialAway = prevAway ?? 0;
+        messages.push(
+          `🥅 *GOL!* ${homeTeam}
+${homeTeam} ${parcialHome} x ${parcialAway} ${awayTeam}
+🏆 ${curr.championship}`,
+        );
+      }
+      for (let i = 0; i < golsAway; i++) {
+        const parcialHome = prevHome ?? 0;
+        const parcialAway = (prevAway ?? 0) + i + 1;
+        messages.push(
+          `🥅 *GOL!* ${awayTeam}
+${homeTeam} ${parcialHome} x ${parcialAway} ${awayTeam}
+🏆 ${curr.championship}`,
+        );
+      }
     }
 
+    // Fim de jogo
     if (prev && prev.status !== 'FT' && curr.status === 'FT') {
-      messages.push(`🏁 *Fim de jogo!*
+      messages.push(
+        `🏁 *Fim de jogo!*
 ${homeTeam} ${curr.homeScore ?? 0} x ${curr.awayScore ?? 0} ${awayTeam}
-🏆 ${curr.championship}`);
+🏆 ${curr.championship}`,
+      );
     }
 
     if (!messages.length) return;
@@ -142,7 +186,7 @@ ${homeTeam} ${curr.homeScore ?? 0} x ${curr.awayScore ?? 0} ${awayTeam}
 
   async getStandings() {
     const cacheKey = 'standings:wc';
-    const cached = await this.cacheGet(cacheKey);
+    const cached   = await this.cacheGet(cacheKey);
     if (cached) return cached;
 
     const response = await axios.get(
@@ -174,7 +218,7 @@ ${homeTeam} ${curr.homeScore ?? 0} x ${curr.awayScore ?? 0} ${awayTeam}
 
   async getTopScorers() {
     const cacheKey = 'scorers:wc:top10';
-    const cached = await this.cacheGet(cacheKey);
+    const cached   = await this.cacheGet(cacheKey);
     if (cached) return cached;
 
     const response = await axios.get(
