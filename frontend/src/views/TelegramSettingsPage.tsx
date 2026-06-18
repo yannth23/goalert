@@ -1,25 +1,21 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '../hooks/useAuth';
+import { useRequireAuth } from '../hooks/useRequireAuth';
+import { useToast } from '../hooks/useToast';
+import { Toast } from '../components/Toast';
 import { api } from '../lib/api';
 
 export function TelegramSettingsPage() {
-  const { user, isLoading } = useAuth();
-  const router = useRouter();
+  const { user, isLoading } = useRequireAuth();
 
   const [enabled, setEnabled] = useState(false);
   const [savedChatId, setSavedChatId] = useState('');
   const [inputChatId, setInputChatId] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
-
-  useEffect(() => {
-    if (!isLoading && !user) router.replace('/login');
-  }, [user, isLoading, router]);
+  const { toast, showToast } = useToast();
 
   useEffect(() => {
     if (!user) return;
@@ -32,11 +28,6 @@ export function TelegramSettingsPage() {
       console.error('Failed to load Telegram settings', err);
     }).finally(() => setLoading(false));
   }, [user]);
-
-  function showToast(msg: string, ok = true) {
-    setToast({ msg, ok });
-    setTimeout(() => setToast(null), 3000);
-  }
 
   async function handleSave() {
     if (!user) return;
@@ -86,12 +77,7 @@ export function TelegramSettingsPage() {
   return (
     <main className="min-h-screen bg-slate-950 text-white">
 
-      {toast && (
-        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-full text-sm font-medium shadow-xl
-          ${toast.ok ? 'bg-blue-600 text-white' : 'bg-red-600 text-white'}`}>
-          {toast.msg}
-        </div>
-      )}
+      <Toast toast={toast} successColor="bg-blue-600" />
 
       <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur">
         <div className="max-w-lg mx-auto px-4 h-16 flex items-center gap-3">

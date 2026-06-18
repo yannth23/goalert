@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../hooks/useAuth';
+import { useRequireAuth } from '../hooks/useRequireAuth';
+import { useToast } from '../hooks/useToast';
+import { Toast } from '../components/Toast';
 import { api } from '../lib/api';
 import { MatchCard } from '../components/MatchCard';
 import { StandingsTable } from '../components/StandingsTable';
@@ -15,8 +17,8 @@ import type { FootballMatch } from '../types';
 type Tab = 'jogos' | 'grupos' | 'conta';
 
 export function DashboardPage() {
-  const { user, logout, isLoading } = useAuth();
-  const router = useRouter();
+  const { user, isLoading } = useRequireAuth();
+  const { logout } = useAuth();
   const [tab, setTab] = useState<Tab>('jogos');
 
   const [matches, setMatches] = useState<FootballMatch[]>([]);
@@ -25,16 +27,12 @@ export function DashboardPage() {
   const [newTeam, setNewTeam] = useState('');
   const [loadingData, setLoadingData] = useState(true);
   const [filter, setFilter] = useState<'all' | 'favorites'>('all');
-  const [toast, setToast] = useState('');
+  const { toast, showToast } = useToast();
 
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [telegramEnabled, setTelegramEnabled] = useState(false);
   const [telegramChatId, setTelegramChatId] = useState('');
-
-  useEffect(() => {
-    if (!isLoading && !user) router.replace('/login');
-  }, [user, isLoading, router]);
 
   useEffect(() => {
     if (!user) return;
@@ -53,11 +51,6 @@ export function DashboardPage() {
       console.error('Failed to load dashboard data', err);
     }).finally(() => setLoadingData(false));
   }, [user]);
-
-  function showToast(msg: string) {
-    setToast(msg);
-    setTimeout(() => setToast(''), 2500);
-  }
 
   async function handleAddTeam(e: React.FormEvent) {
     e.preventDefault();
@@ -115,12 +108,7 @@ export function DashboardPage() {
   return (
     <main className="min-h-screen bg-slate-950 text-white">
 
-      {/* Toast */}
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 border border-slate-700 text-white text-sm px-5 py-2.5 rounded-full shadow-xl z-50">
-          {toast}
-        </div>
-      )}
+      <Toast toast={toast} successColor="bg-slate-800" />
 
       {/* Navbar */}
       <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur">

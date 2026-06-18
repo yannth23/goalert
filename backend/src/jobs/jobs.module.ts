@@ -5,10 +5,9 @@ import { FootballMatchModule } from '../football-match/football-match.module';
 import { TelegramModule } from '../telegram/telegram.module';
 import { DailyEmailService } from './daily-email.service';
 import { KeepAliveService } from './keep-alive.service';
-import { MatchSyncService } from './match-sync.service';
 
 @Module({
   imports: [PrismaModule, EmailModule, FootballMatchModule, TelegramModule],
-  providers: [DailyEmailService, KeepAliveService, MatchSyncService],
+  providers: [DailyEmailService, KeepAliveService],
 })
 export class JobsModule {}
