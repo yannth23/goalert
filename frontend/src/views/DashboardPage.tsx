@@ -31,9 +31,6 @@ export function DashboardPage() {
   const { toast, showToast } = useToast();
   const goalNotifications = useGoalNotifications();
 
-  const [whatsappEnabled, setWhatsappEnabled] = useState(false);
-  const [whatsappNumber, setWhatsappNumber] = useState('');
-  const [telegramEnabled, setTelegramEnabled] = useState(false);
   const [telegramChatId, setTelegramChatId] = useState('');
 
   useEffect(() => {
@@ -45,9 +42,6 @@ export function DashboardPage() {
       setMatches(matchData);
       setFavoriteTeams(userData.favoriteTeams);
       setNotifications(userData.preferences?.receiveDailyNotifications ?? true);
-      setWhatsappEnabled(userData.preferences?.receiveWhatsappNotifications ?? false);
-      setWhatsappNumber(userData.preferences?.whatsappNumber ?? '');
-      setTelegramEnabled(userData.preferences?.receiveTelegramNotifications ?? false);
       setTelegramChatId(userData.preferences?.telegramChatId ?? '');
     }).catch((err) => {
       console.error('Failed to load dashboard data', err);
@@ -84,7 +78,7 @@ export function DashboardPage() {
     try {
       await api.updatePreferences(user.id, newVal);
       setNotifications(newVal);
-      showToast(newVal ? 'Notificações ativadas.' : 'Notificações desativadas.');
+      showToast(newVal ? 'Emails ativados.' : 'Emails desativados.');
     } catch {
       showToast('Erro ao salvar.');
     }
@@ -109,19 +103,23 @@ export function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
-
       <Toast toast={toast} successColor="bg-slate-800" />
 
       {/* Navbar */}
-      <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur">
+      <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
         <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-2xl">⚽</span>
-            <h1 className="text-yellow-500 font-black text-xl">GOALALERT</h1>
+            <h1 className="text-yellow-400 font-black text-xl tracking-tight">GOALALERT</h1>
           </div>
           <div className="flex items-center gap-3">
-            {user?.name && <span className="text-sm text-slate-400 hidden sm:block">{user.name}</span>}
-            <button onClick={logout} className="text-sm text-slate-400 hover:text-white transition">
+            {user?.name && (
+              <span className="text-sm text-slate-400 hidden sm:block">{user.name}</span>
+            )}
+            <button
+              onClick={logout}
+              className="text-sm text-slate-500 hover:text-white transition px-3 py-1.5 rounded-lg hover:bg-slate-800"
+            >
               Sair
             </button>
           </div>
@@ -130,18 +128,22 @@ export function DashboardPage() {
 
       {/* Tabs */}
       <div className="border-b border-slate-800 bg-slate-950">
-        <div className="max-w-4xl mx-auto px-4 flex gap-1">
-          {(['jogos', 'grupos', 'conta'] as Tab[]).map(t => (
+        <div className="max-w-4xl mx-auto px-4 flex">
+          {([
+            { key: 'jogos', label: 'Jogos de hoje' },
+            { key: 'grupos', label: 'Grupos' },
+            { key: 'conta', label: 'Minha conta' },
+          ] as { key: Tab; label: string }[]).map(({ key, label }) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-4 py-3 text-sm font-semibold border-b-2 transition capitalize ${
-                tab === t
-                  ? 'border-yellow-500 text-yellow-500'
-                  : 'border-transparent text-slate-500 hover:text-white'
+              key={key}
+              onClick={() => setTab(key)}
+              className={`px-4 py-3.5 text-sm font-semibold border-b-2 transition ${ 
+                tab === key
+                  ? 'border-yellow-400 text-yellow-400'
+                  : 'border-transparent text-slate-500 hover:text-slate-300'
               }`}
             >
-              {t === 'jogos' ? 'Jogos de hoje' : t === 'grupos' ? 'Grupos' : 'Minha conta'}
+              {label}
             </button>
           ))}
         </div>
@@ -149,45 +151,41 @@ export function DashboardPage() {
 
       <div className="max-w-4xl mx-auto px-4 py-6">
 
-        {/* ABA JOGOS */}
+        {/* ── ABA JOGOS ── */}
         {tab === 'jogos' && (
           <>
-            <div className="flex gap-2 mb-6">
-              <button
-                onClick={() => setFilter('all')}
-                className={`px-4 py-1.5 rounded-full text-sm font-semibold transition ${
-                  filter === 'all'
-                    ? 'bg-yellow-500 text-black'
-                    : 'border border-slate-700 text-slate-400 hover:text-white'
-                }`}
-              >
-                Todos
-              </button>
-              <button
-                onClick={() => setFilter('favorites')}
-                className={`px-4 py-1.5 rounded-full text-sm font-semibold transition ${
-                  filter === 'favorites'
-                    ? 'bg-yellow-500 text-black'
-                    : 'border border-slate-700 text-slate-400 hover:text-white'
-                }`}
-              >
-                ⭐ Meus times
-              </button>
+            <div className="flex gap-2 mb-5">
+              {[
+                { key: 'all', label: 'Todos' },
+                { key: 'favorites', label: '⭐ Meus times' },
+              ].map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setFilter(key as 'all' | 'favorites')}
+                  className={`px-4 py-1.5 rounded-full text-sm font-semibold transition ${
+                    filter === key
+                      ? 'bg-yellow-400 text-black'
+                      : 'border border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
 
             {displayed.length === 0 ? (
               <EmptyState message={
                 filter === 'favorites'
-                  ? 'Nenhum time favorito joga hoje. Adicione times na aba "Minha conta".'
+                  ? 'Nenhum time favorito joga hoje. Adicione na aba "Minha conta".'
                   : 'Nenhuma partida encontrada para hoje.'
               } />
             ) : (
               <div className="space-y-6">
                 {Object.entries(grouped).map(([championship, games]) => (
                   <div key={championship}>
-                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 px-1">
                       {championship}
-                    </h3>
+                    </p>
                     <div className="space-y-3">
                       {games.map(match => (
                         <MatchCard
@@ -207,7 +205,7 @@ export function DashboardPage() {
           </>
         )}
 
-        {/* ABA GRUPOS */}
+        {/* ── ABA GRUPOS ── */}
         {tab === 'grupos' && (
           <div className="space-y-8">
             <StandingsTable />
@@ -215,27 +213,30 @@ export function DashboardPage() {
           </div>
         )}
 
-        {/* ABA MINHA CONTA */}
+        {/* ── ABA MINHA CONTA ── */}
         {tab === 'conta' && (
-          <div className="space-y-4">
+          <div className="space-y-3">
 
-            {/* Emails diários */}
+            {/* Email diário */}
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
               <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-bold text-white">Emails diários</h3>
-                  <p className="text-sm text-slate-400 mt-0.5">
-                    Jogos dos seus times favoritos toda manhã
-                  </p>
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center text-lg">
+                    📧
+                  </div>
+                  <div>
+                    <p className="font-semibold text-white text-sm">Emails diários</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Resumo dos jogos toda manhã</p>
+                  </div>
                 </div>
                 <button
                   onClick={handleToggleNotifications}
-                  className={`relative w-12 h-6 rounded-full transition-colors ${
-                    notifications ? 'bg-green-600' : 'bg-slate-700'
+                  className={`relative w-11 h-6 rounded-full transition-colors ${
+                    notifications ? 'bg-yellow-500' : 'bg-slate-700'
                   }`}
                 >
                   <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                    notifications ? 'translate-x-7' : 'translate-x-1'
+                    notifications ? 'translate-x-6' : 'translate-x-1'
                   }`} />
                 </button>
               </div>
@@ -245,101 +246,72 @@ export function DashboardPage() {
             {goalNotifications.supported && (
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-orange-600/20 rounded-xl flex items-center justify-center text-xl">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-orange-600/20 flex items-center justify-center text-lg">
                       🔔
                     </div>
                     <div>
-                      <h3 className="font-bold text-white">Notificações no navegador</h3>
-                      <p className="text-sm text-slate-400 mt-0.5">
+                      <p className="font-semibold text-white text-sm">Notificações no navegador</p>
+                      <p className="text-xs text-slate-500 mt-0.5">
                         {goalNotifications.permission === 'denied'
-                          ? 'Bloqueado pelo navegador — habilite nas configurações'
+                          ? 'Bloqueado — habilite nas configurações do navegador'
                           : goalNotifications.enabled
-                            ? 'Ativo · receba alertas de gols em tempo real'
-                            : 'Receba alertas de gols direto no Chrome'}
+                          ? 'Ativo · alertas de gol em tempo real'
+                          : 'Alertas de gol direto no navegador'}
                       </p>
                     </div>
                   </div>
                   <button
                     onClick={goalNotifications.toggle}
                     disabled={goalNotifications.permission === 'denied'}
-                    className={`relative shrink-0 w-12 h-6 rounded-full transition-colors ${
+                    className={`relative w-11 h-6 rounded-full transition-colors ${
                       goalNotifications.enabled ? 'bg-orange-500' : 'bg-slate-700'
-                    } ${goalNotifications.permission === 'denied' ? 'opacity-40 cursor-not-allowed' : ''}`}
+                    } disabled:opacity-40 disabled:cursor-not-allowed`}
                   >
                     <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                      goalNotifications.enabled ? 'translate-x-7' : 'translate-x-1'
+                      goalNotifications.enabled ? 'translate-x-6' : 'translate-x-1'
                     }`} />
                   </button>
                 </div>
-                {goalNotifications.enabled && (
-                  <p className="text-xs text-slate-500 mt-3">
-                    Verificando gols a cada 30 segundos enquanto esta página estiver aberta.
-                  </p>
-                )}
               </div>
             )}
 
-            {/* WhatsApp — link para página dedicada */}
-            <Link
-              href="/dashboard/whatsapp"
-              className="flex items-center justify-between bg-slate-900 border border-slate-800 hover:border-green-700 rounded-2xl p-5 transition group"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-green-600/20 rounded-xl flex items-center justify-center text-xl">
-                  📱
-                </div>
-                <div>
-                  <h3 className="font-bold text-white group-hover:text-green-400 transition">
-                    Alertas via WhatsApp
-                  </h3>
-                  <p className="text-sm text-slate-400 mt-0.5">
-                    {whatsappEnabled && whatsappNumber
-                      ? `Ativo · +55 ${whatsappNumber}`
-                      : 'Configurar número e ativar alertas'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {whatsappEnabled && (
-                  <span className="w-2 h-2 rounded-full bg-green-500" />
-                )}
-                <span className="text-slate-600 group-hover:text-slate-400 transition text-lg">›</span>
-              </div>
-            </Link>
-
-            {/* Telegram — link para página dedicada */}
+            {/* Telegram */}
             <Link
               href="/dashboard/telegram"
-              className="flex items-center justify-between bg-slate-900 border border-slate-800 hover:border-blue-700 rounded-2xl p-5 transition group"
+              className="flex items-center justify-between bg-slate-900 border border-slate-800 hover:border-blue-700/60 rounded-2xl p-5 transition group"
             >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-blue-600/20 rounded-xl flex items-center justify-center text-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-blue-600/20 flex items-center justify-center text-lg">
                   ✈️
                 </div>
                 <div>
-                  <h3 className="font-bold text-white group-hover:text-blue-400 transition">
+                  <p className="font-semibold text-white text-sm group-hover:text-blue-400 transition">
                     Alertas via Telegram
-                  </h3>
-                  <p className="text-sm text-slate-400 mt-0.5">
-                    {telegramEnabled && telegramChatId ? 'Ativo · gols e resultados em tempo real' : 'Configurar e ativar alertas'}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {telegramChatId
+                      ? 'Ativo · gols e resultados em tempo real'
+                      : 'Toque para configurar'}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {telegramEnabled && telegramChatId && (
+                {telegramChatId && (
                   <span className="w-2 h-2 rounded-full bg-blue-500" />
                 )}
-                <span className="text-slate-600 group-hover:text-slate-400 transition text-lg">›</span>
+                <span className="text-slate-600 group-hover:text-slate-400 transition text-xl leading-none">›</span>
               </div>
             </Link>
 
             {/* Times favoritos */}
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-              <h3 className="font-bold text-white mb-1">Times favoritos</h3>
-              <p className="text-sm text-slate-400 mb-4">
-                Use o nome exato como aparece nos jogos.
-              </p>
+              <div className="mb-4">
+                <p className="font-semibold text-white text-sm">Times favoritos</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Use o nome exato como aparece nos cards de jogo.
+                </p>
+              </div>
 
               <form onSubmit={handleAddTeam} className="flex gap-2 mb-4">
                 <input
@@ -347,32 +319,32 @@ export function DashboardPage() {
                   value={newTeam}
                   onChange={(e) => setNewTeam(e.target.value)}
                   placeholder="Ex: Brasil, França..."
-                  className="flex-1 p-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-yellow-600"
+                  className="flex-1 px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-yellow-500 transition"
                 />
                 <button
                   type="submit"
                   disabled={!newTeam.trim()}
                   className="px-4 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 text-black font-bold rounded-xl text-sm transition"
                 >
-                  Adicionar
+                  +
                 </button>
               </form>
 
               {favoriteTeams.length === 0 ? (
-                <EmptyState message="Nenhum time adicionado ainda." />
+                <p className="text-xs text-slate-600 text-center py-3">Nenhum time adicionado ainda.</p>
               ) : (
                 <ul className="space-y-2">
                   {favoriteTeams.map(team => (
                     <li
                       key={team.id}
-                      className="flex items-center justify-between px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl"
+                      className="flex items-center justify-between px-3 py-2.5 bg-slate-800 border border-slate-700/50 rounded-xl"
                     >
-                      <span className="text-sm font-semibold">{team.teamName}</span>
+                      <span className="text-sm font-medium text-white">{team.teamName}</span>
                       <button
                         onClick={() => handleRemoveTeam(team.teamName)}
-                        className="text-xs text-red-400 hover:text-red-300 font-semibold transition"
+                        className="text-xs text-slate-500 hover:text-red-400 font-semibold transition"
                       >
-                        Remover
+                        remover
                       </button>
                     </li>
                   ))}
