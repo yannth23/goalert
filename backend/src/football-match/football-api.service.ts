@@ -12,10 +12,10 @@ const COMPETITION_WC = 'WC';
 const STATUS_MAP: Record<string, string> = {
   SCHEDULED:        'NS',
   TIMED:            'NS',
-  IN_PLAY:          '1H',
+  IN_PLAY:          '1H', // refined to '2H' below based on halfTime score
   PAUSED:           'HT',
-  EXTRA_TIME:       '2H',
-  PENALTY_SHOOTOUT: '2H',
+  EXTRA_TIME:       'ET',
+  PENALTY_SHOOTOUT: 'PEN',
   FINISHED:         'FT',
   SUSPENDED:        'PST',
   POSTPONED:        'PST',
@@ -70,7 +70,13 @@ export class FootballApiService {
     const matches = response.data.matches as any[];
 
     for (const match of matches) {
-      const mappedStatus = STATUS_MAP[match.status] ?? match.status;
+      let mappedStatus = STATUS_MAP[match.status] ?? match.status;
+
+      // If IN_PLAY and halfTime score exists, the match is in the 2nd half
+      if (match.status === 'IN_PLAY' && match.score?.halfTime?.home !== null && match.score?.halfTime?.home !== undefined) {
+        mappedStatus = '2H';
+      }
+
       const { home: homeScore, away: awayScore } = extractScore(match.score);
       const homeTeam = translateTeam(match.homeTeam.name);
       const awayTeam = translateTeam(match.awayTeam.name);
