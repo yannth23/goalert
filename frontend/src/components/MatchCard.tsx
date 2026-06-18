@@ -1,117 +1,75 @@
 import type { FootballMatch } from '../types';
 
-const STATUS_MAP: Record<string, { label: string; className: string }> = {
-  NS:  { label: 'Não iniciado',  className: 'bg-slate-800 text-slate-400' },
-  '1H':{ label: '● 1º Tempo',    className: 'bg-green-950 text-green-400' },
-  HT:  { label: 'Intervalo',     className: 'bg-yellow-950 text-yellow-400' },
-  '2H':{ label: '● 2º Tempo',    className: 'bg-green-950 text-green-400' },
-  ET:  { label: '● Prorrogação', className: 'bg-green-950 text-green-400' },
-  PEN: { label: '● Pênaltis',    className: 'bg-orange-950 text-orange-400' },
-  FT:  { label: 'Encerrado',     className: 'bg-slate-800 text-slate-500' },
-  PST: { label: 'Adiado',        className: 'bg-red-950 text-red-400' },
+const STATUS_MAP: Record<string, { label: string; bg: string; text: string; live: boolean }> = {
+  NS:  { label: 'Não iniciado',  bg: 'bg-slate-800',   text: 'text-slate-400',  live: false },
+  '1H':{ label: '1º Tempo',      bg: 'bg-green-950',   text: 'text-green-400',  live: true  },
+  HT:  { label: 'Intervalo',     bg: 'bg-yellow-950',  text: 'text-yellow-400', live: false },
+  '2H':{ label: '2º Tempo',      bg: 'bg-green-950',   text: 'text-green-400',  live: true  },
+  ET:  { label: 'Prorrogação',   bg: 'bg-green-950',   text: 'text-green-400',  live: true  },
+  PEN: { label: 'Pênaltis',      bg: 'bg-orange-950',  text: 'text-orange-400', live: true  },
+  FT:  { label: 'Encerrado',     bg: 'bg-slate-800',   text: 'text-slate-500',  live: false },
+  PST: { label: 'Adiado',        bg: 'bg-red-950',     text: 'text-red-400',    live: false },
+};
+
+// Flags mapped by English API name
+const FLAGS: Record<string, string> = {
+  'Brazil': '🇧🇷', 'Argentina': '🇦🇷', 'France': '🇫🇷',
+  'Germany': '🇩🇪', 'Spain': '🇪🇸', 'Portugal': '🇵🇹',
+  'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'United States': '🇺🇸', 'Mexico': '🇲🇽',
+  'Japan': '🇯🇵', 'South Korea': '🇰🇷', 'Morocco': '🇲🇦',
+  'Nigeria': '🇳🇬', 'Senegal': '🇸🇳', 'Croatia': '🇭🇷',
+  'Netherlands': '🇳🇱', 'Belgium': '🇧🇪', 'Uruguay': '🇺🇾',
+  'Italy': '🇮🇹', 'Switzerland': '🇨🇭', 'Denmark': '🇩🇰',
+  'Australia': '🇦🇺', 'Canada': '🇨🇦', 'Ecuador': '🇪🇨',
+  'Ghana': '🇬🇭', 'Qatar': '🇶🇦', 'Poland': '🇵🇱',
+  'Tunisia': '🇹🇳', 'Cameroon': '🇨🇲', 'Costa Rica': '🇨🇷',
+  'Serbia': '🇷🇸', 'Iran': '🇮🇷', 'Saudi Arabia': '🇸🇦',
+  'Colombia': '🇨🇴', 'Chile': '🇨🇱', 'Scotland': '🏴󠁧󠁢󠁳󠁣󠁴󠁿',
+  'Norway': '🇳🇴', 'Ukraine': '🇺🇦', 'Hungary': '🇭🇺',
+  'Algeria': '🇩🇿', 'Indonesia': '🇮🇩', 'Slovenia': '🇸🇮',
+  'Iraq': '🇮🇶', 'Sweden': '🇸🇪', 'Austria': '🇦🇹',
+  'New Zealand': '🇳🇿', 'Egypt': '🇪🇬', "Côte d'Ivoire": '🇨🇮',
+  'Ivory Coast': '🇨🇮', 'DR Congo': '🇨🇩', 'South Africa': '🇿🇦',
+  'Türkiye': '🇹🇷', 'Turkey': '🇹🇷', 'Bosnia and Herzegovina': '🇧🇦',
+  'Slovakia': '🇸🇰', 'Greece': '🇬🇷', 'Romania': '🇷🇴',
+  'Wales': '🏴󠁧󠁢󠁷󠁬󠁳󠁿', 'Paraguay': '🇵🇾', 'Peru': '🇵🇪',
+  'Bolivia': '🇧🇴', 'Venezuela': '🇻🇪', 'Panama': '🇵🇦',
 };
 
 const TEAM_PT: Record<string, string> = {
-  // Grupo A
-  'Mexico': 'México',
-  'South Korea': 'Coreia do Sul',
-  'Czech Republic': 'República Tcheca',
-  'Czechia': 'República Tcheca',
-  'South Africa': 'África do Sul',
-  // Grupo B
-  'Switzerland': 'Suíça',
-  'Canada': 'Canadá',
-  'Serbia': 'Sérvia',
-  'Bosnia and Herzegovina': 'Bósnia e Herzegovina',
-  // Grupo C
-  'Scotland': 'Escócia',
-  'Morocco': 'Marrocos',
-  'Brazil': 'Brasil',
-  'Chile': 'Chile',
-  // Grupo D
-  'United States': 'Estados Unidos',
-  'Australia': 'Austrália',
-  'Türkiye': 'Turquia',
-  'Turkey': 'Turquia',
-  'Netherlands': 'Holanda',
-  // Grupo E
-  'Germany': 'Alemanha',
-  'Japan': 'Japão',
-  'Belgium': 'Bélgica',
-  'Costa Rica': 'Costa Rica',
-  // Grupo F
-  'Portugal': 'Portugal',
-  'Argentina': 'Argentina',
-  'Egypt': 'Egito',
-  'New Zealand': 'Nova Zelândia',
-  // Grupo G
-  'Spain': 'Espanha',
-  'France': 'França',
-  'Senegal': 'Senegal',
-  'Uruguay': 'Uruguai',
-  // Grupo H
-  'England': 'Inglaterra',
-  'Colombia': 'Colômbia',
-  'Saudi Arabia': 'Arábia Saudita',
-  'Iran': 'Irã',
-  // Grupo I
-  'Nigeria': 'Nigéria',
-  'Croatia': 'Croácia',
-  'Denmark': 'Dinamarca',
-  'Ecuador': 'Equador',
-  // Grupo J
-  'Italy': 'Itália',
-  'Mexico': 'México',
-  'Norway': 'Noruega',
-  'Iraq': 'Iraque',
-  // Grupo K
-  'Poland': 'Polônia',
-  'Ukraine': 'Ucrânia',
-  'Hungary': 'Hungria',
-  'Algeria': 'Argélia',
-  // Grupo L
-  'Cameroon': 'Camarões',
-  'Ghana': 'Gana',
-  'Indonesia': 'Indonésia',
-  'Slovenia': 'Eslovênia',
-  // Outros comuns
-  'Sweden': 'Suécia',
-  'Russia': 'Rússia',
-  'Greece': 'Grécia',
-  'Romania': 'Romênia',
-  'Austria': 'Áustria',
-  'China': 'China',
-  'Iran': 'Irã',
-  'Qatar': 'Catar',
-  'Tunisia': 'Tunísia',
-  'Ivory Coast': 'Costa do Marfim',
-  "Côte d'Ivoire": 'Costa do Marfim',
-  'DR Congo': 'Congo',
-  'Venezuela': 'Venezuela',
-  'Paraguay': 'Paraguai',
-  'Peru': 'Peru',
-  'Bolivia': 'Bolívia',
-  'Jamaica': 'Jamaica',
-  'Honduras': 'Honduras',
-  'Panama': 'Panamá',
-  'Guatemala': 'Guatemala',
-  'Trinidad and Tobago': 'Trinidad e Tobago',
-  'Uzbekistan': 'Uzbequistão',
-  'Slovakia': 'Eslováquia',
-  'Wales': 'País de Gales',
+  'Mexico': 'México', 'South Korea': 'Coreia do Sul',
+  'Czech Republic': 'República Tcheca', 'Czechia': 'República Tcheca',
+  'South Africa': 'África do Sul', 'Switzerland': 'Suíça',
+  'Canada': 'Canadá', 'Serbia': 'Sérvia',
+  'Bosnia and Herzegovina': 'Bósnia e Herzegovina', 'Scotland': 'Escócia',
+  'Morocco': 'Marrocos', 'Brazil': 'Brasil', 'Chile': 'Chile',
+  'United States': 'Estados Unidos', 'Australia': 'Austrália',
+  'Türkiye': 'Turquia', 'Turkey': 'Turquia', 'Netherlands': 'Holanda',
+  'Germany': 'Alemanha', 'Japan': 'Japão', 'Belgium': 'Bélgica',
+  'Costa Rica': 'Costa Rica', 'Portugal': 'Portugal',
+  'Argentina': 'Argentina', 'Egypt': 'Egito', 'New Zealand': 'Nova Zelândia',
+  'Spain': 'Espanha', 'France': 'França', 'Senegal': 'Senegal',
+  'Uruguay': 'Uruguai', 'England': 'Inglaterra', 'Colombia': 'Colômbia',
+  'Saudi Arabia': 'Arábia Saudita', 'Iran': 'Irã', 'Nigeria': 'Nigéria',
+  'Croatia': 'Croácia', 'Denmark': 'Dinamarca', 'Ecuador': 'Equador',
+  'Italy': 'Itália', 'Norway': 'Noruega', 'Iraq': 'Iraque',
+  'Poland': 'Polônia', 'Ukraine': 'Ucrânia', 'Hungary': 'Hungria',
+  'Algeria': 'Argélia', 'Cameroon': 'Camarões', 'Ghana': 'Gana',
+  'Indonesia': 'Indonésia', 'Slovenia': 'Eslovênia', 'Sweden': 'Suécia',
+  'Russia': 'Rússia', 'Greece': 'Grécia', 'Romania': 'Romênia',
+  'Austria': 'Áustria', 'Qatar': 'Catar', 'Tunisia': 'Tunísia',
+  'Ivory Coast': 'Costa do Marfim', "Côte d'Ivoire": 'Costa do Marfim',
+  'DR Congo': 'Congo', 'Venezuela': 'Venezuela', 'Paraguay': 'Paraguai',
+  'Peru': 'Peru', 'Bolivia': 'Bolívia', 'Jamaica': 'Jamaica',
+  'Honduras': 'Honduras', 'Panama': 'Panamá', 'Guatemala': 'Guatemala',
+  'Trinidad and Tobago': 'Trinidad e Tobago', 'Uzbekistan': 'Uzbequistão',
+  'Slovakia': 'Eslováquia', 'Wales': 'País de Gales',
   'Northern Ireland': 'Irlanda do Norte',
-  'Republic of Ireland': 'República da Irlanda',
-  'Ireland': 'Irlanda',
-  'Kosovo': 'Kosovo',
-  'Albania': 'Albânia',
-  'North Macedonia': 'Macedônia do Norte',
-  'Montenegro': 'Montenegro',
-  'Kenya': 'Quênia',
-  'Senegal': 'Senegal',
-  'Mali': 'Mali',
-  'Angola': 'Angola',
-  'Tanzania': 'Tanzânia',
-  'Zimbabwe': 'Zimbábue',
+  'Republic of Ireland': 'República da Irlanda', 'Ireland': 'Irlanda',
+  'Kosovo': 'Kosovo', 'Albania': 'Albânia',
+  'North Macedonia': 'Macedônia do Norte', 'Montenegro': 'Montenegro',
+  'Kenya': 'Quênia', 'Mali': 'Mali', 'Angola': 'Angola',
+  'Tanzania': 'Tanzânia', 'Zimbabwe': 'Zimbábue',
 };
 
 const COMPETITION_PT: Record<string, string> = {
@@ -135,7 +93,7 @@ function traduzirCompeticao(nome: string): string {
   return COMPETITION_PT[nome] ?? nome;
 }
 
-const LIVE_STATUSES = new Set(['1H', 'HT', '2H', 'ET', 'PEN']);
+const LIVE_STATUSES = new Set(['1H', '2H', 'ET', 'PEN']);
 
 interface MatchCardProps {
   match: FootballMatch;
@@ -150,12 +108,17 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
 
   const status = STATUS_MAP[match.status] ?? {
     label: match.status,
-    className: 'bg-slate-800 text-slate-400',
+    bg: 'bg-slate-800',
+    text: 'text-slate-400',
+    live: false,
   };
 
   const isLive = LIVE_STATUSES.has(match.status);
   const isFinished = match.status === 'FT';
   const hasScore = match.team1Score !== undefined && match.team2Score !== undefined;
+
+  const flag1 = FLAGS[match.team1] ?? '';
+  const flag2 = FLAGS[match.team2] ?? '';
 
   return (
     <div className={`bg-slate-900 border rounded-2xl p-5 transition-all ${
@@ -167,20 +130,30 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
         <span className="text-xs text-slate-500 font-medium">
           {traduzirCompeticao(match.championship)}
         </span>
-        <span className={`text-xs font-bold px-3 py-1 rounded-full ${status.className}`}>
+        <span className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full ${status.bg} ${status.text}`}>
+          {status.live && (
+            <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+          )}
           {status.label}
         </span>
       </div>
 
       <div className="flex items-center justify-between gap-4">
-        <span className="font-bold text-white flex-1 text-right">
-          {traduzirTime(match.team1)}
-        </span>
+        <div className="flex-1 flex flex-col items-end gap-0.5">
+          {flag1 && <span className="text-xl leading-none">{flag1}</span>}
+          <span className="font-bold text-white text-sm text-right leading-tight">
+            {traduzirTime(match.team1)}
+          </span>
+        </div>
 
-        <div className="flex flex-col items-center px-4">
+        <div className="flex flex-col items-center px-3">
           {(isLive || isFinished) && hasScore ? (
-            <span className={`font-black text-2xl ${isLive ? 'text-yellow-500' : 'text-slate-300'}`}>
-              {match.team1Score} · {match.team2Score}
+            <span className={`font-black text-2xl px-4 py-1 rounded-xl ${
+              isLive
+                ? 'bg-yellow-950/70 text-yellow-400'
+                : 'bg-slate-800 text-slate-300'
+            }`}>
+              {match.team1Score} – {match.team2Score}
             </span>
           ) : (
             <>
@@ -190,14 +163,18 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
           )}
         </div>
 
-        <span className="font-bold text-white flex-1">
-          {traduzirTime(match.team2)}
-        </span>
+        <div className="flex-1 flex flex-col items-start gap-0.5">
+          {flag2 && <span className="text-xl leading-none">{flag2}</span>}
+          <span className="font-bold text-white text-sm leading-tight">
+            {traduzirTime(match.team2)}
+          </span>
+        </div>
       </div>
 
       {highlighted && (
-        <div className="mt-3 pt-3 border-t border-yellow-900/40 text-xs text-yellow-500 font-semibold">
-          ⭐ Time favorito
+        <div className="mt-3 pt-3 border-t border-yellow-900/40 flex items-center gap-1.5 text-xs text-yellow-500 font-semibold">
+          <span>⭐</span>
+          <span>Time favorito</span>
         </div>
       )}
     </div>
