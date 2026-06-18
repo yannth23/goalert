@@ -8,17 +8,17 @@ datasource db {
 }
 
 model User {
-  id             String            @id @default(cuid())
-  email          String            @unique
-  password       String
-  name           String?
-  verified       Boolean           @default(false)
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  id            String          @id @default(cuid())
+  email         String          @unique
+  password      String
+  name          String?
+  verified      Boolean         @default(false)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
-  favoriteTeams  FavoriteTeam[]
-  preferences    UserPreference?
-  refreshTokens  RefreshToken[]
+  favoriteTeams FavoriteTeam[]
+  preferences   UserPreference?
+  refreshTokens RefreshToken[]
 }
 
 model RefreshToken {
@@ -43,8 +43,6 @@ model UserPreference {
   id                           String   @id @default(cuid())
   userId                       String   @unique
   receiveDailyNotifications    Boolean  @default(true)
-  receiveWhatsappNotifications Boolean  @default(false)
-  whatsappNumber               String?
   receiveTelegramNotifications Boolean  @default(false)
   telegramChatId               String?
   createdAt                    DateTime @default(now())
