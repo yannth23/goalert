@@ -45,6 +45,8 @@ model UserPreference {
   receiveDailyNotifications    Boolean  @default(true)
   receiveWhatsappNotifications Boolean  @default(false)
   whatsappNumber               String?
+  receiveTelegramNotifications Boolean  @default(false)
+  telegramChatId               String?
   createdAt                    DateTime @default(now())
   updatedAt                    DateTime @updatedAt
 

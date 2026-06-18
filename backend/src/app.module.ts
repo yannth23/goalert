@@ -9,6 +9,7 @@ import { FootballMatchModule } from './football-match/football-match.module';
 import { AuthModule } from './auth/auth.module';
 import { RedisModule } from './redis/redis.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
+import { TelegramModule } from './telegram/telegram.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -23,6 +24,7 @@ import { AppController } from './app.controller';
     FootballMatchModule,
     AuthModule,
     WhatsappModule,
+    TelegramModule,
   ],
   controllers: [AppController],
   providers: [],

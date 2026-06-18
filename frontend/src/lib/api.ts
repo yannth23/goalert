@@ -96,6 +96,19 @@ export const api = {
       },
     ),
 
+  updateTelegram: (
+    userId: string,
+    telegramChatId: string | null,
+    receiveTelegramNotifications: boolean,
+  ) =>
+    request<{ telegramChatId: string | null; receiveTelegramNotifications: boolean }>(
+      `/users/${userId}/telegram`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ telegramChatId, receiveTelegramNotifications }),
+      },
+    ),
+
   getUser: (userId: string) =>
     request<{
       id: string;
@@ -106,6 +119,8 @@ export const api = {
         receiveDailyNotifications: boolean;
         receiveWhatsappNotifications: boolean;
         whatsappNumber: string | null;
+        receiveTelegramNotifications: boolean;
+        telegramChatId: string | null;
       } | null;
     }>(`/users/${userId}`),
 };

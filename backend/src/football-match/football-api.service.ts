@@ -3,6 +3,7 @@ import axios from 'axios';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
+import { TelegramService } from '../telegram/telegram.service';
 import { translateTeam } from './translation.util';
 
 const BASE_URL = 'https://api.football-data.org/v4';
@@ -35,6 +36,7 @@ export class FootballApiService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly whatsapp: WhatsappService,
+    private readonly telegram: TelegramService,
   ) {}
 
   private get headers() {
@@ -107,10 +109,13 @@ export class FootballApiService {
   ) {
     const teams = [homeTeam, awayTeam];
 
-    // Busca usuários com WhatsApp ativo que torcem por algum dos times
+    // Busca usuários com WhatsApp ou Telegram ativo que torcem por algum dos times
     const users = await this.prisma.user.findMany({
       where: {
-        preferences: { receiveWhatsappNotifications: true },
+        OR: [
+          { preferences: { receiveWhatsappNotifications: true } },
+          { preferences: { receiveTelegramNotifications: true } },
+        ],
         favoriteTeams: { some: { teamName: { in: teams } } },
       },
       include: { preferences: true, favoriteTeams: true },
@@ -152,10 +157,16 @@ export class FootballApiService {
     if (!messages.length) return;
 
     for (const user of users) {
-      const phone = user.preferences?.whatsappNumber;
-      if (!phone) continue;
+      const phone  = user.preferences?.whatsappNumber;
+      const chatId = user.preferences?.telegramChatId;
+
       for (const msg of messages) {
-        await this.whatsapp.sendText(phone, msg);
+        if (user.preferences?.receiveWhatsappNotifications && phone) {
+          await this.whatsapp.sendText(phone, msg);
+        }
+        if (user.preferences?.receiveTelegramNotifications && chatId) {
+          await this.telegram.sendMessage(chatId, msg);
+        }
       }
     }
   }

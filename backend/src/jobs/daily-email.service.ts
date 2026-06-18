@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { FootballApiService } from '../football-match/football-api.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
+import { TelegramService } from '../telegram/telegram.service';
 
 @Injectable()
 export class DailyEmailService implements OnApplicationBootstrap {
@@ -14,6 +15,7 @@ export class DailyEmailService implements OnApplicationBootstrap {
     private readonly emailService: EmailService,
     private readonly footballApiService: FootballApiService,
     private readonly whatsapp: WhatsappService,
+    private readonly telegram: TelegramService,
   ) {}
 
   async onApplicationBootstrap() {
@@ -73,6 +75,7 @@ export class DailyEmailService implements OnApplicationBootstrap {
     let emailSent = 0;
     let emailSkipped = 0;
     let waSent = 0;
+    let tgSent = 0;
 
     for (const user of users) {
       const favoriteTeams   = user.favoriteTeams.map((t) => t.teamName);
@@ -95,17 +98,23 @@ export class DailyEmailService implements OnApplicationBootstrap {
       // WhatsApp resumo diário
       const phone = user.preferences?.whatsappNumber;
       if (user.preferences?.receiveWhatsappNotifications && phone && filteredMatches.length) {
-        const msg = buildWhatsappSummary(filteredMatches);
-        await this.whatsapp.sendText(phone, msg);
+        await this.whatsapp.sendText(phone, buildDailySummary(filteredMatches));
         waSent++;
+      }
+
+      // Telegram resumo diário
+      const chatId = user.preferences?.telegramChatId;
+      if (user.preferences?.receiveTelegramNotifications && chatId && filteredMatches.length) {
+        await this.telegram.sendMessage(chatId, buildDailySummary(filteredMatches));
+        tgSent++;
       }
     }
 
-    this.logger.log(`Done — emails sent: ${emailSent}, skipped: ${emailSkipped}, WhatsApp: ${waSent}`);
+    this.logger.log(`Done — emails: ${emailSent}, skipped: ${emailSkipped}, WhatsApp: ${waSent}, Telegram: ${tgSent}`);
   }
 }
 
-function buildWhatsappSummary(
+function buildDailySummary(
   matches: { homeTeam: string; awayTeam: string; championship: string; date: Date }[],
 ): string {
   const lines = matches.map((m) => {

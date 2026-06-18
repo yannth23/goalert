@@ -29,6 +29,7 @@ export function DashboardPage() {
 
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
   const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [telegramEnabled, setTelegramEnabled] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) router.replace('/login');
@@ -45,6 +46,7 @@ export function DashboardPage() {
       setNotifications(userData.preferences?.receiveDailyNotifications ?? true);
       setWhatsappEnabled(userData.preferences?.receiveWhatsappNotifications ?? false);
       setWhatsappNumber(userData.preferences?.whatsappNumber ?? '');
+      setTelegramEnabled(userData.preferences?.receiveTelegramNotifications ?? false);
     }).finally(() => setLoadingData(false));
   }, [user]);
 
@@ -268,6 +270,32 @@ export function DashboardPage() {
               <div className="flex items-center gap-2">
                 {whatsappEnabled && (
                   <span className="w-2 h-2 rounded-full bg-green-500" />
+                )}
+                <span className="text-slate-600 group-hover:text-slate-400 transition text-lg">›</span>
+              </div>
+            </Link>
+
+            {/* Telegram — link para página dedicada */}
+            <Link
+              href="/dashboard/telegram"
+              className="flex items-center justify-between bg-slate-900 border border-slate-800 hover:border-blue-700 rounded-2xl p-5 transition group"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-blue-600/20 rounded-xl flex items-center justify-center text-xl">
+                  ✈️
+                </div>
+                <div>
+                  <h3 className="font-bold text-white group-hover:text-blue-400 transition">
+                    Alertas via Telegram
+                  </h3>
+                  <p className="text-sm text-slate-400 mt-0.5">
+                    {telegramEnabled ? 'Ativo · gols e resultados em tempo real' : 'Configurar e ativar alertas'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {telegramEnabled && (
+                  <span className="w-2 h-2 rounded-full bg-blue-500" />
                 )}
                 <span className="text-slate-600 group-hover:text-slate-400 transition text-lg">›</span>
               </div>

@@ -72,4 +72,17 @@ export class UserController {
       body.receiveWhatsappNotifications,
     );
   }
+
+  @Patch(':id/telegram')
+  @UseGuards(JwtAuthGuard)
+  updateTelegram(
+    @Param('id') id: string,
+    @Body() body: { telegramChatId: string | null; receiveTelegramNotifications: boolean },
+  ) {
+    return this.userService.updateTelegram(
+      id,
+      body.telegramChatId,
+      body.receiveTelegramNotifications,
+    );
+  }
 }
