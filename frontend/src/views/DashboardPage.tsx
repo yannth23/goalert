@@ -8,6 +8,7 @@ import { useToast } from '../hooks/useToast';
 import { useGoalNotifications } from '../hooks/useGoalNotifications';
 import { Toast } from '../components/Toast';
 import { GoalAlertLogo } from '../components/GoalAlertLogo';
+import { LiveTicker } from '../components/LiveTicker';
 import { api } from '../lib/api';
 import { MatchCard } from '../components/MatchCard';
 import { StandingsTable } from '../components/StandingsTable';
@@ -52,6 +53,18 @@ export function DashboardPage() {
       showToast('Erro ao carregar dados.');
     }).finally(() => setLoadingData(false));
   }, [user]);
+
+
+  // Auto-refresh live match scores every 30 seconds
+  useEffect(() => {
+    const timer = setInterval(async () => {
+      try {
+        const matchData = await api.getTodayMatches();
+        setMatches(matchData);
+      } catch { /* silent */ }
+    }, 30_000);
+    return () => clearInterval(timer);
+  }, []);
 
   async function handleAddTeam(e: React.FormEvent) {
     e.preventDefault();
@@ -167,6 +180,8 @@ export function DashboardPage() {
           ))}
         </div>
       </div>
+
+      <LiveTicker />
 
       <div className="max-w-4xl mx-auto px-4 py-6">
 
