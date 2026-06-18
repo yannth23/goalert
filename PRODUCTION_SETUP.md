@@ -51,7 +51,60 @@ npx prisma migrate deploy
 2. Para usar com Node.js, copie a string no formato: `redis://default:password@host:port`
 3. Guarde como `REDIS_URL`
 
-## 📧 3. Configurar E-mail (Resend)
+## 📱 3. Configurar WhatsApp (Z-API)
+
+### Passo 1: Criar Instância
+
+1. Acesse [app.z-api.io](https://app.z-api.io) e faça login
+2. Clique em **"Criar instância"**
+3. Dê um nome (ex: `goalert-prod`)
+4. Clique em **"Criar"**
+
+### Passo 2: Conectar o WhatsApp
+
+1. Na página da instância, clique em **"Conectar"**
+2. Aparecerá um QR code
+3. No celular: **WhatsApp → ⋮ → Dispositivos vinculados → Vincular dispositivo**
+4. Escaneie o QR code
+5. Aguarde a confirmação de conexão ✅
+
+### Passo 3: Obter as Credenciais
+
+Na página da instância, copie:
+- **Instance ID** → URL da instância (ex: `3F4CF36F...`)
+- **Token** → Token da instância (ex: `235A691E...`)
+
+Para o **Client-Token** (se exigido pelo seu plano):
+1. Clique no seu avatar/perfil
+2. Vá em **Conta → Security**
+3. Copie o **"Client-Token"**
+
+### Passo 4: Variáveis de Ambiente
+
+```
+ZAPI_INSTANCE_ID=sua-instance-id
+ZAPI_TOKEN=seu-token
+ZAPI_CLIENT_TOKEN=seu-client-token  # deixe vazio se não tiver
+```
+
+### Passo 5: Testar Envio
+
+Após configurar, teste via curl:
+```bash
+curl -X POST "https://api.z-api.io/instances/SEU_INSTANCE_ID/token/SEU_TOKEN/send-text" \
+  -H "Content-Type: application/json" \
+  -d '{"phone": "5581999990000", "message": "Teste GoalAlert ⚽"}'
+```
+
+### Troubleshooting Z-API
+
+- **`connected: false`** → Escaneie o QR code novamente (sessão expirada)
+- **`401 Unauthorized`** → Verifique se Instance ID e Token estão corretos
+- **Mensagem não chega** → Confirme que o número tem o formato `55DDDnúmero` (ex: `5581999990000`)
+
+---
+
+## 📧 4. Configurar E-mail (Resend)
 
 ### Passo 1: Criar Conta e Domínio
 
