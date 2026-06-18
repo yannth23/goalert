@@ -1,13 +1,77 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import axios from 'axios';
 
 @Injectable()
-export class TelegramService {
+export class TelegramService implements OnApplicationBootstrap {
   private readonly logger = new Logger(TelegramService.name);
   private readonly token = process.env.TELEGRAM_BOT_TOKEN;
+  private offset = 0;
+  private polling = false;
 
   private get baseUrl() {
     return `https://api.telegram.org/bot${this.token}`;
+  }
+
+  async onApplicationBootstrap() {
+    if (!this.token) {
+      this.logger.warn('TELEGRAM_BOT_TOKEN not configured — polling disabled');
+      return;
+    }
+    this.logger.log('Starting Telegram polling...');
+    this.startPolling();
+  }
+
+  private async startPolling() {
+    if (this.polling) return;
+    this.polling = true;
+
+    while (this.polling) {
+      try {
+        const res = await axios.get(`${this.baseUrl}/getUpdates`, {
+          params: { offset: this.offset, timeout: 30 },
+          timeout: 35000,
+        });
+
+        const updates = res.data.result as any[];
+
+        for (const update of updates) {
+          this.offset = update.update_id + 1;
+          await this.handleUpdate(update);
+        }
+      } catch (err: any) {
+        // Ignora erros de timeout (normais no long polling)
+        if (err?.code !== 'ECONNABORTED') {
+          this.logger.error('Polling error', err?.message);
+        }
+        await this.sleep(3000);
+      }
+    }
+  }
+
+  private async handleUpdate(update: any) {
+    const msg = update.message;
+    if (!msg) return;
+
+    const chatId = String(msg.chat.id);
+    const text   = msg.text ?? '';
+
+    if (text === '/start') {
+      await this.sendMessage(
+        chatId,
+        `👋 *Bem-vindo ao GoalAlert!*
+
+Seu *Chat ID* é:
+\`${chatId}\`
+
+Copie esse número e cole em *Minha conta → Alertas via Telegram* no GoalAlert para receber notificações de gols e jogos dos seus times favoritos! ⚽`,
+      );
+      return;
+    }
+
+    if (text === '/id') {
+      await this.sendMessage(chatId, `Seu Chat ID: \`${chatId}\``);
+      return;
+    }
   }
 
   async sendMessage(chatId: string, text: string): Promise<void> {
@@ -25,5 +89,9 @@ export class TelegramService {
     } catch (err: any) {
       this.logger.error(`Falha ao enviar para ${chatId}`, err?.response?.data ?? err.message);
     }
+  }
+
+  private sleep(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
