@@ -2,14 +2,12 @@ import { Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module';
 import { EmailModule } from '../email/email.module';
 import { FootballMatchModule } from '../football-match/football-match.module';
-import { WhatsappModule } from '../whatsapp/whatsapp.module';
 import { TelegramModule } from '../telegram/telegram.module';
 import { DailyEmailService } from './daily-email.service';
 import { KeepAliveService } from './keep-alive.service';
-import { MatchSyncService } from './match-sync.service';
 
 @Module({
-  imports: [PrismaModule, EmailModule, FootballMatchModule, WhatsappModule, TelegramModule],
-  providers: [DailyEmailService, KeepAliveService, MatchSyncService],
+  imports: [PrismaModule, EmailModule, FootballMatchModule, TelegramModule],
+  providers: [DailyEmailService, KeepAliveService],
 })
 export class JobsModule {}
