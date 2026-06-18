@@ -7,6 +7,7 @@ import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useToast } from '../hooks/useToast';
 import { useGoalNotifications } from '../hooks/useGoalNotifications';
 import { Toast } from '../components/Toast';
+import { GoalAlertLogo } from '../components/GoalAlertLogo';
 import { api } from '../lib/api';
 import { MatchCard } from '../components/MatchCard';
 import { StandingsTable } from '../components/StandingsTable';
@@ -119,7 +120,7 @@ export function DashboardPage() {
 
           {/* Logo — clicável volta para a landing */}
           <Link href="/" className="flex items-center gap-2 shrink-0 group">
-            <span className="text-2xl">⚽</span>
+            <GoalAlertLogo size={30} />
             <span className="text-yellow-400 font-black text-xl tracking-tight group-hover:text-yellow-300 transition">
               GOALALERT
             </span>
