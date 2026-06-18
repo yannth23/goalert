@@ -17,6 +17,11 @@ import type { FootballMatch } from '../types';
 
 type Tab = 'jogos' | 'grupos' | 'conta';
 
+function capitalize(str: string): string {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
+
 export function DashboardPage() {
   const { user, isLoading } = useRequireAuth();
   const { logout } = useAuth();
@@ -30,7 +35,6 @@ export function DashboardPage() {
   const [filter, setFilter] = useState<'all' | 'favorites'>('all');
   const { toast, showToast } = useToast();
   const goalNotifications = useGoalNotifications();
-
   const [telegramChatId, setTelegramChatId] = useState('');
 
   useEffect(() => {
@@ -43,8 +47,8 @@ export function DashboardPage() {
       setFavoriteTeams(userData.favoriteTeams);
       setNotifications(userData.preferences?.receiveDailyNotifications ?? true);
       setTelegramChatId(userData.preferences?.telegramChatId ?? '');
-    }).catch((err) => {
-      console.error('Failed to load dashboard data', err);
+    }).catch(() => {
+      showToast('Erro ao carregar dados.');
     }).finally(() => setLoadingData(false));
   }, [user]);
 
@@ -84,6 +88,10 @@ export function DashboardPage() {
     }
   }
 
+  const displayName = user?.name
+    ? user.name.split(' ').map(capitalize).join(' ')
+    : '';
+
   const favoriteNames = favoriteTeams.map(t => t.teamName);
   const displayed = filter === 'favorites'
     ? matches.filter(m => favoriteNames.includes(m.team1) || favoriteNames.includes(m.team2))
@@ -105,29 +113,39 @@ export function DashboardPage() {
     <main className="min-h-screen bg-slate-950 text-white">
       <Toast toast={toast} successColor="bg-slate-800" />
 
-      {/* Navbar */}
+      {/* ── Navbar ── */}
       <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
-        <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+
+          {/* Logo — clicável volta para a landing */}
+          <Link href="/" className="flex items-center gap-2 shrink-0 group">
             <span className="text-2xl">⚽</span>
-            <h1 className="text-yellow-400 font-black text-xl tracking-tight">GOALALERT</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            {user?.name && (
-              <span className="text-sm text-slate-400 hidden sm:block">{user.name}</span>
+            <span className="text-yellow-400 font-black text-xl tracking-tight group-hover:text-yellow-300 transition">
+              GOALALERT
+            </span>
+          </Link>
+
+          {/* Lado direito — nome + sair separados */}
+          <div className="flex items-center gap-4">
+            {displayName && (
+              <span className="text-sm font-medium text-slate-300 hidden sm:block truncate max-w-[140px]">
+                {displayName}
+              </span>
             )}
+            <div className="w-px h-4 bg-slate-700 hidden sm:block" />
             <button
               onClick={logout}
-              className="text-sm text-slate-500 hover:text-white transition px-3 py-1.5 rounded-lg hover:bg-slate-800"
+              className="text-sm text-slate-400 hover:text-white transition px-3 py-1.5 rounded-lg hover:bg-slate-800"
             >
               Sair
             </button>
           </div>
+
         </div>
       </header>
 
-      {/* Tabs */}
-      <div className="border-b border-slate-800 bg-slate-950">
+      {/* ── Tabs ── */}
+      <div className="border-b border-slate-800">
         <div className="max-w-4xl mx-auto px-4 flex">
           {([
             { key: 'jogos', label: 'Jogos de hoje' },
@@ -137,10 +155,10 @@ export function DashboardPage() {
             <button
               key={key}
               onClick={() => setTab(key)}
-              className={`px-4 py-3.5 text-sm font-semibold border-b-2 transition ${ 
+              className={`px-4 py-3.5 text-sm font-semibold border-b-2 transition-all ${
                 tab === key
                   ? 'border-yellow-400 text-yellow-400'
-                  : 'border-transparent text-slate-500 hover:text-slate-300'
+                  : 'border-transparent text-slate-500 hover:text-slate-300 hover:border-slate-600'
               }`}
             >
               {label}
@@ -155,13 +173,13 @@ export function DashboardPage() {
         {tab === 'jogos' && (
           <>
             <div className="flex gap-2 mb-5">
-              {[
+              {([
                 { key: 'all', label: 'Todos' },
                 { key: 'favorites', label: '⭐ Meus times' },
-              ].map(({ key, label }) => (
+              ] as { key: 'all' | 'favorites'; label: string }[]).map(({ key, label }) => (
                 <button
                   key={key}
-                  onClick={() => setFilter(key as 'all' | 'favorites')}
+                  onClick={() => setFilter(key)}
                   className={`px-4 py-1.5 rounded-full text-sm font-semibold transition ${
                     filter === key
                       ? 'bg-yellow-400 text-black'
@@ -215,15 +233,21 @@ export function DashboardPage() {
 
         {/* ── ABA MINHA CONTA ── */}
         {tab === 'conta' && (
-          <div className="space-y-3">
+          <div className="space-y-3 max-w-lg">
+
+            {/* Cabeçalho da conta */}
+            {displayName && (
+              <div className="bg-gradient-to-r from-yellow-500/10 to-transparent border border-yellow-500/20 rounded-2xl px-5 py-4 mb-2">
+                <p className="text-xs text-yellow-500/70 font-semibold uppercase tracking-widest mb-0.5">Bem-vindo</p>
+                <p className="text-lg font-black text-white">{displayName}</p>
+              </div>
+            )}
 
             {/* Email diário */}
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center text-lg">
-                    📧
-                  </div>
+                  <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center text-base">📧</div>
                   <div>
                     <p className="font-semibold text-white text-sm">Emails diários</p>
                     <p className="text-xs text-slate-500 mt-0.5">Resumo dos jogos toda manhã</p>
@@ -231,7 +255,8 @@ export function DashboardPage() {
                 </div>
                 <button
                   onClick={handleToggleNotifications}
-                  className={`relative w-11 h-6 rounded-full transition-colors ${
+                  aria-label="Toggle emails"
+                  className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${
                     notifications ? 'bg-yellow-500' : 'bg-slate-700'
                   }`}
                 >
@@ -247,24 +272,23 @@ export function DashboardPage() {
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-orange-600/20 flex items-center justify-center text-lg">
-                      🔔
-                    </div>
+                    <div className="w-9 h-9 rounded-xl bg-orange-500/10 flex items-center justify-center text-base">🔔</div>
                     <div>
                       <p className="font-semibold text-white text-sm">Notificações no navegador</p>
                       <p className="text-xs text-slate-500 mt-0.5">
                         {goalNotifications.permission === 'denied'
-                          ? 'Bloqueado — habilite nas configurações do navegador'
+                          ? 'Bloqueado — habilite nas configurações'
                           : goalNotifications.enabled
                           ? 'Ativo · alertas de gol em tempo real'
-                          : 'Alertas de gol direto no navegador'}
+                          : 'Alertas de gol direto no Chrome'}
                       </p>
                     </div>
                   </div>
                   <button
                     onClick={goalNotifications.toggle}
                     disabled={goalNotifications.permission === 'denied'}
-                    className={`relative w-11 h-6 rounded-full transition-colors ${
+                    aria-label="Toggle browser notifications"
+                    className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${
                       goalNotifications.enabled ? 'bg-orange-500' : 'bg-slate-700'
                     } disabled:opacity-40 disabled:cursor-not-allowed`}
                   >
@@ -279,28 +303,22 @@ export function DashboardPage() {
             {/* Telegram */}
             <Link
               href="/dashboard/telegram"
-              className="flex items-center justify-between bg-slate-900 border border-slate-800 hover:border-blue-700/60 rounded-2xl p-5 transition group"
+              className="flex items-center justify-between bg-slate-900 border border-slate-800 hover:border-blue-600/50 rounded-2xl p-5 transition-all group"
             >
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-blue-600/20 flex items-center justify-center text-lg">
-                  ✈️
-                </div>
+                <div className="w-9 h-9 rounded-xl bg-blue-600/15 flex items-center justify-center text-base">✈️</div>
                 <div>
-                  <p className="font-semibold text-white text-sm group-hover:text-blue-400 transition">
+                  <p className="font-semibold text-sm text-white group-hover:text-blue-400 transition">
                     Alertas via Telegram
                   </p>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    {telegramChatId
-                      ? 'Ativo · gols e resultados em tempo real'
-                      : 'Toque para configurar'}
+                    {telegramChatId ? 'Ativo · gols e resultados em tempo real' : 'Toque para configurar'}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                {telegramChatId && (
-                  <span className="w-2 h-2 rounded-full bg-blue-500" />
-                )}
-                <span className="text-slate-600 group-hover:text-slate-400 transition text-xl leading-none">›</span>
+              <div className="flex items-center gap-2 shrink-0">
+                {telegramChatId && <span className="w-2 h-2 rounded-full bg-blue-500" />}
+                <span className="text-slate-600 group-hover:text-slate-300 transition text-xl leading-none">›</span>
               </div>
             </Link>
 
@@ -309,11 +327,11 @@ export function DashboardPage() {
               <div className="mb-4">
                 <p className="font-semibold text-white text-sm">Times favoritos</p>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Use o nome exato como aparece nos cards de jogo.
+                  Usado para filtrar jogos e destacar partidas.
                 </p>
               </div>
 
-              <form onSubmit={handleAddTeam} className="flex gap-2 mb-4">
+              <form onSubmit={handleAddTeam} className="flex gap-2 mb-3">
                 <input
                   type="text"
                   value={newTeam}
@@ -324,7 +342,7 @@ export function DashboardPage() {
                 <button
                   type="submit"
                   disabled={!newTeam.trim()}
-                  className="px-4 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 text-black font-bold rounded-xl text-sm transition"
+                  className="px-4 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 text-black font-black rounded-xl text-lg transition leading-none"
                 >
                   +
                 </button>
@@ -337,12 +355,12 @@ export function DashboardPage() {
                   {favoriteTeams.map(team => (
                     <li
                       key={team.id}
-                      className="flex items-center justify-between px-3 py-2.5 bg-slate-800 border border-slate-700/50 rounded-xl"
+                      className="flex items-center justify-between px-3 py-2.5 bg-slate-800 border border-slate-700/40 rounded-xl"
                     >
                       <span className="text-sm font-medium text-white">{team.teamName}</span>
                       <button
                         onClick={() => handleRemoveTeam(team.teamName)}
-                        className="text-xs text-slate-500 hover:text-red-400 font-semibold transition"
+                        className="text-xs text-slate-500 hover:text-red-400 transition font-medium"
                       >
                         remover
                       </button>
