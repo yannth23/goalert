@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '../hooks/useAuth';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useToast } from '../hooks/useToast';
+import { useGoalNotifications } from '../hooks/useGoalNotifications';
 import { Toast } from '../components/Toast';
 import { api } from '../lib/api';
 import { MatchCard } from '../components/MatchCard';
@@ -28,6 +29,7 @@ export function DashboardPage() {
   const [loadingData, setLoadingData] = useState(true);
   const [filter, setFilter] = useState<'all' | 'favorites'>('all');
   const { toast, showToast } = useToast();
+  const goalNotifications = useGoalNotifications();
 
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
   const [whatsappNumber, setWhatsappNumber] = useState('');
@@ -238,6 +240,45 @@ export function DashboardPage() {
                 </button>
               </div>
             </div>
+
+            {/* Notificações no navegador */}
+            {goalNotifications.supported && (
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-orange-600/20 rounded-xl flex items-center justify-center text-xl">
+                      🔔
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-white">Notificações no navegador</h3>
+                      <p className="text-sm text-slate-400 mt-0.5">
+                        {goalNotifications.permission === 'denied'
+                          ? 'Bloqueado pelo navegador — habilite nas configurações'
+                          : goalNotifications.enabled
+                            ? 'Ativo · receba alertas de gols em tempo real'
+                            : 'Receba alertas de gols direto no Chrome'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={goalNotifications.toggle}
+                    disabled={goalNotifications.permission === 'denied'}
+                    className={`relative shrink-0 w-12 h-6 rounded-full transition-colors ${
+                      goalNotifications.enabled ? 'bg-orange-500' : 'bg-slate-700'
+                    } ${goalNotifications.permission === 'denied' ? 'opacity-40 cursor-not-allowed' : ''}`}
+                  >
+                    <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                      goalNotifications.enabled ? 'translate-x-7' : 'translate-x-1'
+                    }`} />
+                  </button>
+                </div>
+                {goalNotifications.enabled && (
+                  <p className="text-xs text-slate-500 mt-3">
+                    Verificando gols a cada 30 segundos enquanto esta página estiver aberta.
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* WhatsApp — link para página dedicada */}
             <Link
