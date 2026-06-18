@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { FootballApiService } from '../football-match/football-api.service';
 
 @Injectable()
@@ -21,8 +21,8 @@ export class MatchSyncService {
     }
   }
 
-  // Sincroniza a cada 30 minutos para manter os placares e status atualizados
-  @Cron(CronExpression.EVERY_30_MINUTES)
+  // Sincroniza a cada 2 minutos para manter os placares e status atualizados em tempo real
+  @Cron('0 */2 * * * *')
   async handleLiveUpdate() {
     this.logger.log('Atualizando placares das partidas...');
     try {
