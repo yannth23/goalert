@@ -30,6 +30,7 @@ export function DashboardPage() {
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [telegramEnabled, setTelegramEnabled] = useState(false);
+  const [telegramChatId, setTelegramChatId] = useState('');
 
   useEffect(() => {
     if (!isLoading && !user) router.replace('/login');
@@ -47,6 +48,7 @@ export function DashboardPage() {
       setWhatsappEnabled(userData.preferences?.receiveWhatsappNotifications ?? false);
       setWhatsappNumber(userData.preferences?.whatsappNumber ?? '');
       setTelegramEnabled(userData.preferences?.receiveTelegramNotifications ?? false);
+      setTelegramChatId(userData.preferences?.telegramChatId ?? '');
     }).finally(() => setLoadingData(false));
   }, [user]);
 
@@ -289,12 +291,12 @@ export function DashboardPage() {
                     Alertas via Telegram
                   </h3>
                   <p className="text-sm text-slate-400 mt-0.5">
-                    {telegramEnabled ? 'Ativo · gols e resultados em tempo real' : 'Configurar e ativar alertas'}
+                    {telegramEnabled && telegramChatId ? 'Ativo · gols e resultados em tempo real' : 'Configurar e ativar alertas'}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {telegramEnabled && (
+                {telegramEnabled && telegramChatId && (
                   <span className="w-2 h-2 rounded-full bg-blue-500" />
                 )}
                 <span className="text-slate-600 group-hover:text-slate-400 transition text-lg">›</span>
