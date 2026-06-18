@@ -1,9 +1,5 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
-if (typeof window !== 'undefined') {
-  console.log('[GoalAlert] API_URL:', API_URL);
-}
-
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
