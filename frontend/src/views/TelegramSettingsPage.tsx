@@ -57,9 +57,13 @@ export function TelegramSettingsPage() {
   async function handleToggle() {
     if (!user) return;
     const next = !enabled;
+    if (next && !savedChatId) {
+      showToast('Salve seu Chat ID antes de ativar as notificações.', false);
+      return;
+    }
     setEnabled(next);
     try {
-      await api.updateTelegram(user.id, savedChatId || null, next);
+      await api.updateTelegram(user.id, savedChatId, next);
       showToast(next ? 'Alertas ativados! 🔔' : 'Alertas desativados.');
     } catch {
       setEnabled(!next);
