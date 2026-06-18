@@ -1,37 +1,19 @@
-import { useEffect, useState } from 'react';
-
+import { useCallback } from 'react';
 import { api } from '../lib/api';
+import { useApiQuery } from './useApiQuery';
 import type { FootballMatch } from '../types';
 
 export function useMatches() {
-  const [matches, setMatches] = useState<FootballMatch[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    loadMatches();
-  }, []);
-
-  async function loadMatches() {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const data = await api.getTodayMatches();
-
-      setMatches(data);
-    } catch (err) {
-      console.error(err);
-      setError('Erro ao carregar partidas');
-    } finally {
-      setLoading(false);
-    }
-  }
+  const fetcher = useCallback(() => api.getTodayMatches(), []);
+  const { data, loading, error, reload } = useApiQuery<FootballMatch[]>(
+    fetcher,
+    'Erro ao carregar partidas',
+  );
 
   return {
-    matches,
+    matches: data ?? [],
     loading,
     error,
-    reload: loadMatches,
+    reload,
   };
 }

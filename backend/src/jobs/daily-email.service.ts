@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { FootballApiService } from '../football-match/football-api.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { getTodayRange, formatMatchTime } from '../shared';
 
 @Injectable()
 export class DailyEmailService implements OnApplicationBootstrap {
@@ -50,13 +51,10 @@ export class DailyEmailService implements OnApplicationBootstrap {
   async runDailyJob(): Promise<void> {
     this.logger.log('Starting daily job...');
 
-    const startOfDay = new Date();
-    startOfDay.setUTCHours(0, 0, 0, 0);
-    const endOfDay = new Date();
-    endOfDay.setUTCHours(23, 59, 59, 999);
+    const { start, end } = getTodayRange();
 
     const matches = await this.prisma.footballMatch.findMany({
-      where: { date: { gte: startOfDay, lte: endOfDay } },
+      where: { date: { gte: start, lte: end } },
       orderBy: { date: 'asc' },
     });
 
@@ -104,9 +102,7 @@ function buildTelegramSummary(
   matches: { homeTeam: string; awayTeam: string; date: Date }[],
 ): string {
   const lines = matches.map((m) => {
-    const time = m.date.toLocaleTimeString('pt-BR', {
-      hour: '2-digit', minute: '2-digit', timeZone: 'America/Recife',
-    });
+    const time = formatMatchTime(m.date);
     return `\u25aa ${m.homeTeam} x ${m.awayTeam} \u2014 ${time}`;
   });
   return `\u26bd *GoalAlert \u2014 Jogos de Hoje*\n\n${lines.join('\n')}\n\n_Boa sorte pro seu time!_ \ud83c\udfc6`;
@@ -125,11 +121,7 @@ function buildEmailHtml(
 ): string {
   const rows = matches
     .map((m) => {
-      const time = m.date.toLocaleTimeString('pt-BR', {
-        hour: '2-digit',
-        minute: '2-digit',
-        timeZone: 'America/Recife',
-      });
+      const time = formatMatchTime(m.date);
       const scoreOrTime =
         m.homeScore !== null && m.awayScore !== null
           ? `${m.homeScore} x ${m.awayScore}`
