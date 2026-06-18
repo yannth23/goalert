@@ -9,6 +9,7 @@ import { useGoalNotifications } from '../hooks/useGoalNotifications';
 import { Toast } from '../components/Toast';
 import { GoalAlertLogo } from '../components/GoalAlertLogo';
 import { LiveTicker } from '../components/LiveTicker';
+import { AlertsTab } from '../components/AlertsTab';
 import { api } from '../lib/api';
 import { MatchCard } from '../components/MatchCard';
 import { StandingsTable } from '../components/StandingsTable';
@@ -17,7 +18,7 @@ import { Loading } from '../components/Loading';
 import { EmptyState } from '../components/EmptyState';
 import type { FootballMatch } from '../types';
 
-type Tab = 'jogos' | 'grupos' | 'conta';
+type Tab = 'jogos' | 'alertas' | 'grupos' | 'conta';
 
 function capitalize(str: string): string {
   if (!str) return '';
@@ -163,6 +164,7 @@ export function DashboardPage() {
         <div className="max-w-4xl mx-auto px-4 flex">
           {([
             { key: 'jogos', label: 'Jogos de hoje' },
+            { key: 'alertas', label: 'Alertas ⚡' },
             { key: 'grupos', label: 'Grupos' },
             { key: 'conta', label: 'Minha conta' },
           ] as { key: Tab; label: string }[]).map(({ key, label }) => (
@@ -238,6 +240,9 @@ export function DashboardPage() {
             )}
           </>
         )}
+
+        {/* ── ABA ALERTAS ── */}
+        {tab === 'alertas' && <AlertsTab />}
 
         {/* ── ABA GRUPOS ── */}
         {tab === 'grupos' && (
