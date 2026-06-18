@@ -22,7 +22,6 @@ const STATUS_MAP: Record<string, string> = {
   AWARDED:          'FT',
 };
 
-/** Extrai o placar mais atualizado disponível na resposta da API */
 function extractScore(score: any): { home: number | null; away: number | null } {
   const home =
     score?.regularTime?.home ??
@@ -74,10 +73,10 @@ export class FootballApiService {
     const matches = response.data.matches as any[];
 
     for (const match of matches) {
-      const mappedStatus    = STATUS_MAP[match.status] ?? match.status;
+      const mappedStatus = STATUS_MAP[match.status] ?? match.status;
       const { home: homeScore, away: awayScore } = extractScore(match.score);
-      const homeTeam        = translateTeam(match.homeTeam.name);
-      const awayTeam        = translateTeam(match.awayTeam.name);
+      const homeTeam = translateTeam(match.homeTeam.name);
+      const awayTeam = translateTeam(match.awayTeam.name);
 
       const existing = await this.prisma.footballMatch.findUnique({
         where: { externalId: match.id.toString() },
@@ -107,10 +106,10 @@ export class FootballApiService {
   }
 
   private async detectAndNotify(prev: any, curr: any, homeTeam: string, awayTeam: string) {
+    // Busca todos os usuários com Telegram ativo — sem filtro de time favorito
     const users = await this.prisma.user.findMany({
       where: {
         preferences: { receiveTelegramNotifications: true },
-        favoriteTeams: { some: { teamName: { in: [homeTeam, awayTeam] } } },
       },
       include: { preferences: true },
     });
@@ -128,22 +127,19 @@ ${homeTeam} x ${awayTeam}
       );
     }
 
-    // Gol — placar mudou em relação ao sync anterior
+    // Gol — placar mudou
     const prevHome = prev?.homeScore ?? null;
     const prevAway = prev?.awayScore ?? null;
     const currHome = curr.homeScore;
     const currAway = curr.awayScore;
 
     const placarDisponivel = currHome !== null && currAway !== null;
-    const placarMudou =
-      placarDisponivel && (currHome !== prevHome || currAway !== prevAway);
+    const placarMudou = placarDisponivel && (currHome !== prevHome || currAway !== prevAway);
 
     if (placarMudou) {
-      // Quantos gols cada time fez nesse intervalo
       const golsHome = currHome - (prevHome ?? 0);
       const golsAway = currAway - (prevAway ?? 0);
 
-      // Emite uma mensagem por gol (caso dois gols no mesmo sync)
       for (let i = 0; i < golsHome; i++) {
         const parcialHome = (prevHome ?? 0) + i + 1;
         const parcialAway = prevAway ?? 0;
