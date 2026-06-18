@@ -34,10 +34,14 @@ export class UserService {
   }
 
   async addFavoriteTeam(userId: string, teamName: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
     return this.prisma.favoriteTeam.create({ data: { userId, teamName } });
   }
 
   async removeFavoriteTeam(userId: string, teamName: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
     return this.prisma.favoriteTeam.deleteMany({ where: { userId, teamName } });
   }
 
