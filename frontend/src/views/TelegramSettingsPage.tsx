@@ -9,8 +9,6 @@ import { api } from '../lib/api';
 
 export function TelegramSettingsPage() {
   const { user, isLoading } = useRequireAuth();
-
-  const [enabled, setEnabled] = useState(false);
   const [savedChatId, setSavedChatId] = useState('');
   const [inputChatId, setInputChatId] = useState('');
   const [loading, setLoading] = useState(true);
@@ -20,26 +18,26 @@ export function TelegramSettingsPage() {
   useEffect(() => {
     if (!user) return;
     api.getUser(user.id).then((data) => {
-      const prefs = data.preferences;
-      setEnabled(prefs?.receiveTelegramNotifications ?? false);
-      setSavedChatId(prefs?.telegramChatId ?? '');
-      setInputChatId(prefs?.telegramChatId ?? '');
-    }).catch((err) => {
-      console.error('Failed to load Telegram settings', err);
-    }).finally(() => setLoading(false));
+      const chatId = data.preferences?.telegramChatId ?? '';
+      setSavedChatId(chatId);
+      setInputChatId(chatId);
+    }).catch(() => showToast('Erro ao carregar configurações.', false))
+      .finally(() => setLoading(false));
   }, [user]);
 
   async function handleSave() {
     if (!user) return;
-    if (!inputChatId.trim()) {
+    const trimmed = inputChatId.trim();
+    if (!trimmed) {
       showToast('Insira o seu Chat ID', false);
       return;
     }
     setSaving(true);
     try {
-      await api.updateTelegram(user.id, inputChatId.trim(), enabled);
-      setSavedChatId(inputChatId.trim());
-      showToast('Telegram salvo! ✅');
+      // Chat ID preenchido = notificações ativas automaticamente
+      await api.updateTelegram(user.id, trimmed, true);
+      setSavedChatId(trimmed);
+      showToast('✅ Telegram ativado com sucesso!');
     } catch {
       showToast('Erro ao salvar. Tente novamente.', false);
     } finally {
@@ -47,23 +45,22 @@ export function TelegramSettingsPage() {
     }
   }
 
-  async function handleToggle() {
+  async function handleRemove() {
     if (!user) return;
-    const next = !enabled;
-    if (next && !savedChatId) {
-      showToast('Salve seu Chat ID antes de ativar as notificações.', false);
-      return;
-    }
-    setEnabled(next);
+    setSaving(true);
     try {
-      await api.updateTelegram(user.id, savedChatId, next);
-      showToast(next ? 'Alertas ativados! 🔔' : 'Alertas desativados.');
+      await api.updateTelegram(user.id, null, false);
+      setSavedChatId('');
+      setInputChatId('');
+      showToast('Telegram desvinculado.');
     } catch {
-      setEnabled(!next);
-      showToast('Erro ao salvar.', false);
+      showToast('Erro ao remover.', false);
+    } finally {
+      setSaving(false);
     }
   }
 
+  const isActive = !!savedChatId;
   const chatIdChanged = inputChatId.trim() !== savedChatId;
 
   if (isLoading || loading) {
@@ -76,78 +73,50 @@ export function TelegramSettingsPage() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
-
       <Toast toast={toast} successColor="bg-blue-600" />
 
       <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur">
         <div className="max-w-lg mx-auto px-4 h-16 flex items-center gap-3">
-          <Link href="/dashboard" className="text-slate-400 hover:text-white transition p-2 -ml-2 rounded-lg">
+          <Link href="/dashboard" className="text-slate-400 hover:text-white transition p-2 -ml-2 rounded-lg text-lg">
             ←
           </Link>
-          <div className="flex items-center gap-2">
-            <span className="text-xl">✈️</span>
-            <h1 className="font-black text-lg text-white">Alertas Telegram</h1>
-          </div>
+          <span className="text-xl">✈️</span>
+          <h1 className="font-black text-lg text-white">Alertas via Telegram</h1>
+          {isActive && (
+            <span className="ml-auto flex items-center gap-1.5 text-xs font-semibold text-blue-400 bg-blue-600/15 px-3 py-1 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+              Ativo
+            </span>
+          )}
         </div>
       </header>
 
-      <div className="max-w-lg mx-auto px-4 py-8 space-y-5">
-
-        {/* Toggle */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="font-bold text-white text-base">Notificações em tempo real</h2>
-              <p className="text-sm text-slate-400 mt-1 leading-relaxed">
-                Receba mensagens no Telegram para todos os jogos da Copa do Mundo.
-              </p>
-            </div>
-            <button
-              onClick={handleToggle}
-              className={`relative shrink-0 w-12 h-6 rounded-full transition-colors ${
-                enabled ? 'bg-blue-600' : 'bg-slate-700'
-              }`}
-            >
-              <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                enabled ? 'translate-x-7' : 'translate-x-1'
-              }`} />
-            </button>
-          </div>
-          <div className={`mt-4 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
-            enabled && savedChatId ? 'bg-blue-600/20 text-blue-400' : 'bg-slate-800 text-slate-500'
-          }`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${enabled && savedChatId ? 'bg-blue-400' : 'bg-slate-600'}`} />
-            {enabled && savedChatId ? 'Ativo' : 'Inativo'}
-          </div>
-        </div>
+      <div className="max-w-lg mx-auto px-4 py-8 space-y-4">
 
         {/* Como configurar */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
-          <h2 className="font-bold text-white text-base">Como configurar</h2>
-          <ol className="space-y-2 text-sm text-slate-400">
-            <li className="flex gap-3">
-              <span className="shrink-0 w-6 h-6 bg-blue-600/20 text-blue-400 rounded-full flex items-center justify-center text-xs font-bold">1</span>
-              <span>Abra o Telegram e pesquise por <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded text-white text-xs">@WCGoalAlert_Bot</span></span>
-            </li>
-            <li className="flex gap-3">
-              <span className="shrink-0 w-6 h-6 bg-blue-600/20 text-blue-400 rounded-full flex items-center justify-center text-xs font-bold">2</span>
-              <span>Clique em <strong className="text-white">Iniciar</strong> ou envie <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded text-white text-xs">/start</span></span>
-            </li>
-            <li className="flex gap-3">
-              <span className="shrink-0 w-6 h-6 bg-blue-600/20 text-blue-400 rounded-full flex items-center justify-center text-xs font-bold">3</span>
-              <span>O bot responde com seu <strong className="text-white">Chat ID</strong> — cole abaixo</span>
-            </li>
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <h2 className="font-bold text-white">Como ativar</h2>
+          <ol className="space-y-3">
+            {[
+              { n: 1, text: <>Abra o Telegram e pesquise <span className="font-mono bg-slate-800 text-white text-xs px-1.5 py-0.5 rounded">@WCGoalAlert_Bot</span></> },
+              { n: 2, text: <>Toque em <strong className="text-white">Iniciar</strong> ou envie <span className="font-mono bg-slate-800 text-white text-xs px-1.5 py-0.5 rounded">/start</span></> },
+              { n: 3, text: <>O bot responde com o seu <strong className="text-white">Chat ID</strong> — cole abaixo e pronto</> },
+            ].map(({ n, text }) => (
+              <li key={n} className="flex items-start gap-3 text-sm text-slate-400">
+                <span className="shrink-0 w-6 h-6 rounded-full bg-blue-600/20 text-blue-400 text-xs font-bold flex items-center justify-center mt-0.5">
+                  {n}
+                </span>
+                <span className="leading-relaxed">{text}</span>
+              </li>
+            ))}
           </ol>
-          <p className="text-xs text-slate-500 pt-1">
-            Alternativa: pesquise <span className="font-mono bg-slate-800 px-1 rounded">@userinfobot</span> no Telegram e envie qualquer mensagem.
-          </p>
         </div>
 
         {/* Input Chat ID */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
           <div>
-            <h2 className="font-bold text-white text-base">Seu Chat ID</h2>
-            <p className="text-sm text-slate-400 mt-0.5">Número que o bot te enviou após o /start.</p>
+            <label className="font-bold text-white text-sm block mb-1">Chat ID</label>
+            <p className="text-xs text-slate-500">Número enviado pelo bot após o /start.</p>
           </div>
           <input
             type="text"
@@ -159,25 +128,34 @@ export function TelegramSettingsPage() {
           />
           <button
             onClick={handleSave}
-            disabled={saving || !chatIdChanged}
+            disabled={saving || !chatIdChanged || !inputChatId.trim()}
             className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold rounded-xl text-sm transition"
           >
-            {saving ? 'Salvando…' : chatIdChanged ? 'Salvar Chat ID' : 'Chat ID salvo ✓'}
+            {saving ? 'Salvando…' : isActive && !chatIdChanged ? '✓ Ativo — Chat ID salvo' : 'Ativar alertas'}
           </button>
+          {isActive && (
+            <button
+              onClick={handleRemove}
+              disabled={saving}
+              className="w-full py-2 text-xs text-slate-500 hover:text-red-400 transition"
+            >
+              Desvincular Telegram
+            </button>
+          )}
         </div>
 
         {/* O que você vai receber */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-          <h2 className="font-bold text-white text-base mb-4">O que você vai receber</h2>
+          <h2 className="font-bold text-white text-sm mb-4">O que você vai receber</h2>
           <ul className="space-y-3">
             {[
               { icon: '⚽', label: 'Início de jogo', desc: 'Quando o apito inicial tocar' },
-              { icon: '🥅', label: 'GOL!', desc: 'Com placar atualizado em tempo real' },
+              { icon: '🥅', label: 'GOL!', desc: 'Placar atualizado em tempo real' },
               { icon: '🏁', label: 'Fim de jogo', desc: 'Resultado final da partida' },
               { icon: '📋', label: 'Resumo diário', desc: 'Jogos do dia logo de manhã' },
             ].map(({ icon, label, desc }) => (
-              <li key={label} className="flex items-start gap-3">
-                <span className="text-lg mt-0.5">{icon}</span>
+              <li key={label} className="flex items-center gap-3">
+                <span className="text-xl w-8 text-center">{icon}</span>
                 <div>
                   <p className="text-sm font-semibold text-white">{label}</p>
                   <p className="text-xs text-slate-500">{desc}</p>
@@ -187,10 +165,9 @@ export function TelegramSettingsPage() {
           </ul>
         </div>
 
-        <Link href="/dashboard" className="block text-center text-sm text-slate-500 hover:text-white transition py-2">
+        <Link href="/dashboard" className="block text-center text-xs text-slate-600 hover:text-slate-400 transition py-2">
           ← Voltar ao dashboard
         </Link>
-
       </div>
     </main>
   );
