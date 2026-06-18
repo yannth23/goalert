@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
-import { WhatsappService } from '../whatsapp/whatsapp.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { translateTeam } from './translation.util';
 
@@ -10,22 +9,17 @@ const BASE_URL = 'https://api.football-data.org/v4';
 const COMPETITION_WC = 'WC';
 
 const STATUS_MAP: Record<string, string> = {
-  SCHEDULED:          'NS',
-  TIMED:              'NS',
-  IN_PLAY:            '1H',
-  PAUSED:             'HT',
-  EXTRA_TIME:         '2H',
-  PENALTY_SHOOTOUT:   '2H',
-  FINISHED:           'FT',
-  SUSPENDED:          'PST',
-  POSTPONED:          'PST',
-  CANCELLED:          'PST',
-  AWARDED:            'FT',
-};
-
-const CACHE_TTL = {
-  STANDINGS: 300,
-  SCORERS:   300,
+  SCHEDULED:        'NS',
+  TIMED:            'NS',
+  IN_PLAY:          '1H',
+  PAUSED:           'HT',
+  EXTRA_TIME:       '2H',
+  PENALTY_SHOOTOUT: '2H',
+  FINISHED:         'FT',
+  SUSPENDED:        'PST',
+  POSTPONED:        'PST',
+  CANCELLED:        'PST',
+  AWARDED:          'FT',
 };
 
 @Injectable()
@@ -35,7 +29,6 @@ export class FootballApiService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
-    private readonly whatsapp: WhatsappService,
     private readonly telegram: TelegramService,
   ) {}
 
@@ -72,27 +65,25 @@ export class FootballApiService {
       const homeTeam     = translateTeam(match.homeTeam.name);
       const awayTeam     = translateTeam(match.awayTeam.name);
 
-      // Busca estado anterior para detectar mudanças
       const existing = await this.prisma.footballMatch.findUnique({
         where: { externalId: match.id.toString() },
       });
 
       const saved = await this.prisma.footballMatch.upsert({
-        where: { externalId: match.id.toString() },
+        where:  { externalId: match.id.toString() },
         update: { status: mappedStatus, homeScore, awayScore },
         create: {
-          externalId:    match.id.toString(),
-          date:          new Date(match.utcDate),
-          championship:  match.competition.name,
+          externalId:   match.id.toString(),
+          date:         new Date(match.utcDate),
+          championship: match.competition.name,
           homeTeam,
           awayTeam,
-          status:        mappedStatus,
+          status:       mappedStatus,
           homeScore,
           awayScore,
         },
       });
 
-      // ── Detectar eventos e notificar via WhatsApp ──
       await this.detectAndNotify(existing, saved, homeTeam, awayTeam);
     }
 
@@ -101,79 +92,57 @@ export class FootballApiService {
     return { synced: matches.length };
   }
 
-  private async detectAndNotify(
-    prev: any,
-    curr: any,
-    homeTeam: string,
-    awayTeam: string,
-  ) {
-    const teams = [homeTeam, awayTeam];
-
-    // Busca usuários com WhatsApp ou Telegram ativo que torcem por algum dos times
+  private async detectAndNotify(prev: any, curr: any, homeTeam: string, awayTeam: string) {
     const users = await this.prisma.user.findMany({
       where: {
-        OR: [
-          { preferences: { receiveWhatsappNotifications: true } },
-          { preferences: { receiveTelegramNotifications: true } },
-        ],
-        favoriteTeams: { some: { teamName: { in: teams } } },
+        preferences: { receiveTelegramNotifications: true },
+        favoriteTeams: { some: { teamName: { in: [homeTeam, awayTeam] } } },
       },
-      include: { preferences: true, favoriteTeams: true },
+      include: { preferences: true },
     });
 
     if (!users.length) return;
 
     const messages: string[] = [];
 
-    // Jogo começou
     if (prev?.status === 'NS' && curr.status === '1H') {
-      messages.push(
-        `⚽ *Jogo começou!*\n${homeTeam} x ${awayTeam}\n🏆 ${curr.championship}`,
-      );
+      messages.push(`⚽ *Jogo começou!*
+${homeTeam} x ${awayTeam}
+🏆 ${curr.championship}`);
     }
 
-    // Gol marcado (placar mudou) — só notifica se a partida já existia no banco
     const prevHome = prev?.homeScore ?? null;
     const prevAway = prev?.awayScore ?? null;
     if (
-      prev !== null &&
-      curr.homeScore !== null &&
-      curr.awayScore !== null &&
+      curr.homeScore !== null && curr.awayScore !== null &&
       (curr.homeScore !== prevHome || curr.awayScore !== prevAway)
     ) {
       const scorer = curr.homeScore > (prevHome ?? 0) ? homeTeam : awayTeam;
-      messages.push(
-        `🥅 *GOL!* ${scorer}\n${homeTeam} ${curr.homeScore} x ${curr.awayScore} ${awayTeam}\n🏆 ${curr.championship}`,
-      );
+      messages.push(`🥅 *GOL!* ${scorer}
+${homeTeam} ${curr.homeScore} x ${curr.awayScore} ${awayTeam}
+🏆 ${curr.championship}`);
     }
 
-    // Jogo encerrado
     if (prev && prev.status !== 'FT' && curr.status === 'FT') {
-      messages.push(
-        `🏁 *Fim de jogo!*\n${homeTeam} ${curr.homeScore ?? 0} x ${curr.awayScore ?? 0} ${awayTeam}\n🏆 ${curr.championship}`,
-      );
+      messages.push(`🏁 *Fim de jogo!*
+${homeTeam} ${curr.homeScore ?? 0} x ${curr.awayScore ?? 0} ${awayTeam}
+🏆 ${curr.championship}`);
     }
 
     if (!messages.length) return;
 
     for (const user of users) {
-      const phone  = user.preferences?.whatsappNumber;
       const chatId = user.preferences?.telegramChatId;
-
+      if (!chatId) continue;
       for (const msg of messages) {
-        if (user.preferences?.receiveWhatsappNotifications && phone) {
-          await this.whatsapp.sendText(phone, msg);
-        }
-        if (user.preferences?.receiveTelegramNotifications && chatId) {
-          await this.telegram.sendMessage(chatId, msg);
-        }
+        await this.telegram.sendMessage(chatId, msg);
       }
     }
   }
 
   async getStandings() {
     const cacheKey = 'standings:wc';
-    const cached   = await this.cacheGet(cacheKey);
+    const cached = await this.cacheGet(cacheKey);
     if (cached) return cached;
 
     const response = await axios.get(
@@ -181,8 +150,7 @@ export class FootballApiService {
       { headers: this.headers },
     );
 
-    const groups    = response.data.standings as any[];
-    const standings = groups.map((group) => ({
+    const standings = (response.data.standings as any[]).map((group) => ({
       group: group.group ?? group.stage,
       table: group.table.map((entry: any) => ({
         position:       entry.position,
@@ -200,13 +168,13 @@ export class FootballApiService {
       })),
     }));
 
-    await this.cacheSet(cacheKey, standings, CACHE_TTL.STANDINGS);
+    await this.cacheSet(cacheKey, standings, 300);
     return standings;
   }
 
   async getTopScorers() {
     const cacheKey = 'scorers:wc:top10';
-    const cached   = await this.cacheGet(cacheKey);
+    const cached = await this.cacheGet(cacheKey);
     if (cached) return cached;
 
     const response = await axios.get(
@@ -222,7 +190,7 @@ export class FootballApiService {
       assists:    entry.assists ?? 0,
     }));
 
-    await this.cacheSet(cacheKey, scorers, CACHE_TTL.SCORERS);
+    await this.cacheSet(cacheKey, scorers, 300);
     return scorers;
   }
 }
