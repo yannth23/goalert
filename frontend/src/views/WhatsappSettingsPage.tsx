@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '../hooks/useAuth';
+import { useRequireAuth } from '../hooks/useRequireAuth';
+import { useToast } from '../hooks/useToast';
+import { Toast } from '../components/Toast';
 import { api } from '../lib/api';
 
 type Step = 'loading' | 'setup' | 'saved';
@@ -17,19 +18,14 @@ function formatPhone(raw: string) {
 }
 
 export function WhatsappSettingsPage() {
-  const { user, isLoading } = useAuth();
-  const router = useRouter();
+  const { user, isLoading } = useRequireAuth();
 
   const [step, setStep] = useState<Step>('loading');
   const [enabled, setEnabled] = useState(false);
   const [savedNumber, setSavedNumber] = useState('');
   const [inputNumber, setInputNumber] = useState('');
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
-
-  useEffect(() => {
-    if (!isLoading && !user) router.replace('/login');
-  }, [user, isLoading, router]);
+  const { toast, showToast } = useToast();
 
   useEffect(() => {
     if (!user) return;
@@ -42,11 +38,6 @@ export function WhatsappSettingsPage() {
       setStep('setup');
     });
   }, [user]);
-
-  function showToast(msg: string, ok = true) {
-    setToast({ msg, ok });
-    setTimeout(() => setToast(null), 3000);
-  }
 
   async function handleSave() {
     if (!user) return;
@@ -94,13 +85,7 @@ export function WhatsappSettingsPage() {
   return (
     <main className="min-h-screen bg-slate-950 text-white">
 
-      {/* Toast */}
-      {toast && (
-        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-full text-sm font-medium shadow-xl transition-all
-          ${toast.ok ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
-          {toast.msg}
-        </div>
-      )}
+      <Toast toast={toast} successColor="bg-green-600" />
 
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur">

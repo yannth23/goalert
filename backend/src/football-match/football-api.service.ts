@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { translateTeam } from './translation.util';
+import { withCache } from '../shared';
 
 const BASE_URL = 'https://api.football-data.org/v4';
 const COMPETITION_WC = 'WC';
@@ -52,14 +53,6 @@ export class FootballApiService {
 
   private get headers() {
     return { 'X-Auth-Token': process.env.FOOTBALL_DATA_API_KEY };
-  }
-
-  private async cacheGet<T>(key: string): Promise<T | null> {
-    try { return await this.redis.getJson<T>(key); } catch { return null; }
-  }
-
-  private async cacheSet<T>(key: string, value: T, ttl: number): Promise<void> {
-    try { await this.redis.setJson(key, value, ttl); } catch {}
   }
 
   private async cacheDel(key: string): Promise<void> {
@@ -191,56 +184,46 @@ ${homeTeam} ${curr.homeScore ?? 0} x ${curr.awayScore ?? 0} ${awayTeam}
   }
 
   async getStandings() {
-    const cacheKey = 'standings:wc';
-    const cached   = await this.cacheGet(cacheKey);
-    if (cached) return cached;
+    return withCache(this.redis, 'standings:wc', 300, async () => {
+      const response = await axios.get(
+        `${BASE_URL}/competitions/${COMPETITION_WC}/standings`,
+        { headers: this.headers },
+      );
 
-    const response = await axios.get(
-      `${BASE_URL}/competitions/${COMPETITION_WC}/standings`,
-      { headers: this.headers },
-    );
-
-    const standings = (response.data.standings as any[]).map((group) => ({
-      group: group.group ?? group.stage,
-      table: group.table.map((entry: any) => ({
-        position:       entry.position,
-        teamId:         entry.team.id,
-        teamName:       translateTeam(entry.team.name),
-        crest:          entry.team.crest,
-        points:         entry.points,
-        played:         entry.playedGames,
-        wins:           entry.won,
-        draws:          entry.draw,
-        losses:         entry.lost,
-        goalsFor:       entry.goalsFor,
-        goalsAgainst:   entry.goalsAgainst,
-        goalDifference: entry.goalDifference,
-      })),
-    }));
-
-    await this.cacheSet(cacheKey, standings, 300);
-    return standings;
+      return (response.data.standings as any[]).map((group) => ({
+        group: group.group ?? group.stage,
+        table: group.table.map((entry: any) => ({
+          position:       entry.position,
+          teamId:         entry.team.id,
+          teamName:       translateTeam(entry.team.name),
+          crest:          entry.team.crest,
+          points:         entry.points,
+          played:         entry.playedGames,
+          wins:           entry.won,
+          draws:          entry.draw,
+          losses:         entry.lost,
+          goalsFor:       entry.goalsFor,
+          goalsAgainst:   entry.goalsAgainst,
+          goalDifference: entry.goalDifference,
+        })),
+      }));
+    });
   }
 
   async getTopScorers() {
-    const cacheKey = 'scorers:wc:top10';
-    const cached   = await this.cacheGet(cacheKey);
-    if (cached) return cached;
+    return withCache(this.redis, 'scorers:wc:top10', 300, async () => {
+      const response = await axios.get(
+        `${BASE_URL}/competitions/${COMPETITION_WC}/scorers`,
+        { params: { limit: 10 }, headers: this.headers },
+      );
 
-    const response = await axios.get(
-      `${BASE_URL}/competitions/${COMPETITION_WC}/scorers`,
-      { params: { limit: 10 }, headers: this.headers },
-    );
-
-    const scorers = (response.data.scorers as any[]).map((entry) => ({
-      playerId:   entry.player.id,
-      playerName: entry.player.name,
-      teamName:   entry.team?.name ? translateTeam(entry.team.name) : '—',
-      goals:      entry.goals ?? 0,
-      assists:    entry.assists ?? 0,
-    }));
-
-    await this.cacheSet(cacheKey, scorers, 300);
-    return scorers;
+      return (response.data.scorers as any[]).map((entry) => ({
+        playerId:   entry.player.id,
+        playerName: entry.player.name,
+        teamName:   entry.team?.name ? translateTeam(entry.team.name) : '—',
+        goals:      entry.goals ?? 0,
+        assists:    entry.assists ?? 0,
+      }));
+    });
   }
 }
