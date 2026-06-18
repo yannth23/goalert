@@ -80,7 +80,6 @@ export function TelegramSettingsPage() {
   return (
     <main className="min-h-screen bg-slate-950 text-white">
 
-      {/* Toast */}
       {toast && (
         <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-full text-sm font-medium shadow-xl
           ${toast.ok ? 'bg-blue-600 text-white' : 'bg-red-600 text-white'}`}>
@@ -88,7 +87,6 @@ export function TelegramSettingsPage() {
         </div>
       )}
 
-      {/* Header */}
       <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur">
         <div className="max-w-lg mx-auto px-4 h-16 flex items-center gap-3">
           <Link href="/dashboard" className="text-slate-400 hover:text-white transition p-2 -ml-2 rounded-lg">
@@ -109,7 +107,7 @@ export function TelegramSettingsPage() {
             <div>
               <h2 className="font-bold text-white text-base">Notificações em tempo real</h2>
               <p className="text-sm text-slate-400 mt-1 leading-relaxed">
-                Receba mensagens no Telegram quando seus times marcarem gol, começarem ou encerrarem uma partida.
+                Receba mensagens no Telegram para todos os jogos da Copa do Mundo.
               </p>
             </div>
             <button
@@ -131,13 +129,13 @@ export function TelegramSettingsPage() {
           </div>
         </div>
 
-        {/* Como obter o Chat ID */}
+        {/* Como configurar */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
           <h2 className="font-bold text-white text-base">Como configurar</h2>
           <ol className="space-y-2 text-sm text-slate-400">
             <li className="flex gap-3">
               <span className="shrink-0 w-6 h-6 bg-blue-600/20 text-blue-400 rounded-full flex items-center justify-center text-xs font-bold">1</span>
-              <span>Abra o Telegram e pesquise por <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded text-white text-xs">@GoalAlertOficial_bot</span></span>
+              <span>Abra o Telegram e pesquise por <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded text-white text-xs">@WCGoalAlert_Bot</span></span>
             </li>
             <li className="flex gap-3">
               <span className="shrink-0 w-6 h-6 bg-blue-600/20 text-blue-400 rounded-full flex items-center justify-center text-xs font-bold">2</span>
@@ -149,7 +147,7 @@ export function TelegramSettingsPage() {
             </li>
           </ol>
           <p className="text-xs text-slate-500 pt-1">
-            Alternativa: pesquise <span className="font-mono bg-slate-800 px-1 rounded">@userinfobot</span> no Telegram e envie qualquer mensagem. Ele responde com seu ID.
+            Alternativa: pesquise <span className="font-mono bg-slate-800 px-1 rounded">@userinfobot</span> no Telegram e envie qualquer mensagem.
           </p>
         </div>
 
@@ -164,7 +162,7 @@ export function TelegramSettingsPage() {
             inputMode="numeric"
             value={inputChatId}
             onChange={(e) => setInputChatId(e.target.value)}
-            placeholder="Ex: 123456789"
+            placeholder="Ex: 387503207"
             className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:border-blue-500 transition font-mono"
           />
           <button
@@ -195,12 +193,6 @@ export function TelegramSettingsPage() {
               </li>
             ))}
           </ul>
-        </div>
-
-        <div className="border border-blue-500/30 bg-blue-500/5 rounded-2xl p-4">
-          <p className="text-xs text-blue-400/80 leading-relaxed">
-            <span className="font-bold text-blue-400">Lembre-se:</span> os alertas chegam apenas para os times que você marcou como favoritos. Adicione seus times na aba <strong>"Minha conta"</strong>.
-          </p>
         </div>
 
         <Link href="/dashboard" className="block text-center text-sm text-slate-500 hover:text-white transition py-2">
