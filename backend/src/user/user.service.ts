@@ -9,26 +9,15 @@ export class UserService {
   async create(email: string, password: string, name?: string) {
     const existing = await this.prisma.user.findUnique({ where: { email } });
     if (existing) throw new ConflictException('Email already in use');
-
     const hashed = await bcrypt.hash(password, 10);
-
     return this.prisma.user.create({
-      data: {
-        email,
-        password: hashed,
-        name,
-        preferences: {
-          create: { receiveDailyNotifications: true },
-        },
-      },
+      data: { email, password: hashed, name, preferences: { create: { receiveDailyNotifications: true } } },
       select: { id: true, email: true, name: true, createdAt: true },
     });
   }
 
   async findAll() {
-    return this.prisma.user.findMany({
-      select: { id: true, email: true, name: true, createdAt: true },
-    });
+    return this.prisma.user.findMany({ select: { id: true, email: true, name: true, createdAt: true } });
   }
 
   async findById(id: string) {
@@ -41,10 +30,7 @@ export class UserService {
   }
 
   async findByEmail(email: string) {
-    return this.prisma.user.findUnique({
-      where: { email },
-      include: { preferences: true },
-    });
+    return this.prisma.user.findUnique({ where: { email }, include: { preferences: true } });
   }
 
   async addFavoriteTeam(userId: string, teamName: string) {
@@ -63,23 +49,7 @@ export class UserService {
     });
   }
 
-  async updateWhatsapp(
-    userId: string,
-    whatsappNumber: string | null,
-    receiveWhatsappNotifications: boolean,
-  ) {
-    return this.prisma.userPreference.upsert({
-      where:  { userId },
-      update: { whatsappNumber, receiveWhatsappNotifications },
-      create: { userId, whatsappNumber, receiveWhatsappNotifications },
-    });
-  }
-
-  async updateTelegram(
-    userId: string,
-    telegramChatId: string | null,
-    receiveTelegramNotifications: boolean,
-  ) {
+  async updateTelegram(userId: string, telegramChatId: string | null, receiveTelegramNotifications: boolean) {
     return this.prisma.userPreference.upsert({
       where:  { userId },
       update: { telegramChatId, receiveTelegramNotifications },
