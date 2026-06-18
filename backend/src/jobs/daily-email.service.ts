@@ -107,46 +107,59 @@ function buildTelegramSummary(
     const time = m.date.toLocaleTimeString('pt-BR', {
       hour: '2-digit', minute: '2-digit', timeZone: 'America/Recife',
     });
-    return `▪ ${m.homeTeam} x ${m.awayTeam} — ${time}`;
+    return `\u25aa ${m.homeTeam} x ${m.awayTeam} \u2014 ${time}`;
   });
-  return `⚽ *GoalAlert — Jogos de Hoje*
-
-${lines.join('
-')}
-
-_Boa sorte pro seu time!_ 🏆`;
+  return `\u26bd *GoalAlert \u2014 Jogos de Hoje*\n\n${lines.join('\n')}\n\n_Boa sorte pro seu time!_ \ud83c\udfc6`;
 }
 
 function buildEmailHtml(
   matches: {
-    homeTeam: string; awayTeam: string; championship: string;
-    date: Date; homeScore: number | null; awayScore: number | null; status: string;
+    homeTeam: string;
+    awayTeam: string;
+    championship: string;
+    date: Date;
+    homeScore: number | null;
+    awayScore: number | null;
+    status: string;
   }[],
 ): string {
-  const rows = matches.map((m) => {
-    const time = m.date.toLocaleTimeString('pt-BR', {
-      hour: '2-digit', minute: '2-digit', timeZone: 'America/Recife',
-    });
-    const scoreOrTime =
-      m.homeScore !== null && m.awayScore !== null
-        ? `${m.homeScore} x ${m.awayScore}` : time;
-    return `<tr>
-      <td style="padding:8px 12px;border-bottom:1px solid #eee;">${m.championship}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #eee;font-weight:600;">${m.homeTeam} vs ${m.awayTeam}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">${scoreOrTime}</td>
-    </tr>`;
-  }).join('');
+  const rows = matches
+    .map((m) => {
+      const time = m.date.toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'America/Recife',
+      });
+      const scoreOrTime =
+        m.homeScore !== null && m.awayScore !== null
+          ? `${m.homeScore} x ${m.awayScore}`
+          : time;
 
-  return `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
-    <h2 style="color:#16a34a;">⚽ GoalAlert — Partidas de Hoje</h2>
-    <table style="width:100%;border-collapse:collapse;">
-      <thead><tr style="background:#f3f4f6;">
-        <th style="padding:8px 12px;text-align:left;">Competição</th>
-        <th style="padding:8px 12px;text-align:left;">Jogo</th>
-        <th style="padding:8px 12px;text-align:left;">Horário / Placar</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-    <p style="color:#999;font-size:12px;margin-top:24px;">Para cancelar, acesse suas preferências no GoalAlert.</p>
-  </div>`;
+      const td = (val: string, extra = '') =>
+        `<td style="padding:8px 12px;border-bottom:1px solid #eee;${extra}">${val}<\/td>`;
+
+      return [
+        '<tr>',
+        td(m.championship),
+        td(`${m.homeTeam} vs ${m.awayTeam}`, 'font-weight:600;'),
+        td(scoreOrTime, 'color:#666;'),
+        '<\/tr>',
+      ].join('');
+    })
+    .join('');
+
+  return [
+    '<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">',
+    '<h2 style="color:#16a34a;">\u26bd GoalAlert \u2014 Partidas de Hoje<\/h2>',
+    '<table style="width:100%;border-collapse:collapse;">',
+    '<thead><tr style="background:#f3f4f6;">',
+    '<th style="padding:8px 12px;text-align:left;">Competi\u00e7\u00e3o<\/th>',
+    '<th style="padding:8px 12px;text-align:left;">Jogo<\/th>',
+    '<th style="padding:8px 12px;text-align:left;">Hor\u00e1rio \/ Placar<\/th>',
+    '<\/tr><\/thead>',
+    `<tbody>${rows}<\/tbody>`,
+    '<\/table>',
+    '<p style="color:#999;font-size:12px;margin-top:24px;">Para cancelar, acesse suas prefer\u00eancias no GoalAlert.<\/p>',
+    '<\/div>',
+  ].join('');
 }
