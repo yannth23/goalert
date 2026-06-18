@@ -23,17 +23,21 @@ const STATUS_MAP: Record<string, string> = {
 };
 
 function extractScore(score: any): { home: number | null; away: number | null } {
-  const home =
-    score?.regularTime?.home ??
-    score?.halfTime?.home ??
-    score?.fullTime?.home ??
-    null;
-  const away =
-    score?.regularTime?.away ??
-    score?.halfTime?.away ??
-    score?.fullTime?.away ??
-    null;
-  return { home, away };
+  // Pega o primeiro valor não-null disponível na ordem: fullTime > regularTime > halfTime
+  // A API retorna null nos campos que ainda não têm dado — não podemos confiar em ?? sozinho
+  const candidates = [
+    score?.fullTime,
+    score?.regularTime,
+    score?.halfTime,
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate?.home !== null && candidate?.home !== undefined) {
+      return { home: candidate.home, away: candidate.away };
+    }
+  }
+
+  return { home: null, away: null };
 }
 
 @Injectable()
