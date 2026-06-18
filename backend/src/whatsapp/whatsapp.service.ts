@@ -29,6 +29,7 @@ export class WhatsappService {
         `Falha ao enviar WhatsApp para ${number}`,
         err?.response?.data ?? err.message,
       );
+      throw err;
     }
   }
 

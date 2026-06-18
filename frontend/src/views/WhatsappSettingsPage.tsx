@@ -40,6 +40,9 @@ export function WhatsappSettingsPage() {
       setSavedNumber(num);
       setInputNumber(num);
       setStep('setup');
+    }).catch((err) => {
+      console.error('Failed to load WhatsApp settings', err);
+      setStep('setup');
     });
   }, [user]);
 

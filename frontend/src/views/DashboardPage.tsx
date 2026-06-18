@@ -49,6 +49,8 @@ export function DashboardPage() {
       setWhatsappNumber(userData.preferences?.whatsappNumber ?? '');
       setTelegramEnabled(userData.preferences?.receiveTelegramNotifications ?? false);
       setTelegramChatId(userData.preferences?.telegramChatId ?? '');
+    }).catch((err) => {
+      console.error('Failed to load dashboard data', err);
     }).finally(() => setLoadingData(false));
   }, [user]);
 
