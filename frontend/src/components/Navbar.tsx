@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { GoalAlertLogo } from './GoalAlertLogo';
 
 export function Navbar() {
   return (
@@ -6,9 +7,8 @@ export function Navbar() {
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
 
         <div className="flex items-center gap-2">
-          <span className="text-2xl">⚽</span>
-
-          <h1 className="text-yellow-500 font-black text-xl">
+          <GoalAlertLogo size={30} />
+          <h1 className="text-yellow-500 font-black text-xl tracking-tight">
             GOALALERT
           </h1>
         </div>
