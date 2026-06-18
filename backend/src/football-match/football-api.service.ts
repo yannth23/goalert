@@ -55,8 +55,13 @@ export class FootballApiService {
     return { 'X-Auth-Token': process.env.FOOTBALL_DATA_API_KEY };
   }
 
+
   private async cacheDel(key: string): Promise<void> {
-    try { await this.redis.del(key); } catch {}
+    try {
+      await this.redis.del(key);
+    } catch (err) {
+      this.logger.warn(`Cache DEL failed [${key}]`, err);
+    }
   }
 
   async syncTodayMatches() {
@@ -69,43 +74,53 @@ export class FootballApiService {
 
     const matches = response.data.matches as any[];
 
+    let syncErrors = 0;
     for (const match of matches) {
-      let mappedStatus = STATUS_MAP[match.status] ?? match.status;
+      try {
+        let mappedStatus = STATUS_MAP[match.status] ?? match.status;
 
-      // If IN_PLAY and halfTime score exists, the match is in the 2nd half
-      if (match.status === 'IN_PLAY' && match.score?.halfTime?.home !== null && match.score?.halfTime?.home !== undefined) {
-        mappedStatus = '2H';
+        // If IN_PLAY and halfTime score exists, the match is in the 2nd half
+        if (match.status === 'IN_PLAY' && match.score?.halfTime?.home !== null && match.score?.halfTime?.home !== undefined) {
+          mappedStatus = '2H';
+        }
+
+        const { home: homeScore, away: awayScore } = extractScore(match.score);
+        const homeTeam = translateTeam(match.homeTeam.name);
+        const awayTeam = translateTeam(match.awayTeam.name);
+
+        const existing = await this.prisma.footballMatch.findUnique({
+          where: { externalId: match.id.toString() },
+        });
+
+        const saved = await this.prisma.footballMatch.upsert({
+          where:  { externalId: match.id.toString() },
+          update: { status: mappedStatus, homeScore, awayScore },
+          create: {
+            externalId:   match.id.toString(),
+            date:         new Date(match.utcDate),
+            championship: match.competition.name,
+            homeTeam,
+            awayTeam,
+            status:       mappedStatus,
+            homeScore,
+            awayScore,
+          },
+        });
+
+        await this.detectAndNotify(existing, saved, homeTeam, awayTeam);
+      } catch (err) {
+        syncErrors++;
+        this.logger.error(`Failed to sync match ${match.id}`, err);
       }
-
-      const { home: homeScore, away: awayScore } = extractScore(match.score);
-      const homeTeam = translateTeam(match.homeTeam.name);
-      const awayTeam = translateTeam(match.awayTeam.name);
-
-      const existing = await this.prisma.footballMatch.findUnique({
-        where: { externalId: match.id.toString() },
-      });
-
-      const saved = await this.prisma.footballMatch.upsert({
-        where:  { externalId: match.id.toString() },
-        update: { status: mappedStatus, homeScore, awayScore },
-        create: {
-          externalId:   match.id.toString(),
-          date:         new Date(match.utcDate),
-          championship: match.competition.name,
-          homeTeam,
-          awayTeam,
-          status:       mappedStatus,
-          homeScore,
-          awayScore,
-        },
-      });
-
-      await this.detectAndNotify(existing, saved, homeTeam, awayTeam);
     }
 
     await this.cacheDel(`matches:${today}`);
-    this.logger.log(`Synced ${matches.length} matches for ${today}`);
-    return { synced: matches.length };
+    if (syncErrors > 0) {
+      this.logger.warn(`Synced with ${syncErrors} error(s) out of ${matches.length} matches for ${today}`);
+    } else {
+      this.logger.log(`Synced ${matches.length} matches for ${today}`);
+    }
+    return { synced: matches.length, errors: syncErrors };
   }
 
   private async detectAndNotify(prev: any, curr: any, homeTeam: string, awayTeam: string) {
@@ -178,7 +193,11 @@ ${homeTeam} ${curr.homeScore ?? 0} x ${curr.awayScore ?? 0} ${awayTeam}
       const chatId = user.preferences?.telegramChatId;
       if (!chatId) continue;
       for (const msg of messages) {
-        await this.telegram.sendMessage(chatId, msg);
+        try {
+          await this.telegram.sendMessage(chatId, msg);
+        } catch (err) {
+          this.logger.error(`Failed to send Telegram notification to chatId=${chatId}`, err);
+        }
       }
     }
   }

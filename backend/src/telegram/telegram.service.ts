@@ -107,6 +107,7 @@ Copie esse número e cole em *Minha conta → Alertas via Telegram* no GoalAlert
       this.logger.log(`Telegram enviado para ${chatId}`);
     } catch (err: any) {
       this.logger.error(`Falha ao enviar para ${chatId}`, err?.response?.data ?? err.message);
+      throw err;
     }
   }
 

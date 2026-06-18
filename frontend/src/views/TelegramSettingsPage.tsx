@@ -24,6 +24,8 @@ export function TelegramSettingsPage() {
       setEnabled(prefs?.receiveTelegramNotifications ?? false);
       setSavedChatId(prefs?.telegramChatId ?? '');
       setInputChatId(prefs?.telegramChatId ?? '');
+    }).catch((err) => {
+      console.error('Failed to load Telegram settings', err);
     }).finally(() => setLoading(false));
   }, [user]);
 

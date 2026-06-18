@@ -89,8 +89,12 @@ export class DailyEmailService implements OnApplicationBootstrap {
 
       const chatId = user.preferences?.telegramChatId;
       if (user.preferences?.receiveTelegramNotifications && chatId) {
-        await this.telegram.sendMessage(chatId, buildTelegramSummary(filtered));
-        telegramSent++;
+        try {
+          await this.telegram.sendMessage(chatId, buildTelegramSummary(filtered));
+          telegramSent++;
+        } catch (err) {
+          this.logger.error(`Telegram failed for chatId=${chatId}`, err);
+        }
       }
     }
 
