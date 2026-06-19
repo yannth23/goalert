@@ -13,17 +13,17 @@ export interface MatchDto {
   team1Score?: number;
   team2Score?: number;
   externalId?: string;
-    predictions?: {
-      goalsHome: number;
-      goalsAway: number;
-      cards: number;
-      fouls: number;
-    };
-    tactics?: {
-      home: any;
-      away: any;
-    };
-  }
+  predictions?: {
+    goalsHome: number;
+    goalsAway: number;
+    cards: number;
+    fouls: number;
+  };
+  tactics?: {
+    home: any;
+    away: any;
+  };
+}
 
 interface PrismaMatch {
   id: string;
