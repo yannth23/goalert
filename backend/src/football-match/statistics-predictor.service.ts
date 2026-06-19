@@ -119,32 +119,25 @@ export class StatisticsPredictorService {
       this.getTeamStatistics(awayTeam, 10),
     ]);
 
-    // Se não há histórico, usa valores padrão
-    if (homeStats.totalMatches === 0 || awayStats.totalMatches === 0) {
-      return {
-        predictedGoalsHome: 1.5,
-        predictedGoalsAway: 1.5,
-        predictedCards: 4,
-        predictedFouls: 22,
-        homeTactics: await this.generateSimulatedTactics(homeTeam),
-        awayTactics: await this.generateSimulatedTactics(awayTeam),
-      };
-    }
+    // Predições baseadas em estatísticas (ou valores padrão se não houver histórico)
+    const predictedGoalsHome = homeStats.totalMatches > 0 && awayStats.totalMatches > 0 
+      ? (homeStats.averageGoalsFor + awayStats.averageGoalsAgainst) / 2 
+      : 1.5;
+    const predictedGoalsAway = homeStats.totalMatches > 0 && awayStats.totalMatches > 0 
+      ? (awayStats.averageGoalsFor + homeStats.averageGoalsAgainst) / 2 
+      : 1.5;
+    const predictedCards = homeStats.totalMatches > 0 && awayStats.totalMatches > 0 
+      ? Math.round((homeStats.averageCards + awayStats.averageCards) / 2) 
+      : 4;
+    const predictedFouls = homeStats.totalMatches > 0 && awayStats.totalMatches > 0 
+      ? Math.round((homeStats.averageFouls + awayStats.averageFouls) / 2) 
+      : 22;
 
-    // Predição de gols: média dos gols que o time marcou + média dos gols que o adversário sofreu
-    const predictedGoalsHome = (homeStats.averageGoalsFor + awayStats.averageGoalsAgainst) / 2;
-    const predictedGoalsAway = (awayStats.averageGoalsFor + homeStats.averageGoalsAgainst) / 2;
-
-    // Predição de cartões: média dos cartões dos dois times
-    const predictedCards = Math.round((homeStats.averageCards + awayStats.averageCards) / 2);
-
-    // Predição de faltas: média das faltas dos dois times
-    const predictedFouls = Math.round((homeStats.averageFouls + awayStats.averageFouls) / 2);
-
+    // Geramos táticas individuais para obter formações, escalações e estilos base
     const homeTactics = await this.generateSimulatedTactics(homeTeam);
     const awayTactics = await this.generateSimulatedTactics(awayTeam);
 
-    // Unificação: Posse e Análise decididas pelo duelo tático
+    // UNIFICAÇÃO TÁTICA: A posse e a análise estratégica são decididas pelo duelo tático
     const matchAnalysis = await this.generateMatchTacticalAnalysis(homeTeam, awayTeam, homeTactics, awayTactics);
     
     homeTactics.possession = matchAnalysis.homePossession;
