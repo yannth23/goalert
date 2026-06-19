@@ -145,18 +145,15 @@ export class FootballApiService {
           awayScore,
           homeFlag: match.homeTeam.crest,
           awayFlag: match.awayTeam.crest,
-          // Não sobrescrevemos predições e táticas se o jogo já começou e já temos elas,
-          // para evitar gastar tokens de IA desnecessariamente e manter a consistência.
-          ...(existing?.homeTactics ? {} : {
-            predictedGoalsHome: predictions.predictedGoalsHome,
-            predictedGoalsAway: predictions.predictedGoalsAway,
-            predictedCards:     predictions.predictedCards,
-            predictedFouls:     predictions.predictedFouls,
-            homeTactics:        predictions.homeTactics as unknown as Prisma.InputJsonValue,
-            awayTactics:        predictions.awayTactics as unknown as Prisma.InputJsonValue,
-            aiAnalysis:         predictions.aiAnalysis,
-            shortInsight:       (predictions as any).shortInsight,
-          }),
+          // ATENÇÃO: Forçando atualização para aplicar novo AI Insight textual
+          predictedGoalsHome: predictions.predictedGoalsHome,
+          predictedGoalsAway: predictions.predictedGoalsAway,
+          predictedCards:     predictions.predictedCards,
+          predictedFouls:     predictions.predictedFouls,
+          homeTactics:        predictions.homeTactics as unknown as Prisma.InputJsonValue,
+          awayTactics:        predictions.awayTactics as unknown as Prisma.InputJsonValue,
+          aiAnalysis:         predictions.aiAnalysis,
+          shortInsight:       (predictions as any).shortInsight,
         },
         create: {
           externalId:   match.id.toString(),
