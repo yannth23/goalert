@@ -122,9 +122,13 @@ export class FootballApiService {
       await this.detectAndNotify(existing, saved, homeTeam, awayTeam);
     }
 
+    const liveCount = await this.prisma.footballMatch.count({
+      where: { status: { in: ['1H', 'HT', '2H', 'ET', 'PEN'] } },
+    });
+
     await this.cacheDel(`matches:${todayBrazil}`);
     this.logger.log(`Synced ${matches.length} matches for ${todayBrazil}`);
-    return { synced: matches.length };
+    return { synced: matches.length, live: liveCount, errors: 0, source: 'football-data.org' };
   }
 
   private async detectAndNotify(prev: any, curr: any, homeTeam: string, awayTeam: string) {
