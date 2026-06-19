@@ -94,15 +94,13 @@ const STYLE_ICON: Record<string, string> = {
   counter:    '⚡',
   pressing:   '🔥',
   defensive:  '🛡️',
-  balanced:   '⚖️',
 };
 
 const STYLE_LABEL: Record<string, string> = {
-  possession: 'Posse',
-  counter:    'Contra',
+  possession: 'Posse de bola',
+  counter:    'Contra-ataque',
   pressing:   'Pressão',
   defensive:  'Defensivo',
-  balanced:   'Equilibrado',
 };
 
 function traduzirTime(nome: string): string {
@@ -125,7 +123,6 @@ const STYLE_COLOR: Record<string, string> = {
   counter:    'text-yellow-400',
   possession: 'text-blue-400',
   defensive:  'text-slate-400',
-  balanced:   'text-green-400',
 };
 
 const STYLE_BG: Record<string, string> = {
@@ -133,7 +130,6 @@ const STYLE_BG: Record<string, string> = {
   counter:    'bg-yellow-950/60 border-yellow-800/40',
   possession: 'bg-blue-950/60  border-blue-800/40',
   defensive:  'bg-slate-800/60  border-slate-700/40',
-  balanced:   'bg-green-950/60  border-green-800/40',
 };
 
 function TacticalClash({ match }: { match: FootballMatch }) {
@@ -141,15 +137,14 @@ function TacticalClash({ match }: { match: FootballMatch }) {
   const away = match.tactics?.away;
   if (!home || !away) return null;
 
-  const hs = home.dominanceStyle ?? 'balanced';
-  const rawAway = away.dominanceStyle ?? 'balanced';
+  const hs = home.dominanceStyle ?? 'pressing';
+  const rawAway = away.dominanceStyle ?? 'counter';
 
   const CONTRAST: Record<string, string> = {
     pressing:   'counter',
     counter:    'possession',
     possession: 'defensive',
     defensive:  'pressing',
-    balanced:   'counter',
   };
 
   const as_ = rawAway === hs
