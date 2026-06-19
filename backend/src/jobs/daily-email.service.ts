@@ -11,7 +11,7 @@ const LIVE_STATUSES = new Set(['1H', 'HT', '2H', 'ET', 'PEN']);
 @Injectable()
 export class DailyEmailService implements OnApplicationBootstrap {
   private readonly logger = new Logger(DailyEmailService.name);
-  private syncRunning = false; // guard against overlapping syncs
+  private syncRunning = false;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -24,36 +24,34 @@ export class DailyEmailService implements OnApplicationBootstrap {
     this.logger.log('Bootstrap sync…');
     try {
       const r = await this.footballApiService.syncTodayMatches();
-      this.logger.log(`Bootstrap sync done — ${r.synced} matches, ${r.live} live`);
+      this.logger.log(`Bootstrap sync done — ${r.synced} matches, ${r.live} live [${r.source}]`);
     } catch (err) {
       this.logger.error('Bootstrap sync failed', err);
     }
   }
 
-  /** Pre-load the day's schedule at 7am. */
+  /** Pre-load the day's schedule at 7am UTC. */
   @Cron('0 7 * * *', { name: 'sync-matches-morning' })
   async syncMorning(): Promise<void> {
     await this.runSync('morning');
   }
 
   /**
-   * Live sync: runs every minute around the clock.
+   * Live sync — every minute, all day.
    *
-   * Copa do Mundo 2026 spans USA/Canada/Mexico — games can start as late as
-   * 22:00 local (PDT = UTC-7), meaning they run until ~02:00 UTC.
-   * Running every minute all day uses only 1 API call/min (free plan allows 10/min).
+   * Guard: only hits the API when there is something to update.
+   * Special case: if the DB has ZERO matches for today we also sync,
+   * so that an empty database can be seeded even if the bootstrap
+   * or 7am cron failed (e.g. the API was down at that time).
    */
   @Cron('* * * * *', { name: 'sync-live-matches' })
   async syncLiveMatches(): Promise<void> {
-    // Skip if there are no live or upcoming matches today
-    // (avoids unnecessary API calls at 3am when no games are running)
     const hasActivity = await this.hasLiveOrUpcomingToday();
     if (!hasActivity) return;
-
     await this.runSync('live');
   }
 
-  /** Daily notification at 8am. */
+  /** Daily notification at 8am UTC. */
   @Cron('0 8 * * *', { name: 'daily-job' })
   async runDailyJob(): Promise<void> {
     this.logger.log('Starting daily notification job…');
@@ -116,9 +114,8 @@ export class DailyEmailService implements OnApplicationBootstrap {
     this.syncRunning = true;
     try {
       const r = await this.footballApiService.syncTodayMatches();
-      if (r.live > 0 || r.errors > 0) {
-        // Only log when something interesting happened to avoid log spam
-        this.logger.log(`[${label}] sync — ${r.synced} matches, ${r.live} live, ${r.errors} errors`);
+      if (r.live > 0 || r.errors > 0 || r.synced > 0) {
+        this.logger.log(`[${label}] sync — ${r.synced} matches, ${r.live} live, ${r.errors} errors [${r.source}]`);
       }
     } catch (err) {
       this.logger.error(`[${label}] sync failed`, err);
@@ -127,20 +124,38 @@ export class DailyEmailService implements OnApplicationBootstrap {
     }
   }
 
-  /** Returns true if there are any live or future matches today (avoids wasted API calls). */
+  /**
+   * Returns true when the minute cron should hit the API.
+   *
+   * Cases that return TRUE (sync needed):
+   *  1. DB has zero matches for today → needs seeding (e.g. bootstrap failed)
+   *  2. There are NS/live matches → need live updates
+   *
+   * Cases that return FALSE (skip to save API quota):
+   *  - DB has matches for today but all are FT/PST → tournament day is over
+   */
   private async hasLiveOrUpcomingToday(): Promise<boolean> {
-    const { start, end } = getTodayRange();
-    const count = await this.prisma.footballMatch.count({
-      where: {
-        date: { gte: start, lte: end },
-        status: { in: ['NS', '1H', 'HT', '2H', 'ET', 'PEN'] },
-      },
-    });
-    return count > 0;
+    const now = new Date();
+    // Use UTC date boundaries — matches are stored in UTC
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+    const end   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+
+    const [total, active] = await Promise.all([
+      this.prisma.footballMatch.count({ where: { date: { gte: start, lte: end } } }),
+      this.prisma.footballMatch.count({
+        where: {
+          date:   { gte: start, lte: end },
+          status: { in: ['NS', '1H', 'HT', '2H', 'ET', 'PEN'] },
+        },
+      }),
+    ]);
+
+    // Seed an empty day OR keep updating active matches
+    return total === 0 || active > 0;
   }
 }
 
-// ── Email/Telegram builders (unchanged) ───────────────────────────────────────
+// ── Email/Telegram builders ───────────────────────────────────────────────────
 
 function buildTelegramSummary(
   matches: { homeTeam: string; awayTeam: string; date: Date }[],
