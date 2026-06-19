@@ -32,7 +32,7 @@ const STYLE_OPTS: { key: StyleFilter; label: string; icon: string; active: strin
 
 function matchHasStyle(m: FootballMatch, style: StyleFilter): boolean {
   if (style === 'all') return true;
-  return m.tactics?.home.dominanceStyle === style || m.tactics?.away.dominanceStyle === style;
+  return m.tactics?.home?.dominanceStyle === style || m.tactics?.away?.dominanceStyle === style;
 }
 
 function capitalize(str: string): string {
