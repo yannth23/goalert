@@ -261,14 +261,15 @@ Responda APENAS o JSON:
       if (goalsFor > goalsAgainst) result = 'Vitória';
       else if (goalsFor < goalsAgainst) result = 'Derrota';
 
-      const tactics = isHome ? m.homeTacticsDescription : m.awayTacticsDescription;
+      const tacticsData = isHome ? (m.homeTactics as any) : (m.awayTactics as any);
+      const tactics = tacticsData?.dominanceDescription || 'Análise em andamento';
 
       return {
         date: m.date.toISOString().split('T')[0],
         opponent,
         result,
         score: `${goalsFor}x${goalsAgainst}`,
-        tactics: tactics || 'Análise em andamento',
+        tactics,
       };
     });
   }
