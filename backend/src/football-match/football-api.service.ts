@@ -41,6 +41,16 @@ function getBrazilDayRange(): { start: Date; end: Date } {
   return { start, end };
 }
 
+/**
+ * Converte uma data UTC para o horário de Brasília (BRT = UTC-3).
+ * Garante que jogos às 00:30 UTC (21:30 BRT) ficam salvos no dia correto brasileiro.
+ */
+function utcToBrt(utcDate: string): Date {
+  const utc = new Date(utcDate);
+  // BRT = UTC-3 → subtrai 3 horas
+  return new Date(utc.getTime() - 3 * 60 * 60 * 1000);
+}
+
 function extractScore(score: any): { home: number | null; away: number | null } {
   const candidates = [
     score?.fullTime,
@@ -109,7 +119,7 @@ export class FootballApiService {
         update: { status: mappedStatus, homeScore, awayScore },
         create: {
           externalId:   match.id.toString(),
-          date:         new Date(match.utcDate),
+          date:         utcToBrt(match.utcDate),
           championship: match.competition.name,
           homeTeam,
           awayTeam,
