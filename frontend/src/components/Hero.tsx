@@ -9,19 +9,19 @@ export function Hero() {
             🏆 Copa do Mundo 2026
           </div>
 
-          <h1 className="mt-8 text-5xl md:text-8xl font-black uppercase text-white">
+          <h1 className="mt-6 text-4xl sm:text-6xl md:text-8xl font-black uppercase text-white">
             O Mundo
           </h1>
 
-          <h1 className="text-5xl md:text-8xl font-black uppercase text-yellow-500">
+          <h1 className="text-4xl sm:text-6xl md:text-8xl font-black uppercase text-yellow-500">
             Joga
           </h1>
 
-          <h1 className="text-5xl md:text-8xl font-black uppercase text-white">
+          <h1 className="text-4xl sm:text-6xl md:text-8xl font-black uppercase text-white">
             Aqui
           </h1>
 
-          <p className="max-w-2xl mx-auto mt-8 text-slate-400 text-lg">
+          <p className="max-w-2xl mx-auto mt-6 text-slate-400 text-base sm:text-lg">
             Jogos ao vivo, classificação, artilheiros e alertas diários
             da Copa do Mundo 2026.
           </p>

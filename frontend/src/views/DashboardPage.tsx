@@ -160,18 +160,18 @@ export function DashboardPage() {
       </header>
 
       {/* ── Tabs ── */}
-      <div className="border-b border-slate-800">
-        <div className="max-w-4xl mx-auto px-4 flex">
+      <div className="border-b border-slate-800 overflow-x-auto scrollbar-hide">
+        <div className="max-w-4xl mx-auto px-2 sm:px-4 flex min-w-max sm:min-w-0">
           {([
-            { key: 'jogos', label: 'Jogos de hoje' },
+            { key: 'jogos', label: 'Jogos' },
             { key: 'alertas', label: 'Alertas ⚡' },
             { key: 'grupos', label: 'Grupos' },
-            { key: 'conta', label: 'Minha conta' },
+            { key: 'conta', label: 'Conta' },
           ] as { key: Tab; label: string }[]).map(({ key, label }) => (
             <button
               key={key}
               onClick={() => setTab(key)}
-              className={`px-4 py-3.5 text-sm font-semibold border-b-2 transition-all ${
+              className={`px-3 sm:px-4 py-3.5 text-xs sm:text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
                 tab === key
                   ? 'border-yellow-400 text-yellow-400'
                   : 'border-transparent text-slate-500 hover:text-slate-300 hover:border-slate-600'

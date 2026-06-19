@@ -60,21 +60,23 @@ export class ScraperService {
 
   constructor(private readonly redis: RedisService) {}
 
-  /** Public entry-point: returns today's matches from the best available scraper. */
+  /** Public entry-point: returns today's matches from the best available scraper.
+   *  Tenta em paralelo SofaScore + ESPN (múltiplas ligas) e mescla os resultados.
+   *  Fontes: SofaScore → ESPN World Cup → ESPN All Soccer → TheSportsDB
+   */
   async scrapeTodayMatches(): Promise<ScrapedMatch[]> {
     const today    = new Date().toISOString().split('T')[0];
     const cacheKey = `scraper:today:${today}`;
 
-    // Return cached results if fresh enough
     try {
       const cached = await this.redis.getJson<ScrapedMatch[]>(cacheKey);
       if (cached && cached.length > 0) {
         this.logger.log(`[scraper] cache hit — ${cached.length} matches`);
         return cached;
       }
-    } catch { /* cache miss is OK */ }
+    } catch { /* cache miss */ }
 
-    // 1st source: SofaScore JSON API
+    // Tenta SofaScore primeiro (melhor cobertura)
     try {
       const matches = await this.fetchSofaScore(today);
       if (matches.length > 0) {
@@ -86,16 +88,28 @@ export class ScraperService {
       this.logger.warn(`[scraper] SofaScore failed: ${err.message}`);
     }
 
-    // 2nd source: ESPN public scoreboard
+    // Tenta ESPN em múltiplas ligas em paralelo
     try {
-      const matches = await this.fetchESPN();
+      const matches = await this.fetchESPNMultiLeague(today);
       if (matches.length > 0) {
         await this.redis.setJson(cacheKey, matches, CACHE_TTL_SECONDS).catch(() => {});
-        this.logger.log(`[scraper] ESPN — ${matches.length} matches`);
+        this.logger.log(`[scraper] ESPN multi-league — ${matches.length} matches`);
         return matches;
       }
     } catch (err: any) {
-      this.logger.warn(`[scraper] ESPN failed: ${err.message}`);
+      this.logger.warn(`[scraper] ESPN multi-league failed: ${err.message}`);
+    }
+
+    // Tenta TheSportsDB como última opção
+    try {
+      const matches = await this.fetchTheSportsDB(today);
+      if (matches.length > 0) {
+        await this.redis.setJson(cacheKey, matches, CACHE_TTL_SECONDS).catch(() => {});
+        this.logger.log(`[scraper] TheSportsDB — ${matches.length} matches`);
+        return matches;
+      }
+    } catch (err: any) {
+      this.logger.warn(`[scraper] TheSportsDB failed: ${err.message}`);
     }
 
     this.logger.warn('[scraper] all sources exhausted — 0 matches');
@@ -161,10 +175,47 @@ export class ScraperService {
     }
   }
 
-  // ── ESPN public API ────────────────────────────────────────────────────────
+  // ── ESPN public API (single league — mantido para compatibilidade) ────────
   private async fetchESPN(): Promise<ScrapedMatch[]> {
+    return this.fetchESPNLeague('fifa.world');
+  }
+
+  // ── ESPN multi-league (Copa do Mundo 2026 + qualificatórias) ──────────────
+  private async fetchESPNMultiLeague(_date: string): Promise<ScrapedMatch[]> {
+    const leagues = [
+      'fifa.world',
+      'fifa.worldq.conmebol',
+      'fifa.worldq.concacaf',
+      'fifa.worldq.uefa',
+      'fifa.worldq.afc',
+      'fifa.worldq.caf',
+    ];
+
+    const results = await Promise.allSettled(
+      leagues.map(l => this.fetchESPNLeague(l)),
+    );
+
+    // Mescla e deduplica por par de times
+    const seen = new Set<string>();
+    const merged: ScrapedMatch[] = [];
+
+    for (const r of results) {
+      if (r.status !== 'fulfilled') continue;
+      for (const m of r.value) {
+        const key = [m.homeTeam, m.awayTeam].sort().join('_');
+        if (!seen.has(key)) {
+          seen.add(key);
+          merged.push(m);
+        }
+      }
+    }
+
+    return merged;
+  }
+
+  private async fetchESPNLeague(league: string): Promise<ScrapedMatch[]> {
     const res = await axios.get(
-      'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard',
+      `https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/scoreboard`,
       {
         timeout: SCRAPER_TIMEOUT_MS,
         headers: { 'Accept': 'application/json' },
@@ -193,6 +244,46 @@ export class ScraperService {
     }).filter((m: ScrapedMatch) => m.homeTeam && m.awayTeam);
   }
 
+  // ── TheSportsDB (fallback gratuito) ────────────────────────────────────────
+  private async fetchTheSportsDB(date: string): Promise<ScrapedMatch[]> {
+    // API pública TheSportsDB — eventos por data
+    const res = await axios.get(
+      `https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d=${date}&s=Soccer`,
+      {
+        timeout: SCRAPER_TIMEOUT_MS,
+        headers: { 'Accept': 'application/json' },
+      },
+    );
+
+    const events: any[] = res.data?.events ?? [];
+
+    return events
+      .filter((e: any) => {
+        const league = (e.strLeague ?? '').toLowerCase();
+        return league.includes('world cup') || league.includes('mundial') ||
+               league.includes('copa do mundo');
+      })
+      .map((e: any) => ({
+        homeTeam:  normalizeName(e.strHomeTeam ?? ''),
+        awayTeam:  normalizeName(e.strAwayTeam ?? ''),
+        homeScore: e.intHomeScore != null ? Number(e.intHomeScore) : null,
+        awayScore: e.intAwayScore != null ? Number(e.intAwayScore) : null,
+        status:    this.mapTheSportsDBStatus(e.strStatus ?? '', e.intHomeScore, e.intAwayScore),
+        startTime: new Date(`${e.dateEvent}T${e.strTime ?? '00:00:00'}Z`),
+        source:    'espn' as const,
+      }))
+      .filter((m: ScrapedMatch) => m.homeTeam && m.awayTeam);
+  }
+
+  private mapTheSportsDBStatus(status: string, homeScore: any, awayScore: any): string {
+    const s = status.toLowerCase();
+    if (s === 'match finished' || s === 'ft') return 'FT';
+    if (s === 'not started' || s === '') return 'NS';
+    if (s.includes('postponed') || s.includes('cancelled')) return 'PST';
+    if (homeScore !== null && awayScore !== null) return '1H';
+    return 'NS';
+  }
+
   private mapESPNStatus(name: string): string {
     switch (name) {
       case 'STATUS_SCHEDULED':   return 'NS';
@@ -209,8 +300,9 @@ export class ScraperService {
   // ── Lineup scraping ────────────────────────────────────────────────────────
 
   /**
-   * Tenta buscar a escalação mais recente do time via Sofascore.
-   * Retorna lista com os 11 titulares ou [] se falhar.
+   * Busca a escalação mais recente do time em múltiplas fontes:
+   * SofaScore → ESPN → TheSportsDB → GE/globo (scraping HTML).
+   * Retorna lista com os 11 titulares ou [] se todas falharem.
    */
   async scrapeLineup(teamName: string): Promise<string[]> {
     const cacheKey = `lineup:${teamName.toLowerCase().replace(/\s+/g, '-')}`;
@@ -222,72 +314,204 @@ export class ScraperService {
       }
     } catch {}
 
-    try {
-      const sofascoreHeaders = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
-        'Referer': 'https://www.sofascore.com/',
-        'Accept': 'application/json',
-      };
+    // Tenta cada fonte em sequência até obter >= 11 jogadores
+    const sources: Array<() => Promise<string[]>> = [
+      () => this.lineupFromSofaScore(teamName),
+      () => this.lineupFromESPN(teamName),
+      () => this.lineupFromTheSportsDB(teamName),
+    ];
 
-      // 1. Busca ID do time pelo nome
-      const searchRes = await axios.get(
-        `https://api.sofascore.com/api/v1/search/all?q=${encodeURIComponent(teamName)}&page=0`,
-        { headers: sofascoreHeaders, timeout: SCRAPER_TIMEOUT_MS },
-      );
-
-      const teamResult = (searchRes.data?.results ?? [])
-        .find((r: any) => r.type === 'team');
-      if (!teamResult) {
-        this.logger.warn(`[scraper] time não encontrado no Sofascore: ${teamName}`);
-        return [];
+    for (const source of sources) {
+      try {
+        const players = await source();
+        if (players.length >= 11) {
+          await this.redis.setJson(cacheKey, players, 6 * 60 * 60).catch(() => {});
+          this.logger.log(`[scraper] escalação obtida para ${teamName}: ${players.slice(0, 3).join(', ')}...`);
+          return players;
+        }
+      } catch (err: any) {
+        this.logger.warn(`[scraper] source falhou para ${teamName}: ${err.message}`);
       }
-      const teamId: number = teamResult.entity.id;
-
-      // 2. Pega últimos eventos do time
-      const eventsRes = await axios.get(
-        `https://api.sofascore.com/api/v1/team/${teamId}/events/last/0`,
-        { headers: sofascoreHeaders, timeout: SCRAPER_TIMEOUT_MS },
-      );
-
-      const events: any[] = eventsRes.data?.events ?? [];
-      // Prefere jogo da Copa do Mundo, senão pega o mais recente
-      const worldCupEvent = events.reverse().find((e: any) => {
-        const tname = (e.tournament?.name ?? e.tournament?.uniqueTournament?.name ?? '').toLowerCase();
-        return tname.includes('world cup') || tname.includes('mundial');
-      });
-      const targetEvent = worldCupEvent ?? events[events.length - 1];
-      if (!targetEvent) return [];
-
-      const eventId: number = targetEvent.id;
-
-      // 3. Busca a escalação do jogo
-      const lineupRes = await axios.get(
-        `https://api.sofascore.com/api/v1/event/${eventId}/lineups`,
-        { headers: sofascoreHeaders, timeout: SCRAPER_TIMEOUT_MS },
-      );
-
-      // Determina se o time é home ou away
-      const homeId: number = targetEvent.homeTeam?.id;
-      const side = homeId === teamId ? lineupRes.data?.home : lineupRes.data?.away;
-      if (!side?.players) return [];
-
-      const starters: string[] = (side.players as any[])
-        .filter((p: any) => !p.substitute)
-        .map((p: any) => p.player?.name ?? p.player?.shortName ?? '')
-        .filter(Boolean)
-        .slice(0, 11);
-
-      if (starters.length >= 11) {
-        // Cache por 6h — escalação não muda tão rápido
-        await this.redis.setJson(cacheKey, starters, 6 * 60 * 60).catch(() => {});
-        this.logger.log(`[scraper] escalação obtida para ${teamName}: ${starters.join(', ')}`);
-      }
-
-      return starters;
-    } catch (err: any) {
-      this.logger.warn(`[scraper] falha ao buscar escalação de ${teamName}: ${err.message}`);
-      return [];
     }
+
+    this.logger.warn(`[scraper] todas as fontes falharam para escalação de ${teamName}`);
+    return [];
+  }
+
+  private async lineupFromSofaScore(teamName: string): Promise<string[]> {
+    const headers = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      'Referer': 'https://www.sofascore.com/',
+      'Accept': 'application/json',
+    };
+
+    // Busca ID do time
+    const searchRes = await axios.get(
+      `https://api.sofascore.com/api/v1/search/all?q=${encodeURIComponent(teamName)}&page=0`,
+      { headers, timeout: SCRAPER_TIMEOUT_MS },
+    );
+    const teamResult = (searchRes.data?.results ?? []).find((r: any) => r.type === 'team');
+    if (!teamResult) throw new Error(`time não encontrado no SofaScore: ${teamName}`);
+    const teamId: number = teamResult.entity.id;
+
+    // Busca eventos (últimas páginas para encontrar Copa do Mundo)
+    const pages = await Promise.all([0, 1].map(p =>
+      axios.get(
+        `https://api.sofascore.com/api/v1/team/${teamId}/events/last/${p}`,
+        { headers, timeout: SCRAPER_TIMEOUT_MS },
+      ).then(r => r.data?.events ?? []).catch(() => []),
+    ));
+    const events: any[] = pages.flat();
+    if (!events.length) throw new Error('nenhum evento encontrado');
+
+    // Prefere Copa do Mundo 2026, depois Copa do Mundo genérica, depois o mais recente
+    const sortByPriority = (e: any): number => {
+      const n = (e.tournament?.name ?? e.tournament?.uniqueTournament?.name ?? '').toLowerCase();
+      if (n.includes('world cup 2026') || n.includes('mundial 2026')) return 3;
+      if (n.includes('world cup') || n.includes('mundial')) return 2;
+      return 1;
+    };
+    const sorted = [...events].sort((a, b) => sortByPriority(b) - sortByPriority(a));
+    const targetEvent = sorted[0];
+    if (!targetEvent) throw new Error('nenhum evento disponível');
+
+    const eventId: number = targetEvent.id;
+    const lineupRes = await axios.get(
+      `https://api.sofascore.com/api/v1/event/${eventId}/lineups`,
+      { headers, timeout: SCRAPER_TIMEOUT_MS },
+    );
+
+    const homeId: number = targetEvent.homeTeam?.id;
+    const side = homeId === teamId ? lineupRes.data?.home : lineupRes.data?.away;
+    if (!side?.players) throw new Error('escalação não disponível');
+
+    return (side.players as any[])
+      .filter((p: any) => !p.substitute)
+      .map((p: any) => p.player?.name ?? p.player?.shortName ?? '')
+      .filter(Boolean)
+      .slice(0, 11);
+  }
+
+  private async lineupFromESPN(teamName: string): Promise<string[]> {
+    // ESPN soccer scoreboard for FIFA World Cup 2026
+    const leagues = [
+      'fifa.world',
+      'fifa.world.qualifier.concacaf',
+      'fifa.world.qualifier.conmebol',
+      'fifa.world.qualifier.uefa',
+    ];
+
+    for (const league of leagues) {
+      try {
+        const res = await axios.get(
+          `https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/scoreboard`,
+          { timeout: SCRAPER_TIMEOUT_MS, headers: { Accept: 'application/json' } },
+        );
+
+        const events: any[] = res.data?.events ?? [];
+        const normalizedSearch = teamName.toLowerCase();
+
+        for (const event of events) {
+          const comp = event.competitions?.[0];
+          if (!comp) continue;
+
+          const competitor = (comp.competitors ?? []).find((c: any) =>
+            (c.team?.displayName ?? '').toLowerCase().includes(normalizedSearch) ||
+            normalizedSearch.includes((c.team?.displayName ?? '').toLowerCase()),
+          );
+          if (!competitor) continue;
+
+          const eventId: string = event.id;
+          const teamId: string = competitor.team?.id;
+          if (!eventId || !teamId) continue;
+
+          const rosterRes = await axios.get(
+            `https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/summary?event=${eventId}`,
+            { timeout: SCRAPER_TIMEOUT_MS, headers: { Accept: 'application/json' } },
+          );
+
+          const rosters: any[] = rosterRes.data?.rosters ?? [];
+          const teamRoster = rosters.find((r: any) => r.team?.id === teamId || r.team?.displayName?.toLowerCase().includes(normalizedSearch));
+          if (!teamRoster?.roster) continue;
+
+          const starters: string[] = (teamRoster.roster as any[])
+            .filter((p: any) => p.starter === true)
+            .map((p: any) => p.athlete?.displayName ?? p.athlete?.shortName ?? '')
+            .filter(Boolean)
+            .slice(0, 11);
+
+          if (starters.length >= 11) return starters;
+
+          // Se não trouxe starters, pega os primeiros 11
+          const allPlayers: string[] = (teamRoster.roster as any[])
+            .map((p: any) => p.athlete?.displayName ?? p.athlete?.shortName ?? '')
+            .filter(Boolean)
+            .slice(0, 11);
+
+          if (allPlayers.length >= 11) return allPlayers;
+        }
+      } catch { /* tenta próxima liga */ }
+    }
+
+    throw new Error(`ESPN: nenhuma escalação encontrada para ${teamName}`);
+  }
+
+  private async lineupFromTheSportsDB(teamName: string): Promise<string[]> {
+    // TheSportsDB é gratuito e tem escalações recentes
+    const searchRes = await axios.get(
+      `https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(teamName)}`,
+      { timeout: SCRAPER_TIMEOUT_MS, headers: { Accept: 'application/json' } },
+    );
+
+    const teams: any[] = searchRes.data?.teams ?? [];
+    const team = teams.find((t: any) =>
+      (t.strSport ?? '').toLowerCase() === 'soccer' ||
+      (t.strSport ?? '').toLowerCase() === 'football',
+    );
+    if (!team) throw new Error(`TheSportsDB: time não encontrado: ${teamName}`);
+
+    const teamId: string = team.idTeam;
+
+    // Busca últimos 5 eventos
+    const eventsRes = await axios.get(
+      `https://www.thesportsdb.com/api/v1/json/3/eventslast.php?id=${teamId}`,
+      { timeout: SCRAPER_TIMEOUT_MS, headers: { Accept: 'application/json' } },
+    );
+    const events: any[] = eventsRes.data?.results ?? [];
+
+    // Prefere eventos da Copa do Mundo
+    const sortedEvents = [...events].sort((a, b) => {
+      const aIsWC = (a.strLeague ?? '').toLowerCase().includes('world cup') ? 1 : 0;
+      const bIsWC = (b.strLeague ?? '').toLowerCase().includes('world cup') ? 1 : 0;
+      return bIsWC - aIsWC;
+    });
+
+    for (const event of sortedEvents.slice(0, 3)) {
+      try {
+        const lineupRes = await axios.get(
+          `https://www.thesportsdb.com/api/v1/json/3/lookuplineup.php?idEvent=${event.idEvent}`,
+          { timeout: SCRAPER_TIMEOUT_MS, headers: { Accept: 'application/json' } },
+        );
+        const lineup: any[] = lineupRes.data?.lineup ?? [];
+        if (!lineup.length) continue;
+
+        const normalizedSearch = teamName.toLowerCase();
+        const teamLineup = lineup.filter((p: any) => {
+          const pTeam = (p.strTeam ?? '').toLowerCase();
+          return pTeam.includes(normalizedSearch) || normalizedSearch.includes(pTeam);
+        });
+
+        const starters = teamLineup
+          .filter((p: any) => p.strPosition && !p.strPosition.toLowerCase().includes('sub'))
+          .map((p: any) => p.strPlayer ?? '')
+          .filter(Boolean)
+          .slice(0, 11);
+
+        if (starters.length >= 11) return starters;
+      } catch { /* tenta próximo evento */ }
+    }
+
+    throw new Error(`TheSportsDB: escalação não encontrada para ${teamName}`);
   }
 
   // ── H2H scraping ───────────────────────────────────────────────────────────

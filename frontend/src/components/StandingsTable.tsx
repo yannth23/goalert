@@ -79,48 +79,50 @@ export function StandingsTable() {
                 </h3>
               </div>
 
-              <table className="w-full bg-slate-950">
-                <thead className="bg-slate-900/50">
-                  <tr className="text-xs text-slate-500 uppercase tracking-wider">
-                    <th className="p-3 text-left w-8">#</th>
-                    <th className="p-3 text-left">Time</th>
-                    <th className="p-3 text-center font-bold text-slate-300">Pts</th>
-                    <th className="p-3 text-center">J</th>
-                    <th className="p-3 text-center">V</th>
-                    <th className="p-3 text-center">E</th>
-                    <th className="p-3 text-center">D</th>
-                    <th className="p-3 text-center">SG</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-slate-950">
-                  {group.table.map((team) => (
-                    <tr
-                      key={team.teamId}
-                      className={`border-t border-slate-800 hover:bg-slate-900 transition ${qualificationClass(team.position)}`}
-                    >
-                      <td className="p-3 text-slate-500 text-sm font-medium">{team.position}</td>
-                      <td className="p-3">
-                        <div className="flex items-center gap-2">
-                          {FLAGS[team.teamName] ? (
-                            <span className="text-base leading-none">{FLAGS[team.teamName]}</span>
-                          ) : team.crest ? (
-                            <img src={team.crest} alt={team.teamName} className="w-5 h-5 object-contain" />
-                          ) : null}
-                          <span className="text-sm font-semibold text-slate-100">{team.teamName}</span>
-                        </div>
-                      </td>
-                      <td className="p-3 text-center font-black text-yellow-500">{team.points}</td>
-                      <td className="p-3 text-center text-slate-400 text-sm">{team.played}</td>
-                      <td className="p-3 text-center text-sm font-semibold text-green-500">{team.wins}</td>
-                      <td className="p-3 text-center text-slate-400 text-sm">{team.draws}</td>
-                      <td className="p-3 text-center text-sm text-red-400/80">{team.losses}</td>
-                      <td className={`p-3 text-center text-sm font-semibold ${goalDiffClass(team.goalDifference)}`}>
-                        {goalDiffLabel(team.goalDifference)}
-                      </td>
+              <div className="w-full overflow-x-auto">
+                <table className="w-full bg-slate-950 min-w-[320px]">
+                  <thead className="bg-slate-900/50">
+                    <tr className="text-xs text-slate-500 uppercase tracking-wider">
+                      <th className="p-2 sm:p-3 text-left w-6">#</th>
+                      <th className="p-2 sm:p-3 text-left">Time</th>
+                      <th className="p-2 sm:p-3 text-center font-bold text-slate-300">Pts</th>
+                      <th className="p-2 sm:p-3 text-center">J</th>
+                      <th className="p-2 sm:p-3 text-center">V</th>
+                      <th className="p-2 sm:p-3 text-center">E</th>
+                      <th className="p-2 sm:p-3 text-center">D</th>
+                      <th className="p-2 sm:p-3 text-center">SG</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="bg-slate-950">
+                    {group.table.map((team) => (
+                      <tr
+                        key={team.teamId}
+                        className={`border-t border-slate-800 hover:bg-slate-900 transition ${qualificationClass(team.position)}`}
+                      >
+                        <td className="p-2 sm:p-3 text-slate-500 text-xs sm:text-sm font-medium">{team.position}</td>
+                        <td className="p-2 sm:p-3">
+                          <div className="flex items-center gap-1.5">
+                            {FLAGS[team.teamName] ? (
+                              <span className="text-sm leading-none">{FLAGS[team.teamName]}</span>
+                            ) : team.crest ? (
+                              <img src={team.crest} alt={team.teamName} className="w-4 h-4 object-contain" />
+                            ) : null}
+                            <span className="text-xs sm:text-sm font-semibold text-slate-100 truncate max-w-[90px] sm:max-w-none">{team.teamName}</span>
+                          </div>
+                        </td>
+                        <td className="p-2 sm:p-3 text-center font-black text-yellow-500 text-sm">{team.points}</td>
+                        <td className="p-2 sm:p-3 text-center text-slate-400 text-xs sm:text-sm">{team.played}</td>
+                        <td className="p-2 sm:p-3 text-center text-xs sm:text-sm font-semibold text-green-500">{team.wins}</td>
+                        <td className="p-2 sm:p-3 text-center text-slate-400 text-xs sm:text-sm">{team.draws}</td>
+                        <td className="p-2 sm:p-3 text-center text-xs sm:text-sm text-red-400/80">{team.losses}</td>
+                        <td className={`p-2 sm:p-3 text-center text-xs sm:text-sm font-semibold ${goalDiffClass(team.goalDifference)}`}>
+                          {goalDiffLabel(team.goalDifference)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           ))}
         </div>

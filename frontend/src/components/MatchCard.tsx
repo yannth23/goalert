@@ -161,16 +161,16 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
   const flag2 = match.team2Flag || FLAGS[match.team2] || '';
 
   return (
-    <div className={`bg-slate-900 border rounded-2xl p-5 transition-all ${
+    <div className={`bg-slate-900 border rounded-2xl p-4 sm:p-5 transition-all ${
       highlighted
         ? 'border-yellow-600/50 shadow-yellow-900/20 shadow-lg'
         : 'border-slate-800'
     }`}>
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-xs text-slate-500 font-medium">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs text-slate-500 font-medium truncate max-w-[55%]">
           {traduzirCompeticao(match.championship)}
         </span>
-        <span className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full ${status.bg} ${status.text}`}>
+        <span className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full shrink-0 ${status.bg} ${status.text}`}>
           {status.live && (
             <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
           )}
@@ -178,21 +178,21 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
         </span>
       </div>
 
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex-1 flex flex-col items-end gap-0.5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex-1 flex flex-col items-end gap-0.5 min-w-0">
           {flag1 && (
             flag1.startsWith('http')
               ? <img src={flag1} alt={match.team1} className="w-6 h-4 object-contain" />
               : <span className="text-xl leading-none">{flag1}</span>
           )}
-          <span className="font-bold text-white text-sm text-right leading-tight">
+          <span className="font-bold text-white text-sm text-right leading-tight truncate max-w-full">
             {traduzirTime(match.team1)}
           </span>
         </div>
 
-        <div className="flex flex-col items-center px-3">
+        <div className="flex flex-col items-center px-2 shrink-0">
           {(isLive || isFinished) && hasScore ? (
-            <span className={`font-black text-2xl px-4 py-1 rounded-xl ${
+            <span className={`font-black text-xl sm:text-2xl px-3 py-1 rounded-xl whitespace-nowrap ${
               isLive
                 ? 'bg-yellow-950/70 text-yellow-400'
                 : 'bg-slate-800 text-slate-300'
@@ -201,19 +201,19 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
             </span>
           ) : (
             <>
-              <span className="text-sm text-slate-400 font-semibold">{time}</span>
+              <span className="text-sm text-slate-400 font-semibold whitespace-nowrap">{time}</span>
               <span className="text-xs text-slate-700">vs</span>
             </>
           )}
         </div>
 
-        <div className="flex-1 flex flex-col items-start gap-0.5">
+        <div className="flex-1 flex flex-col items-start gap-0.5 min-w-0">
           {flag2 && (
             flag2.startsWith('http')
               ? <img src={flag2} alt={match.team2} className="w-6 h-4 object-contain" />
               : <span className="text-xl leading-none">{flag2}</span>
           )}
-          <span className="font-bold text-white text-sm leading-tight">
+          <span className="font-bold text-white text-sm leading-tight truncate max-w-full">
             {traduzirTime(match.team2)}
           </span>
         </div>

@@ -226,23 +226,23 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="bg-slate-900 border border-slate-800 w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl">
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4 bg-black/80 backdrop-blur-sm">
+      <div className="bg-slate-900 border border-slate-800 w-full max-w-5xl max-h-[92vh] sm:max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl shadow-2xl">
 
         {/* Header */}
-        <div className="sticky top-0 z-10 bg-slate-900/80 backdrop-blur-md p-6 border-b border-slate-800 flex justify-between items-center">
-          <div>
-            <h3 className="text-2xl font-black text-white">Análise Tática</h3>
-            <p className="text-slate-500 text-sm font-medium">{match.team1} vs {match.team2} — Copa do Mundo 2026</p>
+        <div className="sticky top-0 z-10 bg-slate-900/80 backdrop-blur-md p-4 sm:p-6 border-b border-slate-800 flex justify-between items-center">
+          <div className="min-w-0 pr-3">
+            <h3 className="text-lg sm:text-2xl font-black text-white">Análise Tática</h3>
+            <p className="text-slate-500 text-xs sm:text-sm font-medium truncate">{match.team1} vs {match.team2} — Copa do Mundo 2026</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white">
+          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white shrink-0">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        <div className="p-8 space-y-6">
+        <div className="p-4 sm:p-8 space-y-5 sm:space-y-6">
 
           {/* 1. Provável dominante */}
           {(() => {
