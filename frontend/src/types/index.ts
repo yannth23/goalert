@@ -21,8 +21,9 @@ export interface TacticalAnalysis {
   formation: string;
   lineup: string[];
   keyPlayer: string;
-  possession: number;
   intensity: number;
+  dominanceStyle: 'possession' | 'counter' | 'pressing' | 'defensive' | 'balanced';
+  dominanceDescription: string;
   heatmapData: { x: number; y: number; value: number }[];
 }
 
@@ -48,6 +49,7 @@ export interface FootballMatch {
     home: TacticalAnalysis;
     away: TacticalAnalysis;
   };
+  aiAnalysis?: string;
 }
 
 export interface AuthResponse {
@@ -75,7 +77,6 @@ export interface GroupStanding {
   table: StandingEntry[];
 }
 
-// Mantido para compatibilidade com componentes existentes
 export type Standing = StandingEntry;
 
 export interface Scorer {

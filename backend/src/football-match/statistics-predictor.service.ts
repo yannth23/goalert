@@ -18,9 +18,10 @@ interface TacticalAnalysis {
   formation: string;
   lineup: string[];
   keyPlayer: string;
-  possession: number;
   intensity: number; // 0-100
   focus: string;
+  dominanceStyle: 'possession' | 'counter' | 'pressing' | 'defensive' | 'balanced';
+  dominanceDescription: string;
   heatmapData: { x: number; y: number; value: number }[];
 }
 
@@ -51,7 +52,6 @@ export class StatisticsPredictorService {
    * Considera apenas jogos finalizados (status = 'FT').
    */
   async getTeamStatistics(teamName: string, limit: number = 10): Promise<TeamStatistics> {
-    // Busca em todas as competições, não apenas na atual
     const matches = await this.prisma.footballMatch.findMany({
       where: {
         status: 'FT',
@@ -111,7 +111,6 @@ export class StatisticsPredictorService {
 
   /**
    * Prediz estatísticas para um jogo específico baseado no histórico dos times.
-   * Usa a média dos últimos 10 jogos de cada time.
    */
   async predictMatch(homeTeam: string, awayTeam: string): Promise<PredictionResult> {
     const [homeStats, awayStats] = await Promise.all([
@@ -119,29 +118,23 @@ export class StatisticsPredictorService {
       this.getTeamStatistics(awayTeam, 10),
     ]);
 
-    // Predições baseadas em estatísticas (ou valores padrão se não houver histórico)
-    const predictedGoalsHome = homeStats.totalMatches > 0 && awayStats.totalMatches > 0 
-      ? (homeStats.averageGoalsFor + awayStats.averageGoalsAgainst) / 2 
+    const predictedGoalsHome = homeStats.totalMatches > 0 && awayStats.totalMatches > 0
+      ? (homeStats.averageGoalsFor + awayStats.averageGoalsAgainst) / 2
       : 1.5;
-    const predictedGoalsAway = homeStats.totalMatches > 0 && awayStats.totalMatches > 0 
-      ? (awayStats.averageGoalsFor + homeStats.averageGoalsAgainst) / 2 
+    const predictedGoalsAway = homeStats.totalMatches > 0 && awayStats.totalMatches > 0
+      ? (awayStats.averageGoalsFor + homeStats.averageGoalsAgainst) / 2
       : 1.5;
-    const predictedCards = homeStats.totalMatches > 0 && awayStats.totalMatches > 0 
-      ? Math.round((homeStats.averageCards + awayStats.averageCards) / 2) 
+    const predictedCards = homeStats.totalMatches > 0 && awayStats.totalMatches > 0
+      ? Math.round((homeStats.averageCards + awayStats.averageCards) / 2)
       : 4;
-    const predictedFouls = homeStats.totalMatches > 0 && awayStats.totalMatches > 0 
-      ? Math.round((homeStats.averageFouls + awayStats.averageFouls) / 2) 
+    const predictedFouls = homeStats.totalMatches > 0 && awayStats.totalMatches > 0
+      ? Math.round((homeStats.averageFouls + awayStats.averageFouls) / 2)
       : 22;
 
-    // Geramos táticas individuais para obter formações, escalações e estilos base
     const homeTactics = await this.generateSimulatedTactics(homeTeam);
     const awayTactics = await this.generateSimulatedTactics(awayTeam);
 
-    // UNIFICAÇÃO TÁTICA: A posse e a análise estratégica são decididas pelo duelo tático
     const matchAnalysis = await this.generateMatchTacticalAnalysis(homeTeam, awayTeam, homeTactics, awayTactics);
-    
-    homeTactics.possession = matchAnalysis.homePossession;
-    awayTactics.possession = 100 - matchAnalysis.homePossession;
     const aiAnalysis = matchAnalysis.analysis;
 
     return {
@@ -163,35 +156,37 @@ export class StatisticsPredictorService {
     ];
 
     for (const { model, name } of models) {
-      const client = this.openai; 
       try {
         this.logger.log(`Tentando gerar táticas para ${teamName} usando ${name}...`);
-        const response = await client.chat.completions.create({
+        const response = await this.openai.chat.completions.create({
           model: model,
           messages: [
             {
               role: "system",
-              content: "Você é um analista tático de futebol de elite. Sua missão é fornecer análises REAIS e VARIADAS. Evite repetir formações como 4-2-3-1 se não for a realidade absoluta do time."
+              content: "Você é um analista tático de futebol de elite especializado na Copa do Mundo 2026. Forneça análises REAIS e PRECISAS baseadas nos jogos mais recentes do torneio. Evite repetir formações padrão sem embasamento real."
             },
             {
               role: "user",
-              content: `Analise a seleção: ${teamName} baseando-se APENAS nos últimos 3 jogos oficiais. 
+              content: `Analise a seleção: ${teamName} baseando-se nos jogos mais recentes da Copa do Mundo 2026 (junho de 2026).
+              
               Forneça:
-              1. Formação tática REAL utilizada nos últimos 3 jogos.
-              2. Escalação provável com os 11 nomes REAIS e MAIS RECENTES (titulares dos últimos jogos).
-              3. O jogador estrela atual (Key Player).
-              4. Porcentagem de posse de bola esperada (0-100).
-              5. Intensidade/Agressividade (0-100).
-              6. Foco de ataque (wings, center, defense, counter, balanced).
+              1. Formação tática REAL utilizada no último jogo da Copa do Mundo 2026.
+              2. Escalação provável com os 11 titulares REAIS que jogaram no último jogo da Copa (nomes completos dos jogadores).
+              3. O jogador estrela atual (Key Player) desta Copa.
+              4. Intensidade/Agressividade do estilo de jogo (0-100).
+              5. Foco de ataque (wings, center, defense, counter, balanced).
+              6. Estilo de domínio de jogo: como este time controla a partida? Use um dos valores: "possession" (domina com a bola), "counter" (busca campo aberto no contra-ataque), "pressing" (pressiona alto e sufoca o adversário), "defensive" (bloco defensivo profundo esperando oportunidade), "balanced" (equilibrado).
+              7. Descrição curta em português (máx 80 caracteres) do estilo de domínio de jogo.
               
               Responda APENAS o JSON:
               {
                 "formation": "string",
                 "lineup": ["string", ...],
                 "keyPlayer": "string",
-                "possession": number,
                 "intensity": number,
-                "focus": "string"
+                "focus": "string",
+                "dominanceStyle": "possession|counter|pressing|defensive|balanced",
+                "dominanceDescription": "string"
               }`
             }
           ],
@@ -199,60 +194,75 @@ export class StatisticsPredictorService {
         } as any);
 
         const data = JSON.parse(response.choices[0].message.content || '{}');
-        
+
         return {
           formation: data.formation || '4-3-3',
-          lineup: data.lineup && data.lineup.length >= 11 ? data.lineup : ['Jogador 1', 'Jogador 2', 'Jogador 3', 'Jogador 4', 'Jogador 5', 'Jogador 6', 'Jogador 7', 'Jogador 8', 'Jogador 9', 'Jogador 10', 'Jogador 11'],
+          lineup: data.lineup && data.lineup.length >= 11
+            ? data.lineup
+            : Array.from({ length: 11 }, (_, i) => `Jogador ${i + 1}`),
           keyPlayer: data.keyPlayer || 'Destaque',
-          possession: data.possession || 50,
           intensity: data.intensity || 70,
           focus: data.focus || 'balanced',
-          heatmapData: this.generateHeatmap(data.focus || 'balanced')
+          dominanceStyle: data.dominanceStyle || 'balanced',
+          dominanceDescription: data.dominanceDescription || 'Estilo equilibrado',
+          heatmapData: this.generateHeatmap(data.focus || 'balanced'),
         };
       } catch (error) {
         this.logger.error(`Falha ao usar ${name} para ${teamName}: ${error.message}`);
-        continue; // Tenta o próximo modelo
+        continue;
       }
     }
 
-    // Fallback final se todos os modelos falharem
     this.logger.error(`Todos os modelos de IA falharam para ${teamName}. Usando fallback genérico.`);
     return {
       formation: '4-4-2',
-      lineup: ['Titular 1', 'Titular 2', 'Titular 3', 'Titular 4', 'Titular 5', 'Titular 6', 'Titular 7', 'Titular 8', 'Titular 9', 'Titular 10', 'Titular 11'],
+      lineup: Array.from({ length: 11 }, (_, i) => `Titular ${i + 1}`),
       keyPlayer: 'Jogador Chave',
-      possession: 50,
       intensity: 75,
       focus: 'balanced',
-      heatmapData: this.generateHeatmap('balanced')
+      dominanceStyle: 'balanced',
+      dominanceDescription: 'Estilo equilibrado',
+      heatmapData: this.generateHeatmap('balanced'),
     };
   }
 
-  private async generateMatchTacticalAnalysis(homeTeam: string, awayTeam: string, homeTactics: TacticalAnalysis, awayTactics: TacticalAnalysis): Promise<{ homePossession: number; analysis: string }> {
+  private async generateMatchTacticalAnalysis(
+    homeTeam: string,
+    awayTeam: string,
+    homeTactics: TacticalAnalysis,
+    awayTactics: TacticalAnalysis,
+  ): Promise<{ analysis: string }> {
+    const dominanceLabel = (style: string): string => {
+      const map: Record<string, string> = {
+        possession: 'jogo de posse',
+        counter: 'contra-ataque',
+        pressing: 'pressão alta',
+        defensive: 'bloco defensivo',
+        balanced: 'jogo equilibrado',
+      };
+      return map[style] ?? style;
+    };
+
     try {
       const response = await this.openai.chat.completions.create({
         model: 'llama-3.3-70b-versatile',
         messages: [
           {
             role: "system",
-            content: "Você é um analista tático de futebol de elite. Sua missão é realizar uma análise profunda do CONFRONTO DIRETO entre os dois times. Seja assertivo e evite neutralidade."
+            content: "Você é um analista tático de futebol de elite cobrindo a Copa do Mundo 2026. Seja assertivo, específico e evite neutralidade."
           },
           {
             role: "user",
-            content: `Analise o duelo tático: ${homeTeam} (${homeTactics.formation}) vs ${awayTeam} (${awayTactics.formation}). 
-            
-            Considere:
-            - O time da casa (${homeTeam}) tem como destaque ${homeTactics.keyPlayer} e joga com foco em ${homeTactics.focus}.
-            - O visitante (${awayTeam}) tem como destaque ${awayTactics.keyPlayer} e joga com foco em ${awayTactics.focus}.
-            
-            Determine:
-            1. Como a posse de bola será dividida entre os dois (a soma deve ser 100). IMPORTANTE: Evite dar 50-50. Decida quem terá o controle com base no estilo (ex: um time de posse contra um de contra-ataque).
-            2. Um insight estratégico real e específico sobre como as formações vão interagir (ex: 'O 4-3-3 ofensivo do ${homeTeam} deve explorar as costas dos alas no 3-5-2 do ${awayTeam}').
-            
+            content: `Analise o duelo tático na Copa do Mundo 2026: ${homeTeam} (${homeTactics.formation}) vs ${awayTeam} (${awayTactics.formation}).
+
+            ${homeTeam}: destaque ${homeTactics.keyPlayer}, domínio via ${dominanceLabel(homeTactics.dominanceStyle)}, foco em ${homeTactics.focus}.
+            ${awayTeam}: destaque ${awayTactics.keyPlayer}, domínio via ${dominanceLabel(awayTactics.dominanceStyle)}, foco em ${awayTactics.focus}.
+
+            Gere um insight estratégico REAL e ESPECÍFICO sobre como essas formações e estilos vão interagir neste jogo da Copa (ex: como o pressing do time A vai forçar erros no time B, ou como o contra-ataque do time B vai explorar os espaços deixados pelo time A).
+
             Responda APENAS o JSON:
             {
-              "homePossession": number,
-              "analysis": "string (máximo 350 caracteres em português focando no CONFRONTO REAL)"
+              "analysis": "string (máximo 350 caracteres em português, focado no confronto real da Copa)"
             }`
           }
         ],
@@ -260,22 +270,13 @@ export class StatisticsPredictorService {
       } as any);
 
       const data = JSON.parse(response.choices[0].message.content || '{}');
-      // Se a IA retornar 50, tentamos dar uma pequena vantagem baseada na intensidade para evitar neutralidade
-      let hPos = data.homePossession || 50;
-      if (hPos === 50) {
-        hPos = homeTactics.intensity >= awayTactics.intensity ? 51 : 49;
-      }
 
       return {
-        homePossession: hPos,
-        analysis: data.analysis || `Duelo estratégico entre ${homeTeam} e ${awayTeam}.`
+        analysis: data.analysis || `Confronto de alta intensidade entre ${homeTeam} e ${awayTeam} na Copa do Mundo 2026.`,
       };
     } catch (error) {
-      // Fallback dinâmico baseado na intensidade para nunca ser 50-50 exato
-      const fallbackPos = homeTactics.intensity >= awayTactics.intensity ? 52 : 48;
       return {
-        homePossession: fallbackPos,
-        analysis: `Confronto de alta intensidade entre ${homeTeam} e ${awayTeam}. A dinâmica será ditada pelo duelo entre as formações ${homeTactics.formation} e ${awayTactics.formation}.`
+        analysis: `Confronto direto entre ${homeTeam} (${homeTactics.formation}) e ${awayTeam} (${awayTactics.formation}) na Copa do Mundo 2026. As formações criam um embate tático entre os estilos de ${dominanceLabel(homeTactics.dominanceStyle)} e ${dominanceLabel(awayTactics.dominanceStyle)}.`,
       };
     }
   }
