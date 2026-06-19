@@ -139,11 +139,19 @@ function TacticalClash({ match }: { match: FootballMatch }) {
   if (!home || !away) return null;
 
   const hs = home.dominanceStyle ?? 'balanced';
-  const as_ = away.dominanceStyle ?? 'balanced';
+  const rawAway = away.dominanceStyle ?? 'balanced';
 
-  const p1 = home.gameDominanceProb ?? 50;
-  const p2 = away.gameDominanceProb ?? 50;
-  const homeLeads = p1 >= p2;
+  const CONTRAST: Record<string, string> = {
+    pressing:   'counter',
+    counter:    'possession',
+    possession: 'defensive',
+    defensive:  'pressing',
+    balanced:   'counter',
+  };
+
+  const as_ = rawAway === hs
+    ? (CONTRAST[hs] as typeof rawAway)
+    : rawAway;
 
   return (
     <div className="mt-3 pt-3 border-t border-slate-800">
@@ -163,19 +171,8 @@ function TacticalClash({ match }: { match: FootballMatch }) {
           </span>
         </div>
 
-        {/* Separador central com probabilidade */}
-        <div className="flex flex-col items-center shrink-0 gap-1">
-          <span className="text-slate-700 text-base leading-none">⚔️</span>
-          <div className="flex gap-0.5 items-end">
-            <span className={`text-[10px] font-black leading-none ${homeLeads ? 'text-white' : 'text-slate-600'}`}>
-              {p1}%
-            </span>
-            <span className="text-[9px] text-slate-700 leading-none">·</span>
-            <span className={`text-[10px] font-black leading-none ${!homeLeads ? 'text-white' : 'text-slate-600'}`}>
-              {p2}%
-            </span>
-          </div>
-        </div>
+        {/* Separador central */}
+        <span className="text-slate-700 text-base leading-none shrink-0">⚔️</span>
 
         {/* Time visitante */}
         <div className={`flex-1 flex flex-col items-center gap-1 px-2 py-2 rounded-xl border ${STYLE_BG[as_]}`}>
