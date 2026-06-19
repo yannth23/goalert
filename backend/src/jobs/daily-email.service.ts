@@ -101,10 +101,7 @@ export class DailyEmailService implements OnApplicationBootstrap {
 
     const users = await this.prisma.user.findMany({
       where: {
-        OR: [
-          { preferences: { receiveDailyNotifications: true } },
-          { preferences: { receiveTelegramNotifications: true } },
-        ],
+        preferences: { receiveDailyNotifications: true },
       },
       include: { favoriteTeams: true, preferences: true },
     });

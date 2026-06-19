@@ -60,11 +60,5 @@ export class UserService {
     });
   }
 
-  async updateTelegram(userId: string, telegramChatId: string | null, receiveTelegramNotifications: boolean) {
-    return this.prisma.userPreference.upsert({
-      where:  { userId },
-      update: { telegramChatId, receiveTelegramNotifications },
-      create: { userId, telegramChatId, receiveTelegramNotifications },
-    });
-  }
+  // Telegram removido
 }
