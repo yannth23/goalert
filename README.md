@@ -69,6 +69,7 @@ FOOTBALL_DATA_API_KEY="YOUR_FOOTBALL_API_KEY" # Key for football-data.org
 ZAPI_INSTANCE_ID="YOUR_INSTANCE_ID"  # ID da instância no painel Z-API
 ZAPI_TOKEN="YOUR_INSTANCE_TOKEN"     # Token da instância
 ZAPI_CLIENT_TOKEN="YOUR_CLIENT_TOKEN" # Client Token da conta (Conta > Security)
+GROQ_API_KEY="YOUR_GROQ_API_KEY" # Get it for free at https://console.groq.com
 ```
 
 ### Installation

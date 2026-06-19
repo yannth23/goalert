@@ -39,7 +39,8 @@ export class StatisticsPredictorService {
 
   constructor(private readonly prisma: PrismaService) {
     this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+      apiKey: process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY,
+      baseURL: 'https://api.groq.com/openai/v1',
     });
   }
 
@@ -150,7 +151,7 @@ export class StatisticsPredictorService {
   private async generateSimulatedTactics(teamName: string): Promise<TacticalAnalysis> {
     try {
       const response = await this.openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "llama3-8b-8192",
         messages: [
           {
             role: "system",
@@ -171,7 +172,7 @@ export class StatisticsPredictorService {
           }
         ],
         response_format: { type: "json_object" }
-      });
+      } as any);
 
       const data = JSON.parse(response.choices[0].message.content || '{}');
       
