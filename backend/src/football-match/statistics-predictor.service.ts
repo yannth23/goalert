@@ -239,7 +239,7 @@ export class StatisticsPredictorService {
 
     await this.prisma.footballMatch.update({
       where: { id: matchId },
-      data: {
+        data: {
         predictedGoalsHome: predictions.predictedGoalsHome,
         predictedGoalsAway: predictions.predictedGoalsAway,
         predictedCards: predictions.predictedCards,
