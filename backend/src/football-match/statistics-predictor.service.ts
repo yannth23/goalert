@@ -49,6 +49,7 @@ export class StatisticsPredictorService {
    * Considera apenas jogos finalizados (status = 'FT').
    */
   async getTeamStatistics(teamName: string, limit: number = 10): Promise<TeamStatistics> {
+    // Busca em todas as competições, não apenas na atual
     const matches = await this.prisma.footballMatch.findMany({
       where: {
         status: 'FT',
@@ -138,13 +139,21 @@ export class StatisticsPredictorService {
     // Predição de faltas: média das faltas dos dois times
     const predictedFouls = Math.round((homeStats.averageFouls + awayStats.averageFouls) / 2);
 
+    const homeTactics = await this.generateSimulatedTactics(homeTeam);
+    const awayTactics = await this.generateSimulatedTactics(awayTeam);
+
+    // Normalização da Posse de Bola: A soma deve ser 100%
+    const totalPossession = homeTactics.possession + awayTactics.possession;
+    homeTactics.possession = Math.round((homeTactics.possession / totalPossession) * 100);
+    awayTactics.possession = 100 - homeTactics.possession;
+
     return {
       predictedGoalsHome: Math.max(0, predictedGoalsHome),
       predictedGoalsAway: Math.max(0, predictedGoalsAway),
       predictedCards: Math.max(0, predictedCards),
       predictedFouls: Math.max(0, predictedFouls),
-      homeTactics: await this.generateSimulatedTactics(homeTeam),
-      awayTactics: await this.generateSimulatedTactics(awayTeam),
+      homeTactics,
+      awayTactics,
     };
   }
 

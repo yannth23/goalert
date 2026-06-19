@@ -66,23 +66,36 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
 
       <div>
         <h5 className="text-[10px] uppercase text-slate-500 font-bold mb-3 tracking-widest">Mapa de Calor (Zonas de Ação)</h5>
-        <div className="relative aspect-[3/2] bg-green-900/20 rounded-xl border-2 border-green-800/30 overflow-hidden">
-          {/* Campo de futebol simplificado */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-full h-[2px] bg-green-800/20" />
-            <div className="w-24 h-24 rounded-full border-2 border-green-800/20" />
+        <div className="relative aspect-[3/2] bg-emerald-950/40 rounded-xl border-2 border-emerald-800/40 overflow-hidden shadow-inner">
+          {/* Campo de futebol realista */}
+          <div className="absolute inset-0 border-2 border-white/10 m-2 pointer-events-none">
+            {/* Linha de meio campo */}
+            <div className="absolute left-1/2 top-0 bottom-0 w-[1px] bg-white/10" />
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full border border-white/10" />
+            
+            {/* Grande área esquerda */}
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-16 h-32 border-r border-y border-white/10" />
+            {/* Pequena área esquerda */}
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-6 h-16 border-r border-y border-white/10" />
+            
+            {/* Grande área direita */}
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-16 h-32 border-l border-y border-white/10" />
+            {/* Pequena área direita */}
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-16 border-l border-y border-white/10" />
           </div>
+
           {/* Heatmap points */}
           {data.heatmapData.map((point, i) => (
             <div
               key={i}
-              className="absolute rounded-full blur-xl"
+              className="absolute rounded-full blur-2xl opacity-60"
               style={{
                 left: `${point.x}%`,
                 top: `${point.y}%`,
-                width: '40px',
-                height: '40px',
-                backgroundColor: `rgba(234, 179, 8, ${point.value * 0.6})`,
+                width: '60px',
+                height: '60px',
+                transform: 'translate(-50%, -50%)',
+                background: `radial-gradient(circle, rgba(251, 191, 36, ${point.value}) 0%, rgba(251, 191, 36, 0) 70%)`,
               }}
             />
           ))}
