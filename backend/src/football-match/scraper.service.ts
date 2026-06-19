@@ -6,6 +6,25 @@ import { translateTeam } from './translation.util';
 const SCRAPER_TIMEOUT_MS = 7_000;
 const CACHE_TTL_SECONDS  = 90;
 
+export interface ScrapedH2HMatch {
+  date: string;
+  homeTeam: string;
+  awayTeam: string;
+  homeScore: number;
+  awayScore: number;
+  championship: string;
+}
+
+export interface ScrapedH2H {
+  homeWins: number;
+  draws: number;
+  awayWins: number;
+  totalGoalsHome: number;
+  totalGoalsAway: number;
+  totalMatches: number;
+  recentMatches: ScrapedH2HMatch[];
+}
+
 // SofaScore sometimes uses different names — map the most common divergences
 const SCRAPER_ALIASES: Record<string, string> = {
   'USA':              'Estados Unidos',
@@ -268,6 +287,118 @@ export class ScraperService {
     } catch (err: any) {
       this.logger.warn(`[scraper] falha ao buscar escalação de ${teamName}: ${err.message}`);
       return [];
+    }
+  }
+
+  // ── H2H scraping ───────────────────────────────────────────────────────────
+
+  /**
+   * Busca o histórico de confrontos diretos entre dois times via Sofascore.
+   * Retorna null se falhar — o chamador deve cair no banco de dados.
+   */
+  async scrapeH2H(team1Name: string, team2Name: string): Promise<ScrapedH2H | null> {
+    const cacheKey = `h2h:${[team1Name, team2Name].map(t => t.toLowerCase().replace(/\s+/g, '-')).sort().join('_vs_')}`;
+    try {
+      const cached = await this.redis.getJson<ScrapedH2H>(cacheKey);
+      if (cached) {
+        this.logger.log(`[scraper] h2h cache hit: ${team1Name} vs ${team2Name}`);
+        return cached;
+      }
+    } catch {}
+
+    const sofascoreHeaders = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+      'Referer': 'https://www.sofascore.com/',
+      'Accept': 'application/json',
+    };
+
+    try {
+      // 1. Busca IDs dos dois times em paralelo
+      const [res1, res2] = await Promise.all([
+        axios.get(`https://api.sofascore.com/api/v1/search/all?q=${encodeURIComponent(team1Name)}&page=0`,
+          { headers: sofascoreHeaders, timeout: SCRAPER_TIMEOUT_MS }),
+        axios.get(`https://api.sofascore.com/api/v1/search/all?q=${encodeURIComponent(team2Name)}&page=0`,
+          { headers: sofascoreHeaders, timeout: SCRAPER_TIMEOUT_MS }),
+      ]);
+
+      const team1Result = (res1.data?.results ?? []).find((r: any) => r.type === 'team');
+      const team2Result = (res2.data?.results ?? []).find((r: any) => r.type === 'team');
+
+      if (!team1Result || !team2Result) {
+        this.logger.warn(`[scraper] h2h: time não encontrado — ${!team1Result ? team1Name : team2Name}`);
+        return null;
+      }
+
+      const team1Id: number = team1Result.entity.id;
+      const team2Id: number = team2Result.entity.id;
+
+      // 2. Busca últimos eventos do time1 (várias páginas para ter histórico suficiente)
+      const pages = await Promise.all([0, 1, 2].map(p =>
+        axios.get(`https://api.sofascore.com/api/v1/team/${team1Id}/events/last/${p}`,
+          { headers: sofascoreHeaders, timeout: SCRAPER_TIMEOUT_MS })
+          .then(r => r.data?.events ?? [])
+          .catch(() => []),
+      ));
+      const allEvents: any[] = pages.flat();
+
+      // 3. Filtra apenas confrontos entre os dois times
+      const h2hEvents = allEvents.filter((e: any) =>
+        (e.homeTeam?.id === team1Id && e.awayTeam?.id === team2Id) ||
+        (e.homeTeam?.id === team2Id && e.awayTeam?.id === team1Id),
+      );
+
+      if (!h2hEvents.length) {
+        this.logger.warn(`[scraper] h2h: nenhum confronto encontrado entre ${team1Name} e ${team2Name}`);
+        return null;
+      }
+
+      // 4. Processa estatísticas
+      let homeWins = 0, draws = 0, awayWins = 0;
+      let totalGoalsHome = 0, totalGoalsAway = 0;
+
+      const recentMatches: ScrapedH2HMatch[] = h2hEvents.slice(0, 10).map((e: any) => {
+        const hScore: number = e.homeScore?.current ?? e.homeScore?.normaltime ?? 0;
+        const aScore: number = e.awayScore?.current ?? e.awayScore?.normaltime ?? 0;
+        const isTeam1Home: boolean = e.homeTeam?.id === team1Id;
+        const t1Score = isTeam1Home ? hScore : aScore;
+        const t2Score = isTeam1Home ? aScore : hScore;
+
+        totalGoalsHome += t1Score;
+        totalGoalsAway += t2Score;
+
+        if (t1Score > t2Score) homeWins++;
+        else if (t1Score < t2Score) awayWins++;
+        else draws++;
+
+        const ts: number = e.startTimestamp ?? 0;
+        const date = ts ? new Date(ts * 1000).toISOString().split('T')[0] : '—';
+        const tname: string = e.tournament?.name ?? e.tournament?.uniqueTournament?.name ?? '';
+
+        return {
+          date,
+          homeTeam: normalizeName(e.homeTeam?.name ?? ''),
+          awayTeam: normalizeName(e.awayTeam?.name ?? ''),
+          homeScore: hScore,
+          awayScore: aScore,
+          championship: tname,
+        };
+      });
+
+      const result: ScrapedH2H = {
+        homeWins, draws, awayWins,
+        totalGoalsHome, totalGoalsAway,
+        totalMatches: h2hEvents.length,
+        recentMatches,
+      };
+
+      // Cache por 12h — histórico não muda com frequência
+      await this.redis.setJson(cacheKey, result, 12 * 60 * 60).catch(() => {});
+      this.logger.log(`[scraper] h2h obtido: ${team1Name} vs ${team2Name} — ${h2hEvents.length} jogos`);
+
+      return result;
+    } catch (err: any) {
+      this.logger.warn(`[scraper] falha ao buscar h2h ${team1Name} vs ${team2Name}: ${err.message}`);
+      return null;
     }
   }
 }

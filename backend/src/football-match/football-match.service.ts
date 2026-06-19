@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { FootballApiService } from './football-api.service';
+import { ScraperService } from './scraper.service';
 import { getTodayRange, mapMatchToDto } from '../shared';
 
 const LIVE_STATUSES       = new Set(['1H', 'HT', '2H', 'ET', 'PEN']);
@@ -28,10 +29,13 @@ export interface H2HResult {
 
 @Injectable()
 export class FootballMatchService {
+  private readonly logger = new Logger(FootballMatchService.name);
+
   constructor(
     private readonly prisma:              PrismaService,
     private readonly redis:               RedisService,
     private readonly footballApiService:  FootballApiService,
+    private readonly scraper:             ScraperService,
   ) {}
 
   async getTodayMatches() {
@@ -89,6 +93,29 @@ export class FootballMatchService {
   }
 
   async getHeadToHead(team1: string, team2: string): Promise<H2HResult> {
+    // 1. Tenta via scraping (Sofascore) — histórico real
+    try {
+      const scraped = await this.scraper.scrapeH2H(team1, team2);
+      if (scraped && scraped.totalMatches > 0) {
+        this.logger.log(`[h2h] dados do Sofascore: ${team1} vs ${team2} — ${scraped.totalMatches} jogos`);
+        return {
+          homeTeam: team1,
+          awayTeam: team2,
+          homeWins:       scraped.homeWins,
+          draws:          scraped.draws,
+          awayWins:       scraped.awayWins,
+          totalGoalsHome: scraped.totalGoalsHome,
+          totalGoalsAway: scraped.totalGoalsAway,
+          totalMatches:   scraped.totalMatches,
+          recentMatches:  scraped.recentMatches,
+        };
+      }
+    } catch (err: any) {
+      this.logger.warn(`[h2h] scraping falhou, usando banco: ${err.message}`);
+    }
+
+    // 2. Fallback: banco de dados local
+    this.logger.log(`[h2h] usando banco de dados para ${team1} vs ${team2}`);
     const matches = await this.prisma.footballMatch.findMany({
       where: {
         status: 'FT',
@@ -101,11 +128,8 @@ export class FootballMatchService {
       take: 20,
     });
 
-    let homeWins = 0;
-    let draws = 0;
-    let awayWins = 0;
-    let totalGoalsHome = 0;
-    let totalGoalsAway = 0;
+    let homeWins = 0, draws = 0, awayWins = 0;
+    let totalGoalsHome = 0, totalGoalsAway = 0;
 
     for (const m of matches) {
       const hScore = m.homeScore ?? 0;
@@ -124,25 +148,20 @@ export class FootballMatchService {
       }
     }
 
-    const recentMatches = matches.slice(0, 5).map(m => ({
-      date: m.date.toISOString().split('T')[0],
-      homeTeam: m.homeTeam,
-      awayTeam: m.awayTeam,
-      homeScore: m.homeScore ?? 0,
-      awayScore: m.awayScore ?? 0,
-      championship: m.championship,
-    }));
-
     return {
       homeTeam: team1,
       awayTeam: team2,
-      homeWins,
-      draws,
-      awayWins,
-      totalGoalsHome,
-      totalGoalsAway,
+      homeWins, draws, awayWins,
+      totalGoalsHome, totalGoalsAway,
       totalMatches: matches.length,
-      recentMatches,
+      recentMatches: matches.slice(0, 5).map(m => ({
+        date: m.date.toISOString().split('T')[0],
+        homeTeam: m.homeTeam,
+        awayTeam: m.awayTeam,
+        homeScore: m.homeScore ?? 0,
+        awayScore: m.awayScore ?? 0,
+        championship: m.championship,
+      })),
     };
   }
 
