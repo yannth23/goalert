@@ -235,7 +235,7 @@ export class StatisticsPredictorService {
         messages: [
           {
             role: "system",
-            content: "Você é um analista tático de futebol de elite. Sua missão é realizar uma análise profunda do CONFRONTO DIRETO entre os dois times."
+            content: "Você é um analista tático de futebol de elite. Sua missão é realizar uma análise profunda do CONFRONTO DIRETO entre os dois times. Seja assertivo e evite neutralidade."
           },
           {
             role: "user",
@@ -246,13 +246,13 @@ export class StatisticsPredictorService {
             - O visitante (${awayTeam}) tem como destaque ${awayTactics.keyPlayer} e joga com foco em ${awayTactics.focus}.
             
             Determine:
-            1. Como a posse de bola será dividida entre os dois (a soma deve ser 100).
-            2. Um insight estratégico real sobre como as formações vão interagir (ex: se o 4-3-3 vai sofrer contra o 3-5-2 no meio campo).
+            1. Como a posse de bola será dividida entre os dois (a soma deve ser 100). IMPORTANTE: Evite dar 50-50. Decida quem terá o controle com base no estilo (ex: um time de posse contra um de contra-ataque).
+            2. Um insight estratégico real e específico sobre como as formações vão interagir (ex: 'O 4-3-3 ofensivo do ${homeTeam} deve explorar as costas dos alas no 3-5-2 do ${awayTeam}').
             
             Responda APENAS o JSON:
             {
               "homePossession": number,
-              "analysis": "string (máximo 350 caracteres em português focando no CONFRONTO)"
+              "analysis": "string (máximo 350 caracteres em português focando no CONFRONTO REAL)"
             }`
           }
         ],
