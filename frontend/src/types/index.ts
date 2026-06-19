@@ -87,3 +87,47 @@ export interface Scorer {
   goals: number;
   assists: number;
 }
+
+export interface TeamReportProfile {
+  formation: string;
+  keyPlayer: string;
+  intensity: number;
+  dominanceStyle: 'possession' | 'counter' | 'pressing' | 'defensive';
+  description: string;
+}
+
+export interface TeamReportStatistics {
+  matchesPlayed: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDifference: number;
+  averageGoalsPerMatch: number;
+  averageXG: number;
+}
+
+export interface TeamReportMatch {
+  date: string;
+  opponent: string;
+  result: string;
+  score: string;
+  tactics: string;
+}
+
+export interface TeamReportWebInsights {
+  recentNews: string[];
+  pressAnalysis: string;
+  teamSentiment: string;
+}
+
+export interface TeamReport {
+  teamName: string;
+  lastUpdated: string;
+  profile: TeamReportProfile;
+  statistics: TeamReportStatistics;
+  recentMatches: TeamReportMatch[];
+  webInsights: TeamReportWebInsights;
+  aiAnalysis: string;
+}

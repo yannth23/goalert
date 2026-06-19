@@ -96,4 +96,7 @@ export const api = {
 
   getUser: (userId: string) =>
     request<{ id: string; email: string; name?: string; favoriteTeams: { id: string; teamName: string }[]; preferences: { receiveDailyNotifications: boolean; receiveWhatsappNotifications: boolean; whatsappNumber: string | null; receiveTelegramNotifications: boolean; telegramChatId: string | null } | null }>(`/users/${userId}`),
+
+  getTeamReport: (teamName: string) =>
+    request<any>(`/matches/team/${encodeURIComponent(teamName)}/report`),
 };

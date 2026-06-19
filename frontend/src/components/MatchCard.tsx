@@ -241,7 +241,7 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
               : <span className="text-xl leading-none">{flag1}</span>
           )}
           <Link
-            href={`/pais/${encodeURIComponent(match.team1)}`}
+            href={`/selecoes/${encodeURIComponent(match.team1)}`}
             className="font-bold text-white text-sm text-right leading-tight truncate max-w-full hover:text-yellow-400 transition-colors"
           >
             {traduzirTime(match.team1)}
@@ -272,7 +272,7 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
               : <span className="text-xl leading-none">{flag2}</span>
           )}
           <Link
-            href={`/pais/${encodeURIComponent(match.team2)}`}
+            href={`/selecoes/${encodeURIComponent(match.team2)}`}
             className="font-bold text-white text-sm leading-tight truncate max-w-full hover:text-yellow-400 transition-colors"
           >
             {traduzirTime(match.team2)}

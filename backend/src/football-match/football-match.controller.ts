@@ -1,6 +1,7 @@
-import { Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Query, UseGuards, Param } from '@nestjs/common';
 import { FootballMatchService } from './football-match.service';
 import { FootballApiService } from './football-api.service';
+import { TeamReportService } from './team-report.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('matches')
@@ -8,6 +9,7 @@ export class FootballMatchController {
   constructor(
     private readonly footballMatchService: FootballMatchService,
     private readonly footballApiService:   FootballApiService,
+    private readonly teamReportService:    TeamReportService,
   ) {}
 
   @Get()
@@ -39,4 +41,10 @@ export class FootballMatchController {
   @Post('sync')
   @UseGuards(JwtAuthGuard)
   syncMatches() { return this.footballApiService.syncTodayMatches(); }
+
+  /** Get comprehensive team report with tactics, statistics, and web insights */
+  @Get('team/:teamName/report')
+  getTeamReport(@Param('teamName') teamName: string) {
+    return this.teamReportService.getTeamReport(teamName);
+  }
 }
