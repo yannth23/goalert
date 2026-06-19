@@ -19,59 +19,6 @@ const DOMINANCE_CONFIG: Record<string, {
   balanced:   { label: 'Jogo Equilibrado',    icon: '⚖️', color: 'text-green-400',  bg: 'bg-green-950/40',  border: 'border-green-800/50'  },
 };
 
-function DominanceBar({ team1, team2, prob1, prob2 }: {
-  team1: string; team2: string; prob1: number; prob2: number;
-}) {
-  const dominant = prob1 >= prob2 ? team1 : team2;
-  const dominantProb = Math.max(prob1, prob2);
-
-  return (
-    <div className="bg-slate-800/30 border border-slate-700/40 rounded-2xl p-5">
-      <p className="text-[10px] uppercase text-slate-500 font-bold tracking-widest mb-4 text-center">
-        Probabilidade de Domínio do Jogo
-      </p>
-
-      {/* Veredicto */}
-      <div className="text-center mb-4">
-        <p className="text-slate-400 text-xs mb-1">Provável controlador da partida</p>
-        <p className="text-white font-black text-lg">{dominant}</p>
-        <p className="text-indigo-400 font-black text-2xl">{dominantProb}%</p>
-      </div>
-
-      {/* Barra split */}
-      <div className="mb-2">
-        <div className="flex rounded-full overflow-hidden h-4">
-          <div
-            className="bg-gradient-to-r from-green-600 to-green-400 flex items-center justify-end pr-2 transition-all duration-700"
-            style={{ width: `${prob1}%` }}
-          >
-            {prob1 >= 20 && (
-              <span className="text-[10px] font-black text-green-900">{prob1}%</span>
-            )}
-          </div>
-          <div
-            className="bg-gradient-to-r from-blue-500 to-blue-400 flex items-center justify-start pl-2 transition-all duration-700"
-            style={{ width: `${prob2}%` }}
-          >
-            {prob2 >= 20 && (
-              <span className="text-[10px] font-black text-blue-900">{prob2}%</span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Labels */}
-      <div className="flex justify-between">
-        <span className={`text-xs font-bold ${prob1 >= prob2 ? 'text-green-400' : 'text-slate-400'}`}>
-          {team1}
-        </span>
-        <span className={`text-xs font-bold ${prob2 > prob1 ? 'text-blue-400' : 'text-slate-400'}`}>
-          {team2}
-        </span>
-      </div>
-    </div>
-  );
-}
 
 export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalProps) {
   const [h2h, setH2h] = useState<H2HData | null>(null);
@@ -297,13 +244,21 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
 
         <div className="p-8 space-y-6">
 
-          {/* 1. Barra de Domínio — destaque principal */}
-          <DominanceBar
-            team1={match.team1}
-            team2={match.team2}
-            prob1={tactics.home.gameDominanceProb ?? 50}
-            prob2={tactics.away.gameDominanceProb ?? 50}
-          />
+          {/* 1. Provável dominante */}
+          {(() => {
+            const p1 = tactics.home.gameDominanceProb ?? 50;
+            const p2 = tactics.away.gameDominanceProb ?? 50;
+            const dominant = p1 >= p2 ? match.team1 : match.team2;
+            const style = p1 >= p2 ? tactics.home.dominanceStyle : tactics.away.dominanceStyle;
+            const cfg = DOMINANCE_CONFIG[style] ?? DOMINANCE_CONFIG['balanced'];
+            return (
+              <div className="flex items-center gap-2 bg-slate-800/30 border border-slate-700/40 rounded-xl px-4 py-3">
+                <span className="text-[10px] uppercase text-slate-500 font-bold tracking-widest shrink-0">Provável dominante:</span>
+                <span className="text-base leading-none">{cfg.icon}</span>
+                <span className="text-sm font-black text-white">{dominant}</span>
+              </div>
+            );
+          })()}
 
           {/* 2. Estilos lado a lado */}
           <div className="bg-slate-800/20 border border-slate-700/30 rounded-2xl p-4">
