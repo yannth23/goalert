@@ -170,19 +170,19 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
       {/* Mapa de Calor */}
       <div>
         <h5 className="text-[10px] uppercase text-slate-500 font-bold mb-3 tracking-widest">Zonas de Ação</h5>
-        <div className="relative aspect-[3/2] bg-emerald-950/40 rounded-xl border-2 border-emerald-800/40 overflow-hidden shadow-inner">
-          <div className="absolute inset-0 border-2 border-white/10 m-2 pointer-events-none">
+        <div className="relative aspect-[3/2] bg-[#0a1a0f] rounded-xl border-2 border-emerald-700/60 overflow-hidden shadow-inner">
+          <div className="absolute inset-0 border-2 border-white/20 m-2 pointer-events-none">
             <div className="absolute left-1/2 top-0 bottom-0 w-[1px] bg-white/10" />
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full border border-white/10" />
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-16 h-32 border-r border-y border-white/10" />
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-6 h-16 border-r border-y border-white/10" />
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-16 h-32 border-l border-y border-white/10" />
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-16 border-l border-y border-white/10" />
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full border border-white/20" />
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-16 h-32 border-r border-y border-white/20" />
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-6 h-16 border-r border-y border-white/20" />
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-16 h-32 border-l border-y border-white/20" />
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-16 border-l border-y border-white/20" />
           </div>
           {data.heatmapData.map((point, i) => (
             <div
               key={i}
-              className="absolute rounded-full blur-2xl opacity-60"
+              className="absolute rounded-full blur-md opacity-95"
               style={{
                 left: `${point.x}%`, top: `${point.y}%`,
                 width: '60px', height: '60px',
