@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import axios from 'axios';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
@@ -142,8 +143,8 @@ export class FootballApiService {
           predictedGoalsAway: predictions.predictedGoalsAway,
           predictedCards:     predictions.predictedCards,
           predictedFouls:     predictions.predictedFouls,
-          homeTactics:        predictions.homeTactics,
-          awayTactics:        predictions.awayTactics,
+          homeTactics:        predictions.homeTactics as unknown as Prisma.InputJsonValue,
+          awayTactics:        predictions.awayTactics as unknown as Prisma.InputJsonValue,
         },
         create: {
           externalId:   match.id.toString(),
@@ -160,8 +161,8 @@ export class FootballApiService {
           predictedGoalsAway: predictions.predictedGoalsAway,
           predictedCards:     predictions.predictedCards,
           predictedFouls:     predictions.predictedFouls,
-          homeTactics:        predictions.homeTactics,
-          awayTactics:        predictions.awayTactics,
+          homeTactics:        predictions.homeTactics as unknown as Prisma.InputJsonValue,
+          awayTactics:        predictions.awayTactics as unknown as Prisma.InputJsonValue,
         },
       });
 
