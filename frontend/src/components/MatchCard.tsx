@@ -117,8 +117,8 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
   const isFinished = match.status === 'FT';
   const hasScore = match.team1Score !== undefined && match.team2Score !== undefined;
 
-  const flag1 = FLAGS[match.team1] ?? '';
-  const flag2 = FLAGS[match.team2] ?? '';
+  const flag1 = match.team1Flag || FLAGS[match.team1] || '';
+  const flag2 = match.team2Flag || FLAGS[match.team2] || '';
 
   return (
     <div className={`bg-slate-900 border rounded-2xl p-5 transition-all ${
@@ -140,7 +140,11 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
 
       <div className="flex items-center justify-between gap-4">
         <div className="flex-1 flex flex-col items-end gap-0.5">
-          {flag1 && <span className="text-xl leading-none">{flag1}</span>}
+          {flag1 && (
+            flag1.startsWith('http') 
+              ? <img src={flag1} alt={match.team1} className="w-6 h-4 object-contain" />
+              : <span className="text-xl leading-none">{flag1}</span>
+          )}
           <span className="font-bold text-white text-sm text-right leading-tight">
             {traduzirTime(match.team1)}
           </span>
@@ -164,12 +168,39 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
         </div>
 
         <div className="flex-1 flex flex-col items-start gap-0.5">
-          {flag2 && <span className="text-xl leading-none">{flag2}</span>}
+          {flag2 && (
+            flag2.startsWith('http') 
+              ? <img src={flag2} alt={match.team2} className="w-6 h-4 object-contain" />
+              : <span className="text-xl leading-none">{flag2}</span>
+          )}
           <span className="font-bold text-white text-sm leading-tight">
             {traduzirTime(match.team2)}
           </span>
         </div>
       </div>
+
+      {match.predictions && (
+        <div className="mt-4 pt-4 border-t border-slate-800">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Predições Estatísticas</span>
+            <span className="text-[10px] bg-indigo-950 text-indigo-400 px-2 py-0.5 rounded-full font-bold">AI Insight</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-slate-800/50 p-2 rounded-lg text-center">
+              <span className="block text-[10px] text-slate-500 mb-0.5">Gols</span>
+              <span className="text-xs font-bold text-white">{match.predictions.goalsHome.toFixed(1)} - {match.predictions.goalsAway.toFixed(1)}</span>
+            </div>
+            <div className="bg-slate-800/50 p-2 rounded-lg text-center">
+              <span className="block text-[10px] text-slate-500 mb-0.5">Cartões</span>
+              <span className="text-xs font-bold text-white">{match.predictions.cards}</span>
+            </div>
+            <div className="bg-slate-800/50 p-2 rounded-lg text-center">
+              <span className="block text-[10px] text-slate-500 mb-0.5">Faltas</span>
+              <span className="text-xs font-bold text-white">{match.predictions.fouls}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {highlighted && (
         <div className="mt-3 pt-3 border-t border-yellow-900/40 flex items-center gap-1.5 text-xs text-yellow-500 font-semibold">

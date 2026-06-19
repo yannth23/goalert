@@ -127,16 +127,29 @@ export class FootballApiService {
 
       const saved = await this.prisma.footballMatch.upsert({
         where:  { externalId: match.id.toString() },
-        update: { status: mappedStatus, homeScore, awayScore },
+        update: { 
+          status: mappedStatus, 
+          homeScore, 
+          awayScore,
+          homeFlag: match.homeTeam.crest,
+          awayFlag: match.awayTeam.crest,
+        },
         create: {
           externalId:   match.id.toString(),
           date:         utcToBrt(match.utcDate),
           championship: match.competition.name,
           homeTeam,
           awayTeam,
+          homeFlag:     match.homeTeam.crest,
+          awayFlag:     match.awayTeam.crest,
           status:       mappedStatus,
           homeScore,
           awayScore,
+          // Placeholder para predições
+          predictedGoalsHome: Math.random() * 3,
+          predictedGoalsAway: Math.random() * 3,
+          predictedCards:     Math.floor(Math.random() * 6),
+          predictedFouls:     Math.floor(Math.random() * 25),
         },
       });
 

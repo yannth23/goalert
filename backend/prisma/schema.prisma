@@ -57,10 +57,18 @@ model FootballMatch {
   championship String
   homeTeam     String
   awayTeam     String
+  homeFlag     String?
+  awayFlag     String?
   status       String
   homeScore    Int?
   awayScore    Int?
   externalId   String?  @unique
+  
+  // Predictive features
+  predictedGoalsHome  Float?
+  predictedGoalsAway  Float?
+  predictedCards      Float?
+  predictedFouls      Float?
 
   @@index([date])
   @@index([championship])

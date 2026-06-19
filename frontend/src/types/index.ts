@@ -23,10 +23,18 @@ export interface FootballMatch {
   championship: string;
   team1: string;
   team2: string;
+  team1Flag?: string;
+  team2Flag?: string;
   status: string;
   team1Score?: number;
   team2Score?: number;
   externalId?: string;
+  predictions?: {
+    goalsHome: number;
+    goalsAway: number;
+    cards: number;
+    fouls: number;
+  };
 }
 
 export interface AuthResponse {
