@@ -152,7 +152,7 @@ export class StatisticsPredictorService {
     const models = [
       { model: 'llama-3.3-70b-versatile', name: 'Groq Llama 3.3' },
       { model: 'mixtral-8x7b-32768', name: 'Groq Mixtral' },
-      { model: 'llama-3.1-70b-versatile', name: 'Groq Llama 3.1' },
+      { model: 'gemma2-9b-it', name: 'Groq Gemma 2' },
     ];
 
     for (const { model, name } of models) {
