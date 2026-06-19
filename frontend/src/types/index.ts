@@ -24,6 +24,7 @@ export interface TacticalAnalysis {
   intensity: number;
   dominanceStyle: 'possession' | 'counter' | 'pressing' | 'defensive' | 'balanced';
   dominanceDescription: string;
+  gameDominanceProb: number; // 0-100: quanto este time domina o jogo
   heatmapData: { x: number; y: number; value: number }[];
 }
 

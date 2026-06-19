@@ -10,54 +10,68 @@ interface TacticalAnalysisModalProps {
 }
 
 const DOMINANCE_CONFIG: Record<string, {
-  label: string;
-  icon: string;
-  color: string;
-  bg: string;
-  border: string;
-  description: string;
+  label: string; icon: string; color: string; bg: string; border: string;
 }> = {
-  possession: {
-    label: 'Domínio com a Bola',
-    icon: '⚽',
-    color: 'text-blue-400',
-    bg: 'bg-blue-950/40',
-    border: 'border-blue-800/50',
-    description: 'Controla o jogo com a bola nos pés',
-  },
-  counter: {
-    label: 'Contra-Ataque',
-    icon: '⚡',
-    color: 'text-yellow-400',
-    bg: 'bg-yellow-950/40',
-    border: 'border-yellow-800/50',
-    description: 'Busca campo aberto no contra-ataque',
-  },
-  pressing: {
-    label: 'Pressão Alta',
-    icon: '🔥',
-    color: 'text-orange-400',
-    bg: 'bg-orange-950/40',
-    border: 'border-orange-800/50',
-    description: 'Sufoca o adversário com pressão intensa',
-  },
-  defensive: {
-    label: 'Bloco Defensivo',
-    icon: '🛡️',
-    color: 'text-slate-400',
-    bg: 'bg-slate-800/40',
-    border: 'border-slate-700/50',
-    description: 'Defende profundo e explora espaços',
-  },
-  balanced: {
-    label: 'Jogo Equilibrado',
-    icon: '⚖️',
-    color: 'text-green-400',
-    bg: 'bg-green-950/40',
-    border: 'border-green-800/50',
-    description: 'Adaptável entre ataque e defesa',
-  },
+  possession: { label: 'Domínio com a Bola', icon: '⚽', color: 'text-blue-400',   bg: 'bg-blue-950/40',   border: 'border-blue-800/50'   },
+  counter:    { label: 'Contra-Ataque',       icon: '⚡', color: 'text-yellow-400', bg: 'bg-yellow-950/40', border: 'border-yellow-800/50' },
+  pressing:   { label: 'Pressão Alta',        icon: '🔥', color: 'text-orange-400', bg: 'bg-orange-950/40', border: 'border-orange-800/50' },
+  defensive:  { label: 'Bloco Defensivo',     icon: '🛡️', color: 'text-slate-400',  bg: 'bg-slate-800/40',  border: 'border-slate-700/50'  },
+  balanced:   { label: 'Jogo Equilibrado',    icon: '⚖️', color: 'text-green-400',  bg: 'bg-green-950/40',  border: 'border-green-800/50'  },
 };
+
+function DominanceBar({ team1, team2, prob1, prob2 }: {
+  team1: string; team2: string; prob1: number; prob2: number;
+}) {
+  const dominant = prob1 >= prob2 ? team1 : team2;
+  const dominantProb = Math.max(prob1, prob2);
+
+  return (
+    <div className="bg-slate-800/30 border border-slate-700/40 rounded-2xl p-5">
+      <p className="text-[10px] uppercase text-slate-500 font-bold tracking-widest mb-4 text-center">
+        Probabilidade de Domínio do Jogo
+      </p>
+
+      {/* Veredicto */}
+      <div className="text-center mb-4">
+        <p className="text-slate-400 text-xs mb-1">Provável controlador da partida</p>
+        <p className="text-white font-black text-lg">{dominant}</p>
+        <p className="text-indigo-400 font-black text-2xl">{dominantProb}%</p>
+      </div>
+
+      {/* Barra split */}
+      <div className="mb-2">
+        <div className="flex rounded-full overflow-hidden h-4">
+          <div
+            className="bg-gradient-to-r from-green-600 to-green-400 flex items-center justify-end pr-2 transition-all duration-700"
+            style={{ width: `${prob1}%` }}
+          >
+            {prob1 >= 20 && (
+              <span className="text-[10px] font-black text-green-900">{prob1}%</span>
+            )}
+          </div>
+          <div
+            className="bg-gradient-to-r from-blue-500 to-blue-400 flex items-center justify-start pl-2 transition-all duration-700"
+            style={{ width: `${prob2}%` }}
+          >
+            {prob2 >= 20 && (
+              <span className="text-[10px] font-black text-blue-900">{prob2}%</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Labels */}
+      <div className="flex justify-between">
+        <span className={`text-xs font-bold ${prob1 >= prob2 ? 'text-green-400' : 'text-slate-400'}`}>
+          {team1}
+        </span>
+        <span className={`text-xs font-bold ${prob2 > prob1 ? 'text-blue-400' : 'text-slate-400'}`}>
+          {team2}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalProps) {
   const [h2h, setH2h] = useState<H2HData | null>(null);
@@ -77,18 +91,20 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
       lineup: ['Alisson', 'Danilo', 'Marquinhos', 'Gabriel Magalhães', 'Guilherme Arana', 'André', 'Bruno Guimarães', 'Gerson', 'Rodrygo', 'Endrick', 'Vinícius Jr'],
       keyPlayer: 'Vinícius Jr',
       intensity: 85,
-      dominanceStyle: 'pressing',
+      dominanceStyle: 'pressing' as const,
       dominanceDescription: 'Pressão alta e transições rápidas',
+      gameDominanceProb: 72,
       heatmapData: [{ x: 50, y: 30, value: 0.8 }],
     },
     away: {
-      formation: '4-4-2',
-      lineup: ['Emiliano Martínez', 'Gonzalo Montiel', 'Cristian Romero', 'Lisandro Martínez', 'Nicolás Tagliafico', 'Nahuel Molina', 'Rodrigo De Paul', 'Enzo Fernández', 'Nicolás González', 'Julián Álvarez', 'Lionel Messi'],
-      keyPlayer: 'Lionel Messi',
-      intensity: 80,
-      dominanceStyle: 'counter',
-      dominanceDescription: 'Busca espaços no contra-ataque',
-      heatmapData: [{ x: 30, y: 30, value: 0.6 }],
+      formation: '4-5-1',
+      lineup: ['Josué Duverger', 'Steeven Saba', 'Frantzdy Pierrot', 'Mechack Jérôme', 'Carlens Arcus', 'Wilde-Donald Guerrier', 'Derrick Etienne', 'Duckens Nazon', 'Kevin Lafrance', 'Ronaldo Damus', 'Sergio Mevs'],
+      keyPlayer: 'Ronaldo Damus',
+      intensity: 62,
+      dominanceStyle: 'defensive' as const,
+      dominanceDescription: 'Bloco defensivo profundo buscando espaços',
+      gameDominanceProb: 28,
+      heatmapData: [{ x: 30, y: 70, value: 0.5 }],
     },
   };
 
@@ -96,10 +112,10 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
     const cfg = DOMINANCE_CONFIG[data.dominanceStyle] ?? DOMINANCE_CONFIG['balanced'];
     return (
       <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${cfg.bg} ${cfg.border}`}>
-        <span className="text-lg leading-none">{cfg.icon}</span>
+        <span className="text-base leading-none">{cfg.icon}</span>
         <div>
           <p className={`text-xs font-black uppercase tracking-wide ${cfg.color}`}>{cfg.label}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">{data.dominanceDescription || cfg.description}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">{data.dominanceDescription}</p>
         </div>
       </div>
     );
@@ -114,15 +130,15 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
         </span>
       </div>
 
-      {/* Domínio de Jogo */}
-      <div className="mb-6">
-        <span className="block text-[10px] uppercase text-slate-500 font-bold mb-2 tracking-widest">Domínio de Jogo</span>
+      {/* Estilo de Jogo */}
+      <div className="mb-5">
+        <span className="block text-[10px] uppercase text-slate-500 font-bold mb-2 tracking-widest">Estilo de Jogo</span>
         {renderDominanceBadge(data)}
       </div>
 
       {/* Intensidade */}
-      <div className="mb-6">
-        <div className="flex justify-between items-center mb-2">
+      <div className="mb-5">
+        <div className="flex justify-between items-center mb-1.5">
           <span className="text-[10px] uppercase text-slate-500 font-bold tracking-widest">Intensidade</span>
           <span className="text-sm font-black text-orange-400">{data.intensity.toFixed(0)}%</span>
         </div>
@@ -135,12 +151,12 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
       </div>
 
       {/* Escalação */}
-      <div className="mb-6">
+      <div className="mb-5">
         <h5 className="text-[10px] uppercase text-slate-500 font-bold mb-3 tracking-widest">Provável Escalação — Copa do Mundo 2026</h5>
-        <div className="grid grid-cols-1 gap-1.5">
+        <div className="space-y-1">
           {data.lineup.map((player, i) => (
             <div key={i} className="flex items-center gap-3 bg-slate-900/30 p-2 rounded-lg border border-slate-800/50">
-              <span className="w-5 h-5 flex items-center justify-center bg-slate-800 rounded text-[10px] font-bold text-slate-400">
+              <span className="w-5 h-5 flex items-center justify-center bg-slate-800 rounded text-[10px] font-bold text-slate-400 shrink-0">
                 {i + 1}
               </span>
               <span className={`text-sm font-medium ${player === data.keyPlayer ? 'text-yellow-400' : 'text-slate-300'}`}>
@@ -168,12 +184,10 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
               key={i}
               className="absolute rounded-full blur-2xl opacity-60"
               style={{
-                left: `${point.x}%`,
-                top: `${point.y}%`,
-                width: '60px',
-                height: '60px',
+                left: `${point.x}%`, top: `${point.y}%`,
+                width: '60px', height: '60px',
                 transform: 'translate(-50%, -50%)',
-                background: `radial-gradient(circle, rgba(251, 191, 36, ${point.value}) 0%, rgba(251, 191, 36, 0) 70%)`,
+                background: `radial-gradient(circle, rgba(251,191,36,${point.value}) 0%, rgba(251,191,36,0) 70%)`,
               }}
             />
           ))}
@@ -193,10 +207,9 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
         </div>
       );
     }
-
     if (!h2h || h2h.totalMatches === 0) {
       return (
-        <div className="mt-8 bg-slate-800/30 border border-slate-700/40 rounded-2xl p-6 text-center">
+        <div className="mt-8 bg-slate-800/30 border border-slate-700/40 rounded-2xl p-5 text-center">
           <p className="text-slate-500 text-sm">Nenhum confronto direto encontrado no histórico.</p>
         </div>
       );
@@ -212,8 +225,6 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
         <h4 className="text-[10px] uppercase text-slate-500 font-bold tracking-widest mb-5 text-center">
           Confronto Histórico — {h2h.totalMatches} {h2h.totalMatches === 1 ? 'jogo' : 'jogos'}
         </h4>
-
-        {/* Placar do H2H */}
         <div className="flex items-center justify-between mb-4 gap-2">
           <div className="text-center flex-1">
             <p className="text-white font-black text-sm mb-1">{match.team1}</p>
@@ -230,49 +241,31 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
             <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">Vitórias</p>
           </div>
         </div>
-
-        {/* Barra de percentual */}
-        <div className="flex rounded-full overflow-hidden h-2.5 mb-4">
-          {homeWinPct > 0 && (
-            <div className="bg-green-500 transition-all duration-700" style={{ width: `${homeWinPct}%` }} />
-          )}
-          {drawPct > 0 && (
-            <div className="bg-slate-500 transition-all duration-700" style={{ width: `${drawPct}%` }} />
-          )}
-          {awayWinPct > 0 && (
-            <div className="bg-blue-500 transition-all duration-700" style={{ width: `${awayWinPct}%` }} />
-          )}
+        <div className="flex rounded-full overflow-hidden h-2.5 mb-3">
+          {homeWinPct > 0 && <div className="bg-green-500" style={{ width: `${homeWinPct}%` }} />}
+          {drawPct    > 0 && <div className="bg-slate-500" style={{ width: `${drawPct}%`    }} />}
+          {awayWinPct > 0 && <div className="bg-blue-500"  style={{ width: `${awayWinPct}%` }} />}
         </div>
-
-        {/* Gols */}
         <div className="flex justify-between text-xs text-slate-500 mb-5">
-          <span>{h2h.totalGoalsHome} gols marcados</span>
-          <span>{h2h.totalGoalsAway} gols marcados</span>
+          <span>{h2h.totalGoalsHome} gols</span>
+          <span>{h2h.totalGoalsAway} gols</span>
         </div>
-
-        {/* Últimos confrontos */}
         {h2h.recentMatches.length > 0 && (
           <div>
-            <p className="text-[10px] uppercase text-slate-500 font-bold tracking-widest mb-3">Últimos Confrontos</p>
-            <div className="space-y-2">
+            <p className="text-[10px] uppercase text-slate-500 font-bold tracking-widest mb-2">Últimos Confrontos</p>
+            <div className="space-y-1.5">
               {h2h.recentMatches.map((m, i) => {
                 const isTeam1Home = m.homeTeam.toLowerCase().includes(match.team1.toLowerCase());
                 const t1Score = isTeam1Home ? m.homeScore : m.awayScore;
                 const t2Score = isTeam1Home ? m.awayScore : m.homeScore;
                 const winner = t1Score > t2Score ? match.team1 : t1Score < t2Score ? match.team2 : null;
                 return (
-                  <div key={i} className="flex items-center justify-between bg-slate-900/40 rounded-xl px-4 py-2.5 border border-slate-800/50">
+                  <div key={i} className="flex items-center justify-between bg-slate-900/40 rounded-xl px-4 py-2 border border-slate-800/50">
                     <span className="text-[11px] text-slate-500 w-20 shrink-0">{m.date}</span>
                     <div className="flex items-center gap-2 flex-1 justify-center">
-                      <span className={`text-xs font-bold ${winner === match.team1 ? 'text-green-400' : 'text-slate-300'}`}>
-                        {match.team1}
-                      </span>
-                      <span className="text-sm font-black text-white bg-slate-800 px-2 py-0.5 rounded-lg">
-                        {t1Score} – {t2Score}
-                      </span>
-                      <span className={`text-xs font-bold ${winner === match.team2 ? 'text-blue-400' : 'text-slate-300'}`}>
-                        {match.team2}
-                      </span>
+                      <span className={`text-xs font-bold ${winner === match.team1 ? 'text-green-400' : 'text-slate-300'}`}>{match.team1}</span>
+                      <span className="text-sm font-black text-white bg-slate-800 px-2 py-0.5 rounded-lg">{t1Score} – {t2Score}</span>
+                      <span className={`text-xs font-bold ${winner === match.team2 ? 'text-blue-400' : 'text-slate-300'}`}>{match.team2}</span>
                     </div>
                     <span className="text-[10px] text-slate-600 w-20 text-right shrink-0 truncate">{m.championship}</span>
                   </div>
@@ -288,54 +281,61 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
       <div className="bg-slate-900 border border-slate-800 w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl">
+
+        {/* Header */}
         <div className="sticky top-0 z-10 bg-slate-900/80 backdrop-blur-md p-6 border-b border-slate-800 flex justify-between items-center">
           <div>
             <h3 className="text-2xl font-black text-white">Análise Tática</h3>
             <p className="text-slate-500 text-sm font-medium">{match.team1} vs {match.team2} — Copa do Mundo 2026</p>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white"
-          >
+          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        {/* Painel de Domínio de Jogo */}
-        <div className="px-8 pt-6">
-          <div className="bg-slate-800/30 border border-slate-700/40 rounded-2xl p-5">
-            <h4 className="text-[10px] uppercase text-slate-500 font-bold tracking-widest mb-4 text-center">Domínio de Jogo — Confronto Direto</h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center">
-                <p className="text-white font-black text-sm mb-2">{match.team1}</p>
+        <div className="p-8 space-y-6">
+
+          {/* 1. Barra de Domínio — destaque principal */}
+          <DominanceBar
+            team1={match.team1}
+            team2={match.team2}
+            prob1={tactics.home.gameDominanceProb ?? 50}
+            prob2={tactics.away.gameDominanceProb ?? 50}
+          />
+
+          {/* 2. Estilos lado a lado */}
+          <div className="bg-slate-800/20 border border-slate-700/30 rounded-2xl p-4">
+            <p className="text-[10px] uppercase text-slate-500 font-bold tracking-widest mb-3 text-center">Como cada time vai jogar</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-white font-black text-xs mb-2 text-center">{match.team1}</p>
                 {renderDominanceBadge(tactics.home)}
               </div>
-              <div className="text-center">
-                <p className="text-white font-black text-sm mb-2">{match.team2}</p>
+              <div>
+                <p className="text-white font-black text-xs mb-2 text-center">{match.team2}</p>
                 {renderDominanceBadge(tactics.away)}
               </div>
             </div>
           </div>
-        </div>
 
-        <div className="p-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* 3. Insight da IA — específico para este jogo */}
+          <div className="bg-indigo-950/30 border border-indigo-900/50 rounded-2xl p-5">
+            <p className="text-[10px] uppercase text-indigo-400 font-bold tracking-widest mb-2">Insight Tático da IA — {match.team1} vs {match.team2}</p>
+            <p className="text-slate-300 text-sm leading-relaxed italic">
+              {match.aiAnalysis || `O confronto entre ${match.team1} (${tactics.home.formation}) e ${match.team2} (${tactics.away.formation}) será definido pelo duelo entre os estilos opostos de jogo de cada seleção na Copa do Mundo 2026.`}
+            </p>
+          </div>
+
+          {/* 4. Táticas individuais */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {renderTactics(match.team1, tactics.home)}
             {renderTactics(match.team2, tactics.away)}
           </div>
 
-          {/* Confronto Histórico H2H */}
+          {/* 5. Confronto Histórico */}
           {renderH2H()}
-
-          {/* Conclusão da IA */}
-          <div className="mt-8 bg-indigo-950/30 border border-indigo-900/50 rounded-3xl p-8 text-center">
-            <h4 className="text-indigo-400 font-black text-lg mb-2">Conclusão Estratégica da IA</h4>
-            <p className="text-slate-400 text-sm max-w-2xl mx-auto leading-relaxed italic">
-              {match.aiAnalysis || `Analisando o confronto entre ${match.team1} e ${match.team2} na Copa do Mundo 2026, o duelo das formações ${tactics.home.formation} e ${tactics.away.formation} define os estilos opostos de jogo.`}
-            </p>
-          </div>
         </div>
       </div>
     </div>
