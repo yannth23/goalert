@@ -23,6 +23,7 @@ export interface MatchDto {
     home: any;
     away: any;
   };
+  aiAnalysis?: string;
 }
 
 interface PrismaMatch {
@@ -43,6 +44,7 @@ interface PrismaMatch {
   predictedFouls: number | null;
   homeTactics: any;
   awayTactics: any;
+  aiAnalysis: string | null;
 }
 
 /** Maps a Prisma FootballMatch row to the frontend DTO. */
@@ -69,5 +71,6 @@ export function mapMatchToDto(m: PrismaMatch): MatchDto {
       home: m.homeTactics,
       away: m.awayTactics,
     } : undefined,
+    aiAnalysis: m.aiAnalysis ?? undefined,
   };
 }

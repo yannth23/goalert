@@ -145,6 +145,7 @@ export class FootballApiService {
           predictedFouls:     predictions.predictedFouls,
           homeTactics:        predictions.homeTactics as unknown as Prisma.InputJsonValue,
           awayTactics:        predictions.awayTactics as unknown as Prisma.InputJsonValue,
+          aiAnalysis:         predictions.aiAnalysis,
         },
         create: {
           externalId:   match.id.toString(),
@@ -163,6 +164,7 @@ export class FootballApiService {
           predictedFouls:     predictions.predictedFouls,
           homeTactics:        predictions.homeTactics as unknown as Prisma.InputJsonValue,
           awayTactics:        predictions.awayTactics as unknown as Prisma.InputJsonValue,
+          aiAnalysis:         predictions.aiAnalysis,
         },
       });
 

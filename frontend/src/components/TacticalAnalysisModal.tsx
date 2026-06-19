@@ -129,11 +129,9 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
           </div>
 
           <div className="mt-12 bg-indigo-950/30 border border-indigo-900/50 rounded-3xl p-8 text-center">
-            <h4 className="text-indigo-400 font-black text-lg mb-2">Conclusão Matemática do AI Insight</h4>
-            <p className="text-slate-400 text-sm max-w-2xl mx-auto leading-relaxed">
-              Baseado na formação {tactics.home.formation} do {match.team1} e no volume de jogo de {tactics.home.possession.toFixed(0)}%, 
-              espera-se uma partida com alta densidade no meio-campo. A probabilidade de {match.predictions?.goalsHome.toFixed(1)} gols para o mandante 
-              reflete a eficiência ofensiva de {tactics.home.keyPlayer}.
+            <h4 className="text-indigo-400 font-black text-lg mb-2">Conclusão Estratégica da IA</h4>
+            <p className="text-slate-400 text-sm max-w-2xl mx-auto leading-relaxed italic">
+              {match.aiAnalysis || `Analisando o confronto entre ${match.team1} e ${match.team2}, espera-se um duelo tático intenso entre as formações ${tactics.home.formation} e ${tactics.away.formation}. O desempenho de ${tactics.home.keyPlayer} será crucial para o resultado final.`}
             </p>
           </div>
         </div>

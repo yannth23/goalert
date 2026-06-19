@@ -30,6 +30,7 @@ interface PredictionResult {
   predictedFouls: number;
   homeTactics?: TacticalAnalysis;
   awayTactics?: TacticalAnalysis;
+  aiAnalysis?: string;
 }
 
 @Injectable()
@@ -147,6 +148,8 @@ export class StatisticsPredictorService {
     homeTactics.possession = Math.round((homeTactics.possession / totalPossession) * 100);
     awayTactics.possession = 100 - homeTactics.possession;
 
+    const aiAnalysis = await this.generateAiAnalysis(homeTeam, awayTeam, homeTactics, awayTactics);
+
     return {
       predictedGoalsHome: Math.max(0, predictedGoalsHome),
       predictedGoalsAway: Math.max(0, predictedGoalsAway),
@@ -154,6 +157,7 @@ export class StatisticsPredictorService {
       predictedFouls: Math.max(0, predictedFouls),
       homeTactics,
       awayTactics,
+      aiAnalysis,
     };
   }
 
@@ -165,7 +169,7 @@ export class StatisticsPredictorService {
     ];
 
     for (const { model, name } of models) {
-      const client = this.openai; // No projeto, 'openai' está configurado com o baseURL do Groq
+      const client = this.openai; 
       try {
         this.logger.log(`Tentando gerar táticas para ${teamName} usando ${name}...`);
         const response = await client.chat.completions.create({
@@ -173,12 +177,20 @@ export class StatisticsPredictorService {
           messages: [
             {
               role: "system",
-              content: "Você é um analista tático de futebol experiente. Forneça dados reais e precisos em formato JSON."
+              content: "Você é um analista tático de futebol de elite. Sua missão é fornecer análises REAIS e VARIADAS. Evite repetir formações como 4-2-3-1 se não for a realidade absoluta do time."
             },
             {
               role: "user",
-              content: `Forneça a formação tática provável, a escalação de 11 jogadores reais (nomes completos), o jogador chave, a posse de bola média esperada (0-100), a intensidade de jogo (0-100) e o foco tático (wings, center, defense, counter, balanced) para o time: ${teamName}.
-              Responda APENAS o JSON no formato:
+              content: `Analise a seleção: ${teamName}. 
+              Forneça:
+              1. Formação tática REAL atual (ex: 4-3-3, 3-5-2, 5-4-1, 4-4-2 losango).
+              2. Escalação provável com os 11 nomes REAIS e COMPLETOS.
+              3. O jogador estrela (Key Player).
+              4. Porcentagem de posse de bola esperada (0-100).
+              5. Intensidade/Agressividade (0-100).
+              6. Foco de ataque (wings, center, defense, counter, balanced).
+              
+              Responda APENAS o JSON:
               {
                 "formation": "string",
                 "lineup": ["string", ...],
@@ -194,13 +206,12 @@ export class StatisticsPredictorService {
 
         const data = JSON.parse(response.choices[0].message.content || '{}');
         
-        this.logger.log(`Táticas para ${teamName} geradas com sucesso via ${name}.`);
         return {
-          formation: data.formation || '4-4-2',
-          lineup: data.lineup && data.lineup.length > 0 ? data.lineup : ['Jogador 1', 'Jogador 2', 'Jogador 3', 'Jogador 4', 'Jogador 5', 'Jogador 6', 'Jogador 7', 'Jogador 8', 'Jogador 9', 'Jogador 10', 'Jogador 11'],
-          keyPlayer: data.keyPlayer || 'Destaque do Time',
+          formation: data.formation || '4-3-3',
+          lineup: data.lineup && data.lineup.length >= 11 ? data.lineup : ['Jogador 1', 'Jogador 2', 'Jogador 3', 'Jogador 4', 'Jogador 5', 'Jogador 6', 'Jogador 7', 'Jogador 8', 'Jogador 9', 'Jogador 10', 'Jogador 11'],
+          keyPlayer: data.keyPlayer || 'Destaque',
           possession: data.possession || 50,
-          intensity: data.intensity || 75,
+          intensity: data.intensity || 70,
           heatmapData: this.generateHeatmap(data.focus || 'balanced')
         };
       } catch (error) {
@@ -219,6 +230,28 @@ export class StatisticsPredictorService {
       intensity: 75,
       heatmapData: this.generateHeatmap('balanced')
     };
+  }
+
+  private async generateAiAnalysis(homeTeam: string, awayTeam: string, homeTactics: TacticalAnalysis, awayTactics: TacticalAnalysis): Promise<string> {
+    try {
+      const response = await this.openai.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          {
+            role: "system",
+            content: "Você é um analista tático de futebol. Escreva um parágrafo curto e profissional (máximo 300 caracteres) em português sobre o confronto tático."
+          },
+          {
+            role: "user",
+            content: `Analise o confronto: ${homeTeam} (${homeTactics.formation}) vs ${awayTeam} (${awayTactics.formation}). 
+            Destaque como o estilo de jogo de ${homeTactics.keyPlayer} e ${awayTactics.keyPlayer} influenciará o resultado.`
+          }
+        ]
+      });
+      return response.choices[0].message.content || '';
+    } catch (error) {
+      return `Confronto equilibrado entre ${homeTeam} e ${awayTeam}. Espera-se um jogo tático com foco nas formações ${homeTactics.formation} e ${awayTactics.formation}.`;
+    }
   }
 
   private generateHeatmap(focus: string) {
