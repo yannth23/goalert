@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Link from 'next/link';
 import type { FootballMatch } from '../types';
 import { TacticalAnalysisModal } from './TacticalAnalysisModal';
 
@@ -236,9 +237,12 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
               ? <img src={flag1} alt={match.team1} className="w-6 h-4 object-contain" />
               : <span className="text-xl leading-none">{flag1}</span>
           )}
-          <span className="font-bold text-white text-sm text-right leading-tight truncate max-w-full">
+          <Link
+            href={`/pais/${encodeURIComponent(match.team1)}`}
+            className="font-bold text-white text-sm text-right leading-tight truncate max-w-full hover:text-yellow-400 transition-colors"
+          >
             {traduzirTime(match.team1)}
-          </span>
+          </Link>
         </div>
 
         <div className="flex flex-col items-center px-2 shrink-0">
@@ -264,9 +268,12 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
               ? <img src={flag2} alt={match.team2} className="w-6 h-4 object-contain" />
               : <span className="text-xl leading-none">{flag2}</span>
           )}
-          <span className="font-bold text-white text-sm leading-tight truncate max-w-full">
+          <Link
+            href={`/pais/${encodeURIComponent(match.team2)}`}
+            className="font-bold text-white text-sm leading-tight truncate max-w-full hover:text-yellow-400 transition-colors"
+          >
             {traduzirTime(match.team2)}
-          </span>
+          </Link>
         </div>
       </div>
 
