@@ -37,10 +37,15 @@ export class StatisticsPredictorService {
   private readonly logger = new Logger(StatisticsPredictorService.name);
   private readonly openai: OpenAI;
 
+  private readonly groq: OpenAI;
+
   constructor(private readonly prisma: PrismaService) {
-    this.openai = new OpenAI({
-      apiKey: process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY,
+    this.groq = new OpenAI({
+      apiKey: process.env.GROQ_API_KEY,
       baseURL: 'https://api.groq.com/openai/v1',
+    });
+    this.openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
     });
   }
 
@@ -149,52 +154,66 @@ export class StatisticsPredictorService {
   }
 
   private async generateSimulatedTactics(teamName: string): Promise<TacticalAnalysis> {
-    try {
-      const response = await this.openai.chat.completions.create({
-        model: "llama3-8b-8192",
-        messages: [
-          {
-            role: "system",
-            content: "Você é um analista tático de futebol. Forneça dados reais e precisos em formato JSON."
-          },
-          {
-            role: "user",
-            content: `Forneça a formação tática provável, a escalação de 11 jogadores reais, o jogador chave, a posse de bola média esperada (0-100), a intensidade de jogo (0-100) e o foco tático (wings, center, defense, counter, balanced) para o time: ${teamName}.
-            Responda APENAS o JSON no formato:
-            {
-              "formation": "string",
-              "lineup": ["string", ...],
-              "keyPlayer": "string",
-              "possession": number,
-              "intensity": number,
-              "focus": "string"
-            }`
-          }
-        ],
-        response_format: { type: "json_object" }
-      } as any);
+    const models = [
+      { client: this.groq, model: 'llama-3.3-70b-versatile', name: 'Groq Llama 3.3' },
+      { client: this.groq, model: 'mixtral-8x7b-32768', name: 'Groq Mixtral' },
+      { client: this.openai, model: 'gpt-4o-mini', name: 'OpenAI GPT-4o-mini' },
+    ];
 
-      const data = JSON.parse(response.choices[0].message.content || '{}');
-      
-      return {
-        formation: data.formation || '4-4-2',
-        lineup: data.lineup || [],
-        keyPlayer: data.keyPlayer || 'Star Player',
-        possession: data.possession || 50,
-        intensity: data.intensity || 75,
-        heatmapData: this.generateHeatmap(data.focus || 'balanced')
-      };
-    } catch (error) {
-      this.logger.error(`Erro ao gerar táticas via AI para ${teamName}: ${error.message}`);
-      return {
-        formation: '4-4-2',
-        lineup: ['Player 1', 'Player 2', 'Player 3', 'Player 4', 'Player 5', 'Player 6', 'Player 7', 'Player 8', 'Player 9', 'Player 10', 'Player 11'],
-        keyPlayer: 'Star Player',
-        possession: 50,
-        intensity: 75,
-        heatmapData: this.generateHeatmap('balanced')
-      };
+    for (const { client, model, name } of models) {
+      try {
+        this.logger.log(`Tentando gerar táticas para ${teamName} usando ${name}...`);
+        const response = await client.chat.completions.create({
+          model: model,
+          messages: [
+            {
+              role: "system",
+              content: "Você é um analista tático de futebol experiente. Forneça dados reais e precisos em formato JSON."
+            },
+            {
+              role: "user",
+              content: `Forneça a formação tática provável, a escalação de 11 jogadores reais (nomes completos), o jogador chave, a posse de bola média esperada (0-100), a intensidade de jogo (0-100) e o foco tático (wings, center, defense, counter, balanced) para o time: ${teamName}.
+              Responda APENAS o JSON no formato:
+              {
+                "formation": "string",
+                "lineup": ["string", ...],
+                "keyPlayer": "string",
+                "possession": number,
+                "intensity": number,
+                "focus": "string"
+              }`
+            }
+          ],
+          response_format: { type: "json_object" }
+        } as any);
+
+        const data = JSON.parse(response.choices[0].message.content || '{}');
+        
+        this.logger.log(`Táticas para ${teamName} geradas com sucesso via ${name}.`);
+        return {
+          formation: data.formation || '4-4-2',
+          lineup: data.lineup && data.lineup.length > 0 ? data.lineup : ['Jogador 1', 'Jogador 2', 'Jogador 3', 'Jogador 4', 'Jogador 5', 'Jogador 6', 'Jogador 7', 'Jogador 8', 'Jogador 9', 'Jogador 10', 'Jogador 11'],
+          keyPlayer: data.keyPlayer || 'Destaque do Time',
+          possession: data.possession || 50,
+          intensity: data.intensity || 75,
+          heatmapData: this.generateHeatmap(data.focus || 'balanced')
+        };
+      } catch (error) {
+        this.logger.error(`Falha ao usar ${name} para ${teamName}: ${error.message}`);
+        continue; // Tenta o próximo modelo
+      }
     }
+
+    // Fallback final se todos os modelos falharem
+    this.logger.error(`Todos os modelos de IA falharam para ${teamName}. Usando fallback genérico.`);
+    return {
+      formation: '4-4-2',
+      lineup: ['Titular 1', 'Titular 2', 'Titular 3', 'Titular 4', 'Titular 5', 'Titular 6', 'Titular 7', 'Titular 8', 'Titular 9', 'Titular 10', 'Titular 11'],
+      keyPlayer: 'Jogador Chave',
+      possession: 50,
+      intensity: 75,
+      heatmapData: this.generateHeatmap('balanced')
+    };
   }
 
   private generateHeatmap(focus: string) {
