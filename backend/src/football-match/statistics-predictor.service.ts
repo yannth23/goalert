@@ -35,6 +35,7 @@ interface PredictionResult {
   homeTactics?: TacticalAnalysis;
   awayTactics?: TacticalAnalysis;
   aiAnalysis?: string;
+  shortInsight?: string;
 }
 
 @Injectable()
@@ -308,7 +309,8 @@ Responda APENAS o JSON:
         homeDominanceProb: hProb === 50 ? 52 : hProb,
         homeStyle: hs, homeDesc: descMap[hs],
         awayStyle: as, awayDesc: descMap[as],
-        analysis: `${homeTeam} (${hs}) vs ${awayTeam} (${as}): duelo de estilos contrastantes na Copa 2026.`,
+        analysis: `${homeTeam} x ${awayTeam}: duelo tático equilibrado na Copa 2026.`,
+        shortInsight: 'Equilíbrio tático esperado.',
       };
     };
 
@@ -369,6 +371,7 @@ Responda APENAS este JSON:
         awayStyle: awayStyle as TacticalAnalysis['dominanceStyle'],
         awayDesc: data.awayDesc || this.defaultDesc(awayStyle),
         analysis: data.analysis || `${homeTeam} vs ${awayTeam}: estilos contrastantes na Copa 2026.`,
+        shortInsight: data.shortInsight || 'Análise tática em tempo real.',
       };
     } catch {
       return fallbackPair();
