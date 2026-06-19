@@ -5,6 +5,7 @@ import { EmailService } from '../email/email.service';
 import { FootballApiService } from '../football-match/football-api.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { getTodayRange, formatMatchTime } from '../shared';
+import { StatisticsPredictorService } from '../football-match/statistics-predictor.service';
 
 const LIVE_STATUSES = new Set(['1H', 'HT', '2H', 'ET', 'PEN']);
 
@@ -18,6 +19,7 @@ export class DailyEmailService implements OnApplicationBootstrap {
     private readonly emailService: EmailService,
     private readonly footballApiService: FootballApiService,
     private readonly telegram: TelegramService,
+    private readonly predictor: StatisticsPredictorService,
   ) {}
 
   async onApplicationBootstrap() {
@@ -25,8 +27,41 @@ export class DailyEmailService implements OnApplicationBootstrap {
     try {
       const r = await this.footballApiService.syncTodayMatches();
       this.logger.log(`Bootstrap sync done — ${r.synced} matches, ${r.live} live [${r.source}]`);
+      await this.generateTacticsForToday();
     } catch (err) {
       this.logger.error('Bootstrap sync failed', err);
+    }
+  }
+
+  /** Gera táticas para todos os jogos de hoje que ainda não têm análise */
+  private async generateTacticsForToday(): Promise<void> {
+    try {
+      const { start, end } = getTodayRange();
+      const matches = await this.prisma.footballMatch.findMany({
+        where: {
+          date: { gte: start, lte: end },
+          homeTactics: null,
+        },
+        select: { id: true, homeTeam: true, awayTeam: true },
+      });
+
+      if (!matches.length) {
+        this.logger.log('Tactics already generated for all today matches');
+        return;
+      }
+
+      this.logger.log(`Generating tactics for ${matches.length} matches...`);
+      for (const match of matches) {
+        try {
+          await this.predictor.updateMatchPredictions(match.id);
+          this.logger.log(`Tactics generated: ${match.homeTeam} x ${match.awayTeam}`);
+        } catch (err: any) {
+          this.logger.error(`Failed to generate tactics for ${match.homeTeam} x ${match.awayTeam}: ${err.message}`);
+        }
+      }
+      this.logger.log('Tactics generation complete');
+    } catch (err: any) {
+      this.logger.error('generateTacticsForToday failed', err.message);
     }
   }
 
