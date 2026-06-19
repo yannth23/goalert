@@ -19,6 +19,21 @@ import { EmptyState } from '../components/EmptyState';
 import type { FootballMatch } from '../types';
 
 type Tab = 'jogos' | 'alertas' | 'grupos' | 'conta';
+type StyleFilter = 'all' | 'pressing' | 'counter' | 'possession' | 'defensive' | 'balanced';
+
+const STYLE_OPTS: { key: StyleFilter; label: string; icon: string; active: string; inactive: string }[] = [
+  { key: 'all',        label: 'Todos',        icon: '⚽', active: 'bg-slate-700 border-slate-600 text-white',            inactive: 'border-slate-700 text-slate-400 hover:text-white hover:border-slate-500' },
+  { key: 'pressing',   label: 'Pressão',       icon: '🔥', active: 'bg-orange-950 border-orange-700 text-orange-400',     inactive: 'border-slate-700 text-slate-500 hover:border-orange-700 hover:text-orange-400' },
+  { key: 'counter',    label: 'Contra',        icon: '⚡', active: 'bg-yellow-950 border-yellow-700 text-yellow-400',     inactive: 'border-slate-700 text-slate-500 hover:border-yellow-700 hover:text-yellow-400' },
+  { key: 'possession', label: 'Posse',         icon: '🔵', active: 'bg-blue-950 border-blue-700 text-blue-400',           inactive: 'border-slate-700 text-slate-500 hover:border-blue-700 hover:text-blue-400' },
+  { key: 'defensive',  label: 'Defensivo',     icon: '🛡️', active: 'bg-slate-800 border-slate-500 text-slate-300',        inactive: 'border-slate-700 text-slate-500 hover:border-slate-500 hover:text-slate-300' },
+  { key: 'balanced',   label: 'Equilibrado',   icon: '⚖️', active: 'bg-green-950 border-green-700 text-green-400',        inactive: 'border-slate-700 text-slate-500 hover:border-green-700 hover:text-green-400' },
+];
+
+function matchHasStyle(m: FootballMatch, style: StyleFilter): boolean {
+  if (style === 'all') return true;
+  return m.tactics?.home.dominanceStyle === style || m.tactics?.away.dominanceStyle === style;
+}
 
 function capitalize(str: string): string {
   if (!str) return '';
@@ -36,6 +51,7 @@ export function DashboardPage() {
   const [newTeam, setNewTeam] = useState('');
   const [loadingData, setLoadingData] = useState(true);
   const [filter, setFilter] = useState<'all' | 'favorites'>('all');
+  const [styleFilter, setStyleFilter] = useState<StyleFilter>('all');
   const { toast, showToast } = useToast();
   const goalNotifications = useGoalNotifications();
   const [telegramChatId, setTelegramChatId] = useState('');
@@ -108,9 +124,11 @@ export function DashboardPage() {
     : '';
 
   const favoriteNames = favoriteTeams.map(t => t.teamName);
-  const displayed = filter === 'favorites'
-    ? matches.filter(m => favoriteNames.includes(m.team1) || favoriteNames.includes(m.team2))
-    : matches;
+  const hasTactics = matches.some(m => m.tactics);
+
+  const displayed = matches
+    .filter(m => filter === 'favorites' ? (favoriteNames.includes(m.team1) || favoriteNames.includes(m.team2)) : true)
+    .filter(m => matchHasStyle(m, styleFilter));
 
   const grouped = displayed.reduce<Record<string, FootballMatch[]>>((acc, m) => {
     if (!acc[m.championship]) acc[m.championship] = [];
@@ -190,7 +208,8 @@ export function DashboardPage() {
         {/* ── ABA JOGOS ── */}
         {tab === 'jogos' && (
           <>
-            <div className="flex gap-2 mb-5">
+            {/* Filtro: Todos / Meus times */}
+            <div className="flex gap-2 mb-3">
               {([
                 { key: 'all', label: 'Todos' },
                 { key: 'favorites', label: '⭐ Meus times' },
@@ -209,9 +228,44 @@ export function DashboardPage() {
               ))}
             </div>
 
+            {/* Filtro por estilo tático — só quando há análise disponível */}
+            {hasTactics && (
+              <div className="mb-5 overflow-x-auto scrollbar-hide -mx-1 px-1">
+                <div className="flex gap-2 min-w-max sm:min-w-0 sm:flex-wrap">
+                  {STYLE_OPTS.map(opt => {
+                    const base = filter === 'favorites'
+                      ? matches.filter(m => favoriteNames.includes(m.team1) || favoriteNames.includes(m.team2))
+                      : matches;
+                    const count = opt.key === 'all'
+                      ? base.length
+                      : base.filter(m => matchHasStyle(m, opt.key)).length;
+                    if (opt.key !== 'all' && count === 0) return null;
+                    const isActive = styleFilter === opt.key;
+                    return (
+                      <button
+                        key={opt.key}
+                        onClick={() => setStyleFilter(opt.key)}
+                        className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition-all whitespace-nowrap ${
+                          isActive ? opt.active : opt.inactive
+                        }`}
+                      >
+                        <span className="leading-none">{opt.icon}</span>
+                        <span>{opt.label}</span>
+                        <span className={`text-[10px] font-black leading-none ${isActive ? 'opacity-80' : 'opacity-50'}`}>
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {displayed.length === 0 ? (
               <EmptyState message={
-                filter === 'favorites'
+                styleFilter !== 'all'
+                  ? `Nenhuma partida com estilo "${STYLE_OPTS.find(o => o.key === styleFilter)?.label}" ${filter === 'favorites' ? 'nos seus times' : 'hoje'}.`
+                  : filter === 'favorites'
                   ? 'Nenhum time favorito joga hoje. Adicione na aba "Minha conta".'
                   : 'Nenhuma partida encontrada para hoje.'
               } />
