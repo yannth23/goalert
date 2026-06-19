@@ -108,8 +108,19 @@ export class StatisticsPredictorService {
     ]);
 
     const matchAnalysis = await this.generateMatchTacticalAnalysis(homeTeam, awayTeam, homeTactics, awayTactics);
+
+    // Domínio — quem manda no jogo
     homeTactics.gameDominanceProb = matchAnalysis.homeDominanceProb;
     awayTactics.gameDominanceProb = 100 - matchAnalysis.homeDominanceProb;
+
+    // Estilos contrastantes definidos no contexto do confronto — sobrescreve o valor individual
+    homeTactics.dominanceStyle = matchAnalysis.homeStyle;
+    homeTactics.dominanceDescription = matchAnalysis.homeDesc;
+    homeTactics.heatmapData = this.generateHeatmap(matchAnalysis.homeStyle);
+
+    awayTactics.dominanceStyle = matchAnalysis.awayStyle;
+    awayTactics.dominanceDescription = matchAnalysis.awayDesc;
+    awayTactics.heatmapData = this.generateHeatmap(matchAnalysis.awayStyle);
 
     return {
       predictedGoalsHome: Math.max(0, predictedGoalsHome),
@@ -253,14 +264,43 @@ Responda APENAS o JSON:
     awayTeam: string,
     homeTactics: TacticalAnalysis,
     awayTactics: TacticalAnalysis,
-  ): Promise<{ homeDominanceProb: number; analysis: string }> {
-    const dominanceLabel = (style: string) => ({
-      possession: 'jogo de posse',
-      counter:    'contra-ataque',
-      pressing:   'pressão alta',
-      defensive:  'bloco defensivo',
-      balanced:   'jogo equilibrado',
-    }[style] ?? style);
+  ): Promise<{
+    homeDominanceProb: number;
+    homeStyle: TacticalAnalysis['dominanceStyle'];
+    homeDesc: string;
+    awayStyle: TacticalAnalysis['dominanceStyle'];
+    awayDesc: string;
+    analysis: string;
+  }> {
+    // Pares de estilos contrastantes válidos — nunca iguais, nunca ambos "balanced"
+    const CONTRAST_PAIRS: Array<[TacticalAnalysis['dominanceStyle'], TacticalAnalysis['dominanceStyle']]> = [
+      ['possession', 'defensive'],
+      ['possession', 'counter'],
+      ['pressing',   'counter'],
+      ['pressing',   'defensive'],
+      ['possession', 'pressing'],
+      ['counter',    'defensive'],
+    ];
+
+    // Fallback determinístico: escolhe par baseado na intensidade relativa
+    const fallbackPair = (): ReturnType<typeof this.generateMatchTacticalAnalysis> extends Promise<infer T> ? T : never => {
+      const diff = homeTactics.intensity - awayTactics.intensity;
+      const hProb = Math.min(75, Math.max(25, 50 + Math.round(diff * 0.4)));
+      const idx = Math.abs(Math.round(homeTactics.intensity + awayTactics.intensity)) % CONTRAST_PAIRS.length;
+      const [hs, as] = homeTactics.intensity >= awayTactics.intensity
+        ? CONTRAST_PAIRS[idx]
+        : [CONTRAST_PAIRS[idx][1], CONTRAST_PAIRS[idx][0]];
+      const descMap: Record<string, string> = {
+        possession: 'Controla o jogo com a posse', counter: 'Explora espaços no contra-ataque',
+        pressing: 'Pressiona alto e sufoca o adversário', defensive: 'Bloco defensivo organizado', balanced: 'Jogo equilibrado',
+      };
+      return {
+        homeDominanceProb: hProb === 50 ? 52 : hProb,
+        homeStyle: hs, homeDesc: descMap[hs],
+        awayStyle: as, awayDesc: descMap[as],
+        analysis: `${homeTeam} (${hs}) vs ${awayTeam} (${as}): duelo de estilos contrastantes na Copa 2026.`,
+      };
+    };
 
     try {
       const response = await this.openai.chat.completions.create({
@@ -269,46 +309,61 @@ Responda APENAS o JSON:
           {
             role: 'system',
             content: `Você é um analista tático de futebol de elite cobrindo a Copa do Mundo 2026.
-REGRAS OBRIGATÓRIAS:
-- SEMPRE declare um time como provável dominante, mesmo em jogos equilibrados.
-- NUNCA retorne homeDominanceProb = 50. Diferença mínima de 8 pontos.
-- Base sua decisão no ranking FIFA real, estilo histórico e contexto da Copa 2026.
-- O insight DEVE ser específico para ESTE confronto — mencione times, formações, jogadores-chave e como os estilos interagem.
-- Máximo 350 caracteres no insight, em português.`,
+REGRAS ABSOLUTAS:
+1. "homeDominanceProb": NUNCA use 50. Diferença mínima de 8 pontos. Base: ranking FIFA, histórico, Copa 2026.
+2. "homeStyle" e "awayStyle": OBRIGATORIAMENTE diferentes entre si. PROIBIDO os dois receberem "balanced". Escolha estilos que reflitam o confronto real — ex: um time joga posse, o outro contra-ataque; um pressiona, o outro se fecha.
+3. Estilos válidos: "possession", "counter", "pressing", "defensive", "balanced" (balanced só pode aparecer em UM dos dois, nunca nos dois).
+4. "homeDesc" e "awayDesc": descrição em português de até 60 caracteres explicando o estilo daquele time NESTE confronto específico.
+5. "analysis": insight de até 350 caracteres mencionando times, formações e como os estilos se opõem.`,
           },
           {
             role: 'user',
-            content: `Confronto na Copa do Mundo 2026: ${homeTeam} (${homeTactics.formation}) vs ${awayTeam} (${awayTactics.formation}).
+            content: `Copa do Mundo 2026: ${homeTeam} (${homeTactics.formation}, destaque: ${homeTactics.keyPlayer}, intensidade ${homeTactics.intensity}/100) vs ${awayTeam} (${awayTactics.formation}, destaque: ${awayTactics.keyPlayer}, intensidade ${awayTactics.intensity}/100).
 
-${homeTeam}: destaque ${homeTactics.keyPlayer}, estilo de ${dominanceLabel(homeTactics.dominanceStyle)}, intensidade ${homeTactics.intensity}/100.
-${awayTeam}: destaque ${awayTactics.keyPlayer}, estilo de ${dominanceLabel(awayTactics.dominanceStyle)}, intensidade ${awayTactics.intensity}/100.
-
-Determine:
-1. "homeDominanceProb" (inteiro 0-100): prob. de ${homeTeam} dominar. NUNCA use 50.
-2. "analysis": insight tático específico deste jogo.
-
-Responda APENAS o JSON:
-{ "homeDominanceProb": number, "analysis": "string" }`,
+Responda APENAS este JSON:
+{
+  "homeDominanceProb": number,
+  "homeStyle": "possession|counter|pressing|defensive|balanced",
+  "homeDesc": "string (até 60 chars)",
+  "awayStyle": "possession|counter|pressing|defensive|balanced",
+  "awayDesc": "string (até 60 chars)",
+  "analysis": "string (até 350 chars)"
+}`,
           },
         ],
         response_format: { type: 'json_object' },
       } as any);
 
       const data = JSON.parse(response.choices[0].message.content || '{}');
+
+      const validStyles = new Set(['possession', 'counter', 'pressing', 'defensive', 'balanced']);
+      let homeStyle = validStyles.has(data.homeStyle) ? data.homeStyle : 'possession';
+      let awayStyle = validStyles.has(data.awayStyle) ? data.awayStyle : 'counter';
+
+      // Garante que não são iguais — se a IA ignorar a regra, força contraste
+      if (homeStyle === awayStyle) {
+        const alt: Record<string, TacticalAnalysis['dominanceStyle']> = {
+          possession: 'counter', counter: 'defensive', pressing: 'counter',
+          defensive: 'counter', balanced: 'pressing',
+        };
+        awayStyle = alt[homeStyle] ?? 'counter';
+      }
+      // Garante que não são os dois "balanced"
+      if (homeStyle === 'balanced' && awayStyle === 'balanced') awayStyle = 'counter';
+
       let hProb = Math.min(92, Math.max(8, Math.round(data.homeDominanceProb ?? 50)));
       if (hProb === 50) hProb = homeTactics.intensity >= awayTactics.intensity ? 55 : 45;
 
       return {
         homeDominanceProb: hProb,
-        analysis: data.analysis || `${homeTeam} vs ${awayTeam}: duelo de estilos na Copa 2026.`,
+        homeStyle: homeStyle as TacticalAnalysis['dominanceStyle'],
+        homeDesc: data.homeDesc || `Estilo de ${homeStyle}`,
+        awayStyle: awayStyle as TacticalAnalysis['dominanceStyle'],
+        awayDesc: data.awayDesc || `Estilo de ${awayStyle}`,
+        analysis: data.analysis || `${homeTeam} vs ${awayTeam}: estilos contrastantes na Copa 2026.`,
       };
     } catch {
-      const diff = homeTactics.intensity - awayTactics.intensity;
-      const hProb = Math.min(75, Math.max(25, 50 + Math.round(diff * 0.4)));
-      return {
-        homeDominanceProb: hProb === 50 ? 52 : hProb,
-        analysis: `${homeTeam} (${dominanceLabel(homeTactics.dominanceStyle)}) vs ${awayTeam} (${dominanceLabel(awayTactics.dominanceStyle)}): duelo de estilos decisivo na Copa 2026.`,
-      };
+      return fallbackPair();
     }
   }
 
