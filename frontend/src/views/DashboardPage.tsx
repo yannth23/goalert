@@ -24,7 +24,7 @@ type StyleFilter = 'all' | 'pressing' | 'counter' | 'possession' | 'defensive' |
 const STYLE_OPTS: { key: StyleFilter; label: string; icon: string; active: string; inactive: string }[] = [
   { key: 'all',        label: 'Todos',        icon: '⚽', active: 'bg-slate-700 border-slate-600 text-white',            inactive: 'border-slate-700 text-slate-400 hover:text-white hover:border-slate-500' },
   { key: 'pressing',   label: 'Pressão',       icon: '🔥', active: 'bg-orange-950 border-orange-700 text-orange-400',     inactive: 'border-slate-700 text-slate-500 hover:border-orange-700 hover:text-orange-400' },
-  { key: 'counter',    label: 'Contra',        icon: '⚡', active: 'bg-yellow-950 border-yellow-700 text-yellow-400',     inactive: 'border-slate-700 text-slate-500 hover:border-yellow-700 hover:text-yellow-400' },
+  { key: 'counter',    label: 'Contra-ataque',  icon: '⚡', active: 'bg-yellow-950 border-yellow-700 text-yellow-400',     inactive: 'border-slate-700 text-slate-500 hover:border-yellow-700 hover:text-yellow-400' },
   { key: 'possession', label: 'Posse',         icon: '🔵', active: 'bg-blue-950 border-blue-700 text-blue-400',           inactive: 'border-slate-700 text-slate-500 hover:border-blue-700 hover:text-blue-400' },
   { key: 'defensive',  label: 'Defensivo',     icon: '🛡️', active: 'bg-slate-800 border-slate-500 text-slate-300',        inactive: 'border-slate-700 text-slate-500 hover:border-slate-500 hover:text-slate-300' },
   { key: 'balanced',   label: 'Equilibrado',   icon: '⚖️', active: 'bg-green-950 border-green-700 text-green-400',        inactive: 'border-slate-700 text-slate-500 hover:border-green-700 hover:text-green-400' },
