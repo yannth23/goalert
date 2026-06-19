@@ -59,14 +59,5 @@ export class UserController {
     return this.userService.updatePreferences(id, body.receiveDailyNotifications);
   }
 
-  @Patch(':id/telegram')
-  @UseGuards(JwtAuthGuard)
-  updateTelegram(
-    @Param('id') id: string,
-    @Body() body: UpdateTelegramDto,
-    @Request() req: { user: { id: string } },
-  ) {
-    if (req.user.id !== id) throw new ForbiddenException();
-    return this.userService.updateTelegram(id, body.telegramChatId, body.receiveTelegramNotifications);
-  }
+  // Rota de Telegram removida
 }
