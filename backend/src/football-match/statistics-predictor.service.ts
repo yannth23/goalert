@@ -21,7 +21,7 @@ interface TacticalAnalysis {
   keyPlayer: string;
   intensity: number;
   focus: string;
-  dominanceStyle: 'possession' | 'counter' | 'pressing' | 'defensive' | 'balanced';
+  dominanceStyle: 'possession' | 'counter' | 'pressing' | 'defensive';
   dominanceDescription: string;
   gameDominanceProb: number;
   heatmapData: { x: number; y: number; value: number }[];
@@ -167,7 +167,7 @@ Com base nessa escalação, determine:
 2. O jogador estrela atual desta Copa (Key Player) — deve ser um dos nomes acima.
 3. Intensidade/Agressividade do estilo de jogo (0-100).
 4. Foco de ataque: wings, center, defense, counter ou balanced.
-5. Estilo de domínio: "possession", "counter", "pressing", "defensive" ou "balanced".
+5. Estilo de domínio: APENAS "possession", "counter", "pressing" ou "defensive" — NUNCA "balanced".
 6. Descrição curta em português (máx 80 chars) do estilo.
 
 Responda APENAS o JSON (coloque os 11 jogadores na ordem do campo, começando pelo goleiro):
@@ -177,7 +177,7 @@ Responda APENAS o JSON (coloque os 11 jogadores na ordem do campo, começando pe
   "keyPlayer": "string",
   "intensity": number,
   "focus": "string",
-  "dominanceStyle": "possession|counter|pressing|defensive|balanced",
+  "dominanceStyle": "possession|counter|pressing|defensive",
   "dominanceDescription": "string"
 }`
           : // ── Modo sem escalação real — IA gera tudo ──────────────────────
@@ -188,8 +188,8 @@ Forneça:
 2. Escalação com os 11 titulares REAIS (nomes completos).
 3. O jogador estrela atual (Key Player) desta Copa.
 4. Intensidade/Agressividade (0-100).
-5. Foco de ataque: wings, center, defense, counter ou balanced.
-6. Estilo de domínio: "possession", "counter", "pressing", "defensive" ou "balanced".
+5. Foco de ataque: wings, center, defense ou counter.
+6. Estilo de domínio: APENAS "possession", "counter", "pressing" ou "defensive" — NUNCA "balanced".
 7. Descrição curta em português (máx 80 chars) do estilo.
 
 Responda APENAS o JSON:
@@ -199,7 +199,7 @@ Responda APENAS o JSON:
   "keyPlayer": "string",
   "intensity": number,
   "focus": "string",
-  "dominanceStyle": "possession|counter|pressing|defensive|balanced",
+  "dominanceStyle": "possession|counter|pressing|defensive",
   "dominanceDescription": "string"
 }`;
 
@@ -231,10 +231,10 @@ Responda APENAS o JSON:
           keyPlayer: data.keyPlayer || finalLineup[0] || 'Destaque',
           intensity: data.intensity || 70,
           focus: data.focus || 'balanced',
-          dominanceStyle: data.dominanceStyle || 'balanced',
-          dominanceDescription: data.dominanceDescription || 'Estilo equilibrado',
+          dominanceStyle: data.dominanceStyle || 'pressing',
+          dominanceDescription: data.dominanceDescription || 'Estilo agressivo e determinado',
           gameDominanceProb: 50,
-          heatmapData: this.generateHeatmap(data.focus || 'balanced'),
+          heatmapData: this.generateHeatmap(data.focus || 'counter'),
         };
       } catch (error: any) {
         this.logger.error(`Falha ao usar ${name} para ${teamName}: ${error.message}`);
@@ -251,11 +251,11 @@ Responda APENAS o JSON:
       lineup: fallbackLineup,
       keyPlayer: fallbackLineup[0] || 'Jogador Chave',
       intensity: 75,
-      focus: 'balanced',
-      dominanceStyle: 'balanced',
-      dominanceDescription: 'Estilo equilibrado',
+      focus: 'counter',
+      dominanceStyle: 'pressing',
+      dominanceDescription: 'Pressão alta e determinação',
       gameDominanceProb: 50,
-      heatmapData: this.generateHeatmap('balanced'),
+      heatmapData: this.generateHeatmap('counter'),
     };
   }
 
@@ -292,7 +292,7 @@ Responda APENAS o JSON:
         : [CONTRAST_PAIRS[idx][1], CONTRAST_PAIRS[idx][0]];
       const descMap: Record<string, string> = {
         possession: 'Controla o jogo com a posse', counter: 'Explora espaços no contra-ataque',
-        pressing: 'Pressiona alto e sufoca o adversário', defensive: 'Bloco defensivo organizado', balanced: 'Jogo equilibrado',
+        pressing: 'Pressiona alto e sufoca o adversário', defensive: 'Bloco defensivo organizado',
       };
       return {
         homeDominanceProb: hProb === 50 ? 52 : hProb,
@@ -311,8 +311,8 @@ Responda APENAS o JSON:
             content: `Você é um analista tático de futebol de elite cobrindo a Copa do Mundo 2026.
 REGRAS ABSOLUTAS:
 1. "homeDominanceProb": NUNCA use 50. Diferença mínima de 8 pontos. Base: ranking FIFA, histórico, Copa 2026.
-2. "homeStyle" e "awayStyle": OBRIGATORIAMENTE diferentes entre si. PROIBIDO os dois receberem "balanced". Escolha estilos que reflitam o confronto real — ex: um time joga posse, o outro contra-ataque; um pressiona, o outro se fecha.
-3. Estilos válidos: "possession", "counter", "pressing", "defensive", "balanced" (balanced só pode aparecer em UM dos dois, nunca nos dois).
+2. "homeStyle" e "awayStyle": OBRIGATORIAMENTE diferentes entre si. PROIBIDO usar "balanced" em qualquer um dos dois. Escolha estilos que reflitam o confronto real — ex: um time joga posse, o outro contra-ataque; um pressiona, o outro se fecha.
+3. Estilos válidos APENAS: "possession", "counter", "pressing", "defensive". NUNCA "balanced".
 4. "homeDesc" e "awayDesc": descrição em português de até 60 caracteres explicando o estilo daquele time NESTE confronto específico.
 5. "analysis": insight de até 350 caracteres mencionando times, formações e como os estilos se opõem.`,
           },
@@ -323,9 +323,9 @@ REGRAS ABSOLUTAS:
 Responda APENAS este JSON:
 {
   "homeDominanceProb": number,
-  "homeStyle": "possession|counter|pressing|defensive|balanced",
+  "homeStyle": "possession|counter|pressing|defensive",
   "homeDesc": "string (até 60 chars)",
-  "awayStyle": "possession|counter|pressing|defensive|balanced",
+  "awayStyle": "possession|counter|pressing|defensive",
   "awayDesc": "string (até 60 chars)",
   "analysis": "string (até 350 chars)"
 }`,
@@ -336,7 +336,7 @@ Responda APENAS este JSON:
 
       const data = JSON.parse(response.choices[0].message.content || '{}');
 
-      const validStyles = new Set(['possession', 'counter', 'pressing', 'defensive', 'balanced']);
+      const validStyles = new Set(['possession', 'counter', 'pressing', 'defensive']);
       let homeStyle = validStyles.has(data.homeStyle) ? data.homeStyle : null;
       let awayStyle = validStyles.has(data.awayStyle) ? data.awayStyle : null;
 
@@ -380,7 +380,6 @@ Responda APENAS este JSON:
       possession: 'defensive',  // contra posse → bloco defensivo
       counter:    'possession', // contra contra-ataque → controlar a posse
       defensive:  'pressing',   // contra bloco fechado → pressionar para abrir
-      balanced:   'counter',    // contra equilíbrio → contra-ataque como diferencial
     };
 
     // Se apenas um veio da IA, calcula o outro como resposta natural
@@ -416,9 +415,8 @@ Responda APENAS este JSON:
       counter:    'Explora espaços no contra-ataque',
       possession: 'Controla o jogo com a posse',
       defensive:  'Bloco defensivo bem organizado',
-      balanced:   'Jogo equilibrado sem tendência clara',
     };
-    return map[style ?? 'balanced'] ?? 'Estilo equilibrado';
+    return map[style ?? 'pressing'] ?? 'Pressão alta e determinação';
   }
 
   private generateHeatmap(focus: string) {
