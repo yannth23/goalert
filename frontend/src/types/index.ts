@@ -17,6 +17,15 @@ export interface UserPreference {
   receiveDailyNotifications: boolean;
 }
 
+export interface TacticalAnalysis {
+  formation: string;
+  lineup: string[];
+  keyPlayer: string;
+  possession: number;
+  intensity: number;
+  heatmapData: { x: number; y: number; value: number }[];
+}
+
 export interface FootballMatch {
   id: string;
   date: string;
@@ -34,6 +43,10 @@ export interface FootballMatch {
     goalsAway: number;
     cards: number;
     fouls: number;
+  };
+  tactics?: {
+    home: TacticalAnalysis;
+    away: TacticalAnalysis;
   };
 }
 

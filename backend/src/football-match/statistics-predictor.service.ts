@@ -13,11 +13,22 @@ interface TeamStatistics {
   averageFouls: number;
 }
 
+interface TacticalAnalysis {
+  formation: string;
+  lineup: string[];
+  keyPlayer: string;
+  possession: number;
+  intensity: number; // 0-100
+  heatmapData: { x: number; y: number; value: number }[];
+}
+
 interface PredictionResult {
   predictedGoalsHome: number;
   predictedGoalsAway: number;
   predictedCards: number;
   predictedFouls: number;
+  homeTactics?: TacticalAnalysis;
+  awayTactics?: TacticalAnalysis;
 }
 
 @Injectable()
@@ -123,6 +134,34 @@ export class StatisticsPredictorService {
       predictedGoalsAway: Math.max(0, predictedGoalsAway),
       predictedCards: Math.max(0, predictedCards),
       predictedFouls: Math.max(0, predictedFouls),
+      homeTactics: this.generateSimulatedTactics(homeTeam),
+      awayTactics: this.generateSimulatedTactics(awayTeam),
+    };
+  }
+
+  private generateSimulatedTactics(teamName: string): TacticalAnalysis {
+    const formations = ['4-3-3', '4-4-2', '3-5-2', '4-2-3-1', '5-3-2'];
+    const players = [
+      'Alisson', 'Ederson', 'Marquinhos', 'Thiago Silva', 'Casemiro', 
+      'Paquetá', 'Neymar', 'Vinícius Jr', 'Rodrygo', 'Richarlison',
+      'Mbappé', 'Messi', 'Cristiano Ronaldo', 'De Bruyne', 'Haaland',
+      'Kane', 'Salah', 'Lewandowski', 'Modric', 'Kroos'
+    ];
+
+    // Gera heatmap aleatório
+    const heatmapData = Array.from({ length: 15 }, () => ({
+      x: Math.floor(Math.random() * 100),
+      y: Math.floor(Math.random() * 100),
+      value: Math.random()
+    }));
+
+    return {
+      formation: formations[Math.floor(Math.random() * formations.length)],
+      lineup: Array.from({ length: 11 }, (_, i) => players[Math.floor(Math.random() * players.length)]),
+      keyPlayer: players[Math.floor(Math.random() * players.length)],
+      possession: 45 + Math.random() * 10,
+      intensity: 70 + Math.random() * 25,
+      heatmapData
     };
   }
 

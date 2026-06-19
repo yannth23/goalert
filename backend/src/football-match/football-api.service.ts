@@ -138,6 +138,12 @@ export class FootballApiService {
           awayScore,
           homeFlag: match.homeTeam.crest,
           awayFlag: match.awayTeam.crest,
+          predictedGoalsHome: predictions.predictedGoalsHome,
+          predictedGoalsAway: predictions.predictedGoalsAway,
+          predictedCards:     predictions.predictedCards,
+          predictedFouls:     predictions.predictedFouls,
+          homeTactics:        predictions.homeTactics,
+          awayTactics:        predictions.awayTactics,
         },
         create: {
           externalId:   match.id.toString(),
@@ -150,11 +156,12 @@ export class FootballApiService {
           status:       mappedStatus,
           homeScore,
           awayScore,
-          // Predições baseadas em histórico
           predictedGoalsHome: predictions.predictedGoalsHome,
           predictedGoalsAway: predictions.predictedGoalsAway,
           predictedCards:     predictions.predictedCards,
           predictedFouls:     predictions.predictedFouls,
+          homeTactics:        predictions.homeTactics,
+          awayTactics:        predictions.awayTactics,
         },
       });
 

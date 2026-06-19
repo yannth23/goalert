@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import type { FootballMatch } from '../types';
+import { TacticalAnalysisModal } from './TacticalAnalysisModal';
 
 const STATUS_MAP: Record<string, { label: string; bg: string; text: string; live: boolean }> = {
   NS:  { label: 'Não iniciado',  bg: 'bg-slate-800',   text: 'text-slate-400',  live: false },
@@ -101,6 +103,8 @@ interface MatchCardProps {
 }
 
 export function MatchCard({ match, highlighted }: MatchCardProps) {
+  const [showTactics, setShowTactics] = useState(false);
+
   const time = new Date(match.date).toLocaleTimeString('pt-BR', {
     hour: '2-digit',
     minute: '2-digit',
@@ -183,7 +187,15 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
         <div className="mt-4 pt-4 border-t border-slate-800">
           <div className="flex justify-between items-center mb-2">
             <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Predições Estatísticas</span>
-            <span className="text-[10px] bg-indigo-950 text-indigo-400 px-2 py-0.5 rounded-full font-bold">AI Insight</span>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setShowTactics(true)}
+                className="text-[10px] bg-indigo-600 hover:bg-indigo-500 text-white px-2 py-0.5 rounded-full font-bold transition-colors"
+              >
+                Análise Tática
+              </button>
+              <span className="text-[10px] bg-indigo-950 text-indigo-400 px-2 py-0.5 rounded-full font-bold">AI Insight</span>
+            </div>
           </div>
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-slate-800/50 p-2 rounded-lg text-center">
@@ -200,6 +212,10 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
             </div>
           </div>
         </div>
+      )}
+
+      {showTactics && (
+        <TacticalAnalysisModal match={match} onClose={() => setShowTactics(false)} />
       )}
 
       {highlighted && (

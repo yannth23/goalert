@@ -13,13 +13,17 @@ export interface MatchDto {
   team1Score?: number;
   team2Score?: number;
   externalId?: string;
-  predictions?: {
-    goalsHome: number;
-    goalsAway: number;
-    cards: number;
-    fouls: number;
-  };
-}
+    predictions?: {
+      goalsHome: number;
+      goalsAway: number;
+      cards: number;
+      fouls: number;
+    };
+    tactics?: {
+      home: any;
+      away: any;
+    };
+  }
 
 interface PrismaMatch {
   id: string;
@@ -37,6 +41,8 @@ interface PrismaMatch {
   predictedGoalsAway: number | null;
   predictedCards: number | null;
   predictedFouls: number | null;
+  homeTactics: any;
+  awayTactics: any;
 }
 
 /** Maps a Prisma FootballMatch row to the frontend DTO. */
@@ -58,6 +64,10 @@ export function mapMatchToDto(m: PrismaMatch): MatchDto {
       goalsAway: m.predictedGoalsAway ?? 0,
       cards: m.predictedCards ?? 0,
       fouls: m.predictedFouls ?? 0,
+    } : undefined,
+    tactics: m.homeTactics ? {
+      home: m.homeTactics,
+      away: m.awayTactics,
     } : undefined,
   };
 }

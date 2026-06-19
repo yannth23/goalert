@@ -63,6 +63,8 @@ model FootballMatch {
   predictedFouls     Float?
   predictedGoalsAway Float?
   predictedGoalsHome Float?
+  homeTactics        Json?
+  awayTactics        Json?
 
   @@index([date])
   @@index([championship])

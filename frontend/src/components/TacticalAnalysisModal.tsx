@@ -1,0 +1,112 @@
+'use client';
+
+import { FootballMatch, TacticalAnalysis } from '../types';
+
+interface TacticalAnalysisModalProps {
+  match: FootballMatch;
+  onClose: () => void;
+}
+
+export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalProps) {
+  if (!match.tactics) return null;
+
+  const renderTactics = (team: string, data: TacticalAnalysis) => (
+    <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700/50">
+      <div className="flex justify-between items-center mb-6">
+        <h4 className="text-xl font-black text-white">{team}</h4>
+        <span className="bg-indigo-600 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-tighter">
+          {data.formation}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 mb-8">
+        <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+          <span className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Posse de Bola</span>
+          <span className="text-2xl font-black text-indigo-400">{data.possession.toFixed(1)}%</span>
+        </div>
+        <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+          <span className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Intensidade</span>
+          <span className="text-2xl font-black text-orange-400">{data.intensity.toFixed(0)}%</span>
+        </div>
+      </div>
+
+      <div className="mb-8">
+        <h5 className="text-[10px] uppercase text-slate-500 font-bold mb-3 tracking-widest">Provável Escalação</h5>
+        <div className="grid grid-cols-1 gap-2">
+          {data.lineup.map((player, i) => (
+            <div key={i} className="flex items-center gap-3 bg-slate-900/30 p-2 rounded-lg border border-slate-800/50">
+              <span className="w-5 h-5 flex items-center justify-center bg-slate-800 rounded text-[10px] font-bold text-slate-400">
+                {i + 1}
+              </span>
+              <span className={`text-sm font-medium ${player === data.keyPlayer ? 'text-yellow-400' : 'text-slate-300'}`}>
+                {player} {player === data.keyPlayer && '⭐'}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <h5 className="text-[10px] uppercase text-slate-500 font-bold mb-3 tracking-widest">Mapa de Calor (Zonas de Ação)</h5>
+        <div className="relative aspect-[3/2] bg-green-900/20 rounded-xl border-2 border-green-800/30 overflow-hidden">
+          {/* Campo de futebol simplificado */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-full h-[2px] bg-green-800/20" />
+            <div className="w-24 h-24 rounded-full border-2 border-green-800/20" />
+          </div>
+          {/* Heatmap points */}
+          {data.heatmapData.map((point, i) => (
+            <div
+              key={i}
+              className="absolute rounded-full blur-xl"
+              style={{
+                left: `${point.x}%`,
+                top: `${point.y}%`,
+                width: '40px',
+                height: '40px',
+                backgroundColor: `rgba(234, 179, 8, ${point.value * 0.6})`,
+              }}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      <div className="bg-slate-900 border border-slate-800 w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl">
+        <div className="sticky top-0 z-10 bg-slate-900/80 backdrop-blur-md p-6 border-b border-slate-800 flex justify-between items-center">
+          <div>
+            <h3 className="text-2xl font-black text-white">Análise Tática</h3>
+            <p className="text-slate-500 text-sm font-medium">{match.team1} vs {match.team2}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="p-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {renderTactics(match.team1, match.tactics.home)}
+            {renderTactics(match.team2, match.tactics.away)}
+          </div>
+
+          <div className="mt-12 bg-indigo-950/30 border border-indigo-900/50 rounded-3xl p-8 text-center">
+            <h4 className="text-indigo-400 font-black text-lg mb-2">Conclusão Matemática do AI Insight</h4>
+            <p className="text-slate-400 text-sm max-w-2xl mx-auto leading-relaxed">
+              Baseado na formação {match.tactics.home.formation} do {match.team1} e no volume de jogo de {match.tactics.home.possession.toFixed(0)}%, 
+              espera-se uma partida com alta densidade no meio-campo. A probabilidade de {match.predictions?.goalsHome.toFixed(1)} gols para o mandante 
+              reflete a eficiência ofensiva de {match.tactics.home.keyPlayer}.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
