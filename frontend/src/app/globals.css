@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Dark background on body/html to prevent white gap on desktop */
+html,
+body {
+  background-color: #020617; /* slate-950 */
+}
+
 /* Hide scrollbars while keeping scroll functionality */
 .scrollbar-hide {
   -ms-overflow-style: none;
