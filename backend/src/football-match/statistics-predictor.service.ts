@@ -321,13 +321,14 @@ export class StatisticsPredictorService {
 
     await this.prisma.footballMatch.update({
       where: { id: matchId },
-        data: {
+      data: {
         predictedGoalsHome: predictions.predictedGoalsHome,
         predictedGoalsAway: predictions.predictedGoalsAway,
         predictedCards: predictions.predictedCards,
         predictedFouls: predictions.predictedFouls,
         homeTactics: predictions.homeTactics as any,
         awayTactics: predictions.awayTactics as any,
+        aiAnalysis: predictions.aiAnalysis,
       },
     });
 
