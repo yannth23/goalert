@@ -92,17 +92,28 @@ export class FootballApiService {
   }
 
   async syncTodayMatches() {
-    // Usa a data de hoje no horário do Brasil
+    // Busca hoje BRT + amanhã UTC para pegar jogos que passam da meia-noite
+    // Ex: jogo às 21:30 BRT = 00:30 UTC do dia seguinte
     const todayBrazil = getTodayBrazil();
+    const tomorrowUtc = new Date();
+    tomorrowUtc.setUTCDate(tomorrowUtc.getUTCDate() + 1);
+    const tomorrowStr = tomorrowUtc.toISOString().split('T')[0];
 
-    this.logger.log(`Syncing matches for Brazil date: ${todayBrazil}`);
+    this.logger.log(`Syncing matches for BRT: ${todayBrazil} + UTC next day: ${tomorrowStr}`);
 
-    const response = await axios.get(`${BASE_URL}/matches`, {
-      params: { date: todayBrazil },
-      headers: this.headers,
-    });
+    // Busca os dois dias em paralelo
+    const [todayResp, tomorrowResp] = await Promise.all([
+      axios.get(`${BASE_URL}/matches`, { params: { date: todayBrazil }, headers: this.headers }),
+      axios.get(`${BASE_URL}/matches`, { params: { date: tomorrowStr }, headers: this.headers }),
+    ]);
 
-    const matches = response.data.matches as any[];
+    // Une e deduplica por id
+    const seen = new Set<string>();
+    const matches = [...todayResp.data.matches, ...tomorrowResp.data.matches].filter((m: any) => {
+      if (seen.has(m.id.toString())) return false;
+      seen.add(m.id.toString());
+      return true;
+    }) as any[];
 
     for (const match of matches) {
       const mappedStatus = STATUS_MAP[match.status] ?? match.status;
