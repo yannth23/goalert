@@ -15,6 +15,11 @@ export class FootballMatchController {
     return this.footballMatchService.getTodayMatches();
   }
 
+  @Get('calendar')
+  getCalendar(@Query('month') month?: string) {
+    return this.footballMatchService.getCalendarData(month);
+  }
+
   @Get('competition')
   getByCompetition(@Query('name') name: string) {
     return this.footballMatchService.getMatchesByCompetition(name);
@@ -30,7 +35,6 @@ export class FootballMatchController {
     return this.footballMatchService.getTopScorers();
   }
 
-  // Endpoint manual para forçar sync (protegido por JWT)
   @Post('sync')
   @UseGuards(JwtAuthGuard)
   syncMatches() {

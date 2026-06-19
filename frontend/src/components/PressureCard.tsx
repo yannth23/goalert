@@ -39,6 +39,12 @@ const STATUS_MINUTE_LABEL: Record<string, string> = {
 
 export type AlertLevel = 'low' | 'medium' | 'high' | 'critical';
 
+export interface ScorePrediction {
+  home: number;
+  away: number;
+  prob: number;
+}
+
 export interface PressureData {
   match: FootballMatch;
   minute: number;
@@ -46,14 +52,14 @@ export interface PressureData {
   level: AlertLevel;
   signals: { icon: string; text: string }[];
   xGEstimated: number;
-  pressureIndex: number; // 0-100
+  pressureIndex: number;
+  likelyScores: ScorePrediction[];
 }
 
 function t(name: string): string {
   return TEAM_PT[name] ?? name;
 }
 
-/** Estimate current match minute from status + UTC kickoff time */
 function estimateMinute(status: string, dateStr: string): number {
   const elapsed = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
   switch (status) {
@@ -66,6 +72,48 @@ function estimateMinute(status: string, dateStr: string): number {
   }
 }
 
+// ── Poisson model for likely scores ──────────────────────────────────────────
+function poissonProb(lambda: number, k: number): number {
+  if (lambda <= 0) return k === 0 ? 1 : 0;
+  let f = 1;
+  for (let i = 1; i <= k; i++) f *= i;
+  return Math.exp(-lambda) * Math.pow(lambda, k) / f;
+}
+
+function computeLikelyScores(
+  match: FootballMatch,
+  xGEst: number,
+  minute: number,
+): ScorePrediction[] {
+  const h0 = match.team1Score ?? 0;
+  const a0 = match.team2Score ?? 0;
+  const diff = h0 - a0;
+  const minutesLeft = Math.max(0, 90 - minute);
+
+  const pace = xGEst / 90;
+  const lambdaTotal = pace * minutesLeft;
+
+  // Losing team attacks harder → boost their expected goals
+  const boostH = diff < 0 ? 1.25 : diff > 0 ? 0.8 : 1;
+  const boostA = diff > 0 ? 1.25 : diff < 0 ? 0.8 : 1;
+  const lH = (lambdaTotal / 2) * boostH;
+  const lA = (lambdaTotal / 2) * boostA;
+
+  const preds: ScorePrediction[] = [];
+  for (let dh = 0; dh <= 3; dh++) {
+    for (let da = 0; da <= 3; da++) {
+      const p = poissonProb(lH, dh) * poissonProb(lA, da);
+      preds.push({ home: h0 + dh, away: a0 + da, prob: Math.round(p * 100) });
+    }
+  }
+
+  return preds
+    .sort((a, b) => b.prob - a.prob)
+    .slice(0, 3)
+    .filter(s => s.prob > 0);
+}
+
+// ── Main compute function ─────────────────────────────────────────────────────
 export function computePressure(match: FootballMatch): PressureData {
   const minute = estimateMinute(match.status, match.date);
   const home = match.team1Score ?? 0;
@@ -77,7 +125,6 @@ export function computePressure(match: FootballMatch): PressureData {
   let pressure = 30;
   const signals: { icon: string; text: string }[] = [];
 
-  // ── Timing factors ──────────────────────────────────────────────
   const minInHalf = match.status === '2H' ? minute - 45 : minute;
 
   if (match.status === '1H' && minInHalf >= 38) {
@@ -97,20 +144,18 @@ export function computePressure(match: FootballMatch): PressureData {
     signals.push({ icon: '💥', text: 'Prorrogação — qualquer gol é decisivo' });
   }
 
-  // ── Score factors ────────────────────────────────────────────────
   if (diff === 0 && match.status !== 'HT') {
     prob += 8; pressure += 12;
     signals.push({ icon: '⚖️', text: 'Empate — ambos atacam para virar' });
   }
   if (Math.abs(diff) === 1) {
     prob += 10; pressure += 18;
-    signals.push({ icon: '📈', text: `Time perdedor pressionando demais` });
+    signals.push({ icon: '📈', text: 'Time perdedor pressionando demais' });
   }
   if (Math.abs(diff) >= 3) {
     prob -= 5; pressure -= 8;
   }
 
-  // ── xG estimation from scoring pace ────────────────────────────
   const pace = minute > 0 ? (totalGoals / minute) * 90 : 2.5;
   const xGEst = parseFloat(Math.max(0.2, Math.min(5.5, pace)).toFixed(1));
 
@@ -124,8 +169,6 @@ export function computePressure(match: FootballMatch): PressureData {
     signals.push({ icon: '📊', text: `xG estimado: ${xGEst}` });
   }
 
-  // ── Pressure simulation (mimics corner/shot pressure) ──────────
-  // Derived from match minute position in half: teams attack more in 2nd half
   if (match.status === '2H' && minInHalf >= 20) {
     const cornerEstimate = Math.floor(minInHalf / 8);
     if (cornerEstimate >= 3) {
@@ -147,10 +190,12 @@ export function computePressure(match: FootballMatch): PressureData {
     : prob >= 28 ? 'medium'
     : 'low';
 
-  return { match, minute, probability: prob, level, signals, xGEstimated: xGEst, pressureIndex: pressure };
+  const likelyScores = computeLikelyScores(match, xGEst, minute);
+
+  return { match, minute, probability: prob, level, signals, xGEstimated: xGEst, pressureIndex: pressure, likelyScores };
 }
 
-// ── Visual helpers ─────────────────────────────────────────────────
+// ── Visual config ─────────────────────────────────────────────────────────────
 const LEVEL_CONFIG: Record<AlertLevel, {
   bg: string; border: string; badge: string; bar: string; label: string;
 }> = {
@@ -165,7 +210,7 @@ interface PressureCardProps {
 }
 
 export function PressureCard({ data }: PressureCardProps) {
-  const { match, minute, probability, level, signals, xGEstimated, pressureIndex } = data;
+  const { match, minute, probability, level, signals, likelyScores } = data;
   const cfg = LEVEL_CONFIG[level];
   const f1 = FLAGS[match.team1] ?? '';
   const f2 = FLAGS[match.team2] ?? '';
@@ -175,7 +220,7 @@ export function PressureCard({ data }: PressureCardProps) {
 
   return (
     <div className={`rounded-2xl border p-5 transition-all ${cfg.bg} ${cfg.border}`}>
-      {/* Header row */}
+      {/* Header */}
       <div className="flex items-start justify-between mb-4 gap-3">
         <div className="flex-1 min-w-0">
           <p className="text-xs text-slate-500 font-medium mb-1 truncate">{match.championship}</p>
@@ -189,40 +234,34 @@ export function PressureCard({ data }: PressureCardProps) {
             <span className="text-lg leading-none">{f2}</span>
           </div>
         </div>
-
-        {/* Level badge */}
         <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 ${cfg.badge}`}>
           {level === 'critical' && <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />}
-          {level === 'high' && <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />}
+          {level === 'high'     && <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />}
           {cfg.label}
         </div>
       </div>
 
-      {/* Probability display */}
+      {/* Probability bar */}
       <div className="mb-4">
         <div className="flex items-end justify-between mb-2">
           <div>
             <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-0.5">
               Probabilidade de gol (5 min)
             </p>
-            <div className="flex items-baseline gap-1.5">
-              <span className={`text-4xl font-black ${
-                level === 'critical' ? 'text-red-400'
-                : level === 'high' ? 'text-orange-400'
-                : level === 'medium' ? 'text-yellow-400'
-                : 'text-slate-400'
-              }`}>
-                {probability}%
-              </span>
-            </div>
+            <span className={`text-4xl font-black ${
+              level === 'critical' ? 'text-red-400'
+              : level === 'high' ? 'text-orange-400'
+              : level === 'medium' ? 'text-yellow-400'
+              : 'text-slate-400'
+            }`}>
+              {probability}%
+            </span>
           </div>
           <div className="text-right">
             <p className="text-xs text-slate-600 font-semibold">{statusLabel}</p>
             <p className="text-sm font-black text-slate-400">{minute}'</p>
           </div>
         </div>
-
-        {/* Gauge bar */}
         <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full transition-all duration-700 ${cfg.bar}`}
@@ -231,7 +270,7 @@ export function PressureCard({ data }: PressureCardProps) {
         </div>
       </div>
 
-      {/* Signals list */}
+      {/* Signals */}
       <div className="space-y-1.5">
         {signals.map((s, i) => (
           <div key={i} className="flex items-center gap-2 text-xs text-slate-400">
@@ -241,9 +280,34 @@ export function PressureCard({ data }: PressureCardProps) {
         ))}
       </div>
 
-      {/* Footer note */}
+      {/* ── Placar mais provável ────────────────────────────────────────────── */}
+      {likelyScores.length > 0 && (
+        <div className="mt-4 pt-3 border-t border-slate-800/60">
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2">
+            Placar mais provável
+          </p>
+          <div className="flex gap-2 flex-wrap">
+            {likelyScores.map((s, i) => (
+              <div
+                key={i}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold ${
+                  i === 0
+                    ? 'bg-slate-700 text-white ring-1 ring-slate-600'
+                    : 'bg-slate-800 text-slate-400'
+                }`}
+              >
+                <span>{s.home}–{s.away}</span>
+                <span className={`font-normal ${i === 0 ? 'text-slate-400' : 'text-slate-600'}`}>
+                  {s.prob}%
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <p className="mt-3 text-[10px] text-slate-700 border-t border-slate-800/60 pt-2">
-        Probabilidade calculada com base em minuto, placar e ritmo estimado de xG.
+        Probabilidade calculada com base em minuto, placar, xG e modelo de Poisson.
       </p>
     </div>
   );

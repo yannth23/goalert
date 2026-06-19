@@ -47,6 +47,11 @@ export const api = {
       team2Score?: number;
     }[]>('/matches'),
 
+  getCalendar: (month?: string) =>
+    request<{ date: string; count: number }[]>(
+      `/matches/calendar${month ? `?month=${month}` : ''}`,
+    ),
+
   getStandings: () =>
     request<unknown[]>('/matches/standings'),
 
