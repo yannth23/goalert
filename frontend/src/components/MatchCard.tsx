@@ -13,7 +13,6 @@ const STATUS_MAP: Record<string, { label: string; bg: string; text: string; live
   PST: { label: 'Adiado',        bg: 'bg-red-950',     text: 'text-red-400',    live: false },
 };
 
-// Flags mapped by English API name
 const FLAGS: Record<string, string> = {
   'Brazil': '🇧🇷', 'Argentina': '🇦🇷', 'France': '🇫🇷',
   'Germany': '🇩🇪', 'Spain': '🇪🇸', 'Portugal': '🇵🇹',
@@ -87,6 +86,22 @@ const COMPETITION_PT: Record<string, string> = {
   'Copa Libertadores': 'Copa Libertadores',
 };
 
+const STYLE_ICON: Record<string, string> = {
+  possession: '⚽',
+  counter:    '⚡',
+  pressing:   '🔥',
+  defensive:  '🛡️',
+  balanced:   '⚖️',
+};
+
+const STYLE_LABEL: Record<string, string> = {
+  possession: 'Posse',
+  counter:    'Contra',
+  pressing:   'Pressão',
+  defensive:  'Defensivo',
+  balanced:   'Equilibrado',
+};
+
 function traduzirTime(nome: string): string {
   return TEAM_PT[nome] ?? nome;
 }
@@ -100,6 +115,60 @@ const LIVE_STATUSES = new Set(['1H', '2H', 'ET', 'PEN']);
 interface MatchCardProps {
   match: FootballMatch;
   highlighted?: boolean;
+}
+
+function MiniDominanceBar({ match }: { match: FootballMatch }) {
+  const home = match.tactics?.home;
+  const away = match.tactics?.away;
+  if (!home || !away) return null;
+
+  const p1 = home.gameDominanceProb ?? 50;
+  const p2 = away.gameDominanceProb ?? 50;
+  const s1 = home.dominanceStyle ?? 'balanced';
+  const s2 = away.dominanceStyle ?? 'balanced';
+  const dominant = p1 >= p2 ? match.team1 : match.team2;
+  const dominantProb = Math.max(p1, p2);
+
+  return (
+    <div className="mt-3 pt-3 border-t border-slate-800">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">
+          Domínio Esperado
+        </span>
+        <span className="text-[10px] font-black text-indigo-400">
+          {traduzirTime(dominant)} {dominantProb}%
+        </span>
+      </div>
+
+      <div className="flex rounded-full overflow-hidden h-2 mb-2">
+        <div
+          className="bg-gradient-to-r from-green-600 to-green-400 transition-all duration-500"
+          style={{ width: `${p1}%` }}
+        />
+        <div
+          className="bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-500"
+          style={{ width: `${p2}%` }}
+        />
+      </div>
+
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-1">
+          <span className="text-[11px] leading-none">{STYLE_ICON[s1] ?? '⚖️'}</span>
+          <span className={`text-[10px] font-bold ${p1 >= p2 ? 'text-green-400' : 'text-slate-500'}`}>
+            {traduzirTime(match.team1)}
+          </span>
+          <span className="text-[10px] text-slate-600">· {STYLE_LABEL[s1] ?? s1}</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] text-slate-600">{STYLE_LABEL[s2] ?? s2} ·</span>
+          <span className={`text-[10px] font-bold ${p2 > p1 ? 'text-blue-400' : 'text-slate-500'}`}>
+            {traduzirTime(match.team2)}
+          </span>
+          <span className="text-[11px] leading-none">{STYLE_ICON[s2] ?? '⚖️'}</span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function MatchCard({ match, highlighted }: MatchCardProps) {
@@ -145,7 +214,7 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
       <div className="flex items-center justify-between gap-4">
         <div className="flex-1 flex flex-col items-end gap-0.5">
           {flag1 && (
-            flag1.startsWith('http') 
+            flag1.startsWith('http')
               ? <img src={flag1} alt={match.team1} className="w-6 h-4 object-contain" />
               : <span className="text-xl leading-none">{flag1}</span>
           )}
@@ -173,7 +242,7 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
 
         <div className="flex-1 flex flex-col items-start gap-0.5">
           {flag2 && (
-            flag2.startsWith('http') 
+            flag2.startsWith('http')
               ? <img src={flag2} alt={match.team2} className="w-6 h-4 object-contain" />
               : <span className="text-xl leading-none">{flag2}</span>
           )}
@@ -183,24 +252,32 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
         </div>
       </div>
 
+      <MiniDominanceBar match={match} />
+
       {match.predictions && (
-        <div className="mt-4 pt-4 border-t border-slate-800">
+        <div className="mt-3 pt-3 border-t border-slate-800">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Predições Estatísticas</span>
+            <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">
+              Predições Estatísticas
+            </span>
             <div className="flex gap-2">
-              <button 
+              <button
                 onClick={() => setShowTactics(true)}
                 className="text-[10px] bg-indigo-600 hover:bg-indigo-500 text-white px-2 py-0.5 rounded-full font-bold transition-colors"
               >
                 Análise Tática
               </button>
-              <span className="text-[10px] bg-indigo-950 text-indigo-400 px-2 py-0.5 rounded-full font-bold">AI Insight</span>
+              <span className="text-[10px] bg-indigo-950 text-indigo-400 px-2 py-0.5 rounded-full font-bold">
+                AI Insight
+              </span>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-slate-800/50 p-2 rounded-lg text-center">
               <span className="block text-[10px] text-slate-500 mb-0.5">Gols</span>
-              <span className="text-xs font-bold text-white">{match.predictions.goalsHome.toFixed(1)} - {match.predictions.goalsAway.toFixed(1)}</span>
+              <span className="text-xs font-bold text-white">
+                {match.predictions.goalsHome.toFixed(1)} - {match.predictions.goalsAway.toFixed(1)}
+              </span>
             </div>
             <div className="bg-slate-800/50 p-2 rounded-lg text-center">
               <span className="block text-[10px] text-slate-500 mb-0.5">Cartões</span>
