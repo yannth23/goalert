@@ -15,10 +15,9 @@ model User {
   verified      Boolean         @default(false)
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
-
   favoriteTeams FavoriteTeam[]
-  preferences   UserPreference?
   refreshTokens RefreshToken[]
+  preferences   UserPreference?
 }
 
 model RefreshToken {
@@ -27,48 +26,43 @@ model RefreshToken {
   token     String   @unique
   expiresAt DateTime
   createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model FavoriteTeam {
   id       String @id @default(cuid())
   userId   String
   teamName String
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model UserPreference {
   id                           String   @id @default(cuid())
   userId                       String   @unique
   receiveDailyNotifications    Boolean  @default(true)
-  receiveTelegramNotifications Boolean  @default(false)
-  telegramChatId               String?
   createdAt                    DateTime @default(now())
   updatedAt                    DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  telegramChatId               String?
+  receiveTelegramNotifications Boolean  @default(false)
+  user                         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model FootballMatch {
-  id           String   @id @default(cuid())
-  date         DateTime
-  championship String
-  homeTeam     String
-  awayTeam     String
-  homeFlag     String?
-  awayFlag     String?
-  status       String
-  homeScore    Int?
-  awayScore    Int?
-  externalId   String?  @unique
-  
-  // Predictive features
-  predictedGoalsHome  Float?
-  predictedGoalsAway  Float?
-  predictedCards      Float?
-  predictedFouls      Float?
+  id                 String   @id @default(cuid())
+  date               DateTime
+  championship       String
+  homeTeam           String
+  awayTeam           String
+  status             String
+  externalId         String?  @unique
+  homeScore          Int?
+  awayScore          Int?
+  awayFlag           String?
+  homeFlag           String?
+  predictedCards     Float?
+  predictedFouls     Float?
+  predictedGoalsAway Float?
+  predictedGoalsHome Float?
 
   @@index([date])
   @@index([championship])
