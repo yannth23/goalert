@@ -164,8 +164,8 @@ export class StatisticsPredictorService {
   private async generateSimulatedTactics(teamName: string): Promise<TacticalAnalysis> {
     const models = [
       { model: 'llama-3.3-70b-versatile', name: 'Groq Llama 3.3' },
-      { model: 'mixtral-8x7b-32768', name: 'Groq Mixtral' },
-      { model: 'gemma2-9b-it', name: 'Groq Gemma 2' },
+      { model: 'llama-3.1-8b-instant', name: 'Groq Llama 3.1 8B' },
+      { model: 'qwen/qwen3-32b', name: 'Groq Qwen 32B' },
     ];
 
     for (const { model, name } of models) {
