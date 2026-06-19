@@ -3,12 +3,13 @@ import axios from 'axios';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { ScraperService, ScrapedMatch } from './scraper.service';
 import { translateTeam } from './translation.util';
 import { withCache } from '../shared';
 
-const BASE_URL      = 'https://api.football-data.org/v4';
+const BASE_URL       = 'https://api.football-data.org/v4';
 const COMPETITION_WC = 'WC';
-const AXIOS_TIMEOUT  = 8_000; // 8 seconds — prevents hanging syncs
+const AXIOS_TIMEOUT  = 8_000;
 
 const STATUS_MAP: Record<string, string> = {
   SCHEDULED:        'NS',
@@ -32,18 +33,21 @@ function extractScore(score: any): { home: number | null; away: number | null } 
   return { home: null, away: null };
 }
 
-/** Fetch from football-data.org with timeout + one retry on network failure. */
+/** Fetch from football-data.org with timeout + one retry on network/timeout errors. */
 async function fetchWithRetry(url: string, params: object, headers: object, logger: Logger) {
   const opts = { params, headers, timeout: AXIOS_TIMEOUT };
   try {
     return await axios.get(url, opts);
   } catch (firstErr: any) {
-    const isTimeout = firstErr.code === 'ECONNABORTED' || firstErr.code === 'ERR_CANCELED';
-    const isNetwork = isTimeout || firstErr.code === 'ENOTFOUND' || firstErr.code === 'ECONNRESET';
-    if (!isNetwork) throw firstErr; // non-network error — don't retry
-    logger.warn(`Fetch failed (${firstErr.code}), retrying in 3 s…`);
+    const isRetryable =
+      firstErr.code === 'ECONNABORTED' ||
+      firstErr.code === 'ERR_CANCELED'  ||
+      firstErr.code === 'ENOTFOUND'     ||
+      firstErr.code === 'ECONNRESET';
+    if (!isRetryable) throw firstErr;
+    logger.warn(`Primary fetch failed (${firstErr.code}), retrying in 3 s…`);
     await new Promise(r => setTimeout(r, 3_000));
-    return axios.get(url, opts); // second attempt — let caller handle errors
+    return axios.get(url, opts);
   }
 }
 
@@ -52,32 +56,69 @@ export class FootballApiService {
   private readonly logger = new Logger(FootballApiService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly redis: RedisService,
+    private readonly prisma:   PrismaService,
+    private readonly redis:    RedisService,
     private readonly telegram: TelegramService,
+    private readonly scraper:  ScraperService,
   ) {}
 
   private get headers() {
     return { 'X-Auth-Token': process.env.FOOTBALL_DATA_API_KEY };
   }
 
-  private async cacheDel(key: string): Promise<void> {
+  private async cacheDel(key: string) {
     try { await this.redis.del(key); }
     catch (err) { this.logger.warn(`Cache DEL failed [${key}]`, err); }
   }
 
+  // ── Main sync ──────────────────────────────────────────────────────────────
+
   async syncTodayMatches() {
     const today = new Date().toISOString().split('T')[0];
 
-    const response = await fetchWithRetry(
-      `${BASE_URL}/matches`,
-      { date: today },
-      this.headers,
-      this.logger,
-    );
+    // ── Try primary API ────────────────────────────────────────────────────
+    try {
+      const response = await fetchWithRetry(
+        `${BASE_URL}/matches`,
+        { date: today },
+        this.headers,
+        this.logger,
+      );
 
-    const matches = response.data.matches as any[];
+      return await this.processPrimaryMatches(response.data.matches ?? [], today);
 
+    } catch (primaryErr: any) {
+      // ── Fallback: scraper ────────────────────────────────────────────────
+      this.logger.warn(
+        `Primary API unavailable (${primaryErr.message}) — activating scraper fallback`,
+      );
+
+      try {
+        const scraped = await this.scraper.scrapeTodayMatches();
+
+        if (scraped.length === 0) {
+          this.logger.warn('Scraper returned 0 matches — both data sources failed');
+          return { synced: 0, live: 0, errors: 1, source: 'none' };
+        }
+
+        const { updated, live } = await this.updateFromScraped(scraped);
+        await this.cacheDel(`matches:${today}`);
+
+        this.logger.log(
+          `Scraper fallback OK — ${updated} updated, ${live} live [source: ${scraped[0]?.source}]`,
+        );
+        return { synced: updated, live, errors: 0, source: scraped[0]?.source ?? 'scraper' };
+
+      } catch (scraperErr: any) {
+        this.logger.error(`Scraper also failed: ${scraperErr.message}`);
+        return { synced: 0, live: 0, errors: 1, source: 'none' };
+      }
+    }
+  }
+
+  // ── Primary API processing (unchanged logic) ────────────────────────────
+
+  private async processPrimaryMatches(matches: any[], today: string) {
     let syncErrors = 0;
     let liveCount  = 0;
 
@@ -117,8 +158,8 @@ export class FootballApiService {
         });
 
         if (['1H', 'HT', '2H', 'ET', 'PEN'].includes(mappedStatus)) liveCount++;
-
         await this.detectAndNotify(existing, saved, homeTeam, awayTeam);
+
       } catch (err) {
         syncErrors++;
         this.logger.error(`Failed to sync match ${match.id}`, err);
@@ -127,11 +168,66 @@ export class FootballApiService {
 
     await this.cacheDel(`matches:${today}`);
 
-    this.logger.log(
-      `Sync done — ${matches.length} total, ${liveCount} live, ${syncErrors} error(s)`,
-    );
-    return { synced: matches.length, live: liveCount, errors: syncErrors };
+    if (liveCount > 0 || syncErrors > 0) {
+      this.logger.log(
+        `Primary sync — ${matches.length} total, ${liveCount} live, ${syncErrors} error(s)`,
+      );
+    }
+
+    return { synced: matches.length, live: liveCount, errors: syncErrors, source: 'primary' };
   }
+
+  // ── Scraper fallback: update existing DB records ──────────────────────────
+
+  private async updateFromScraped(
+    scraped: ScrapedMatch[],
+  ): Promise<{ updated: number; live: number }> {
+    let updated   = 0;
+    let liveCount = 0;
+
+    for (const s of scraped) {
+      try {
+        const startDay   = s.startTime.toISOString().split('T')[0];
+        const dayStart   = new Date(`${startDay}T00:00:00Z`);
+        const dayEnd     = new Date(`${startDay}T23:59:59Z`);
+
+        // Match by translated team names + date — never create new records here
+        const existing = await this.prisma.footballMatch.findFirst({
+          where: {
+            homeTeam: s.homeTeam,
+            awayTeam: s.awayTeam,
+            date: { gte: dayStart, lte: dayEnd },
+          },
+        });
+
+        if (!existing) continue;
+
+        const updated_record = await this.prisma.footballMatch.update({
+          where: { id: existing.id },
+          data: {
+            status:    s.status,
+            homeScore: s.homeScore,
+            awayScore: s.awayScore,
+          },
+        });
+
+        await this.detectAndNotify(existing, updated_record, s.homeTeam, s.awayTeam);
+
+        updated++;
+        if (['1H', 'HT', '2H', 'ET', 'PEN'].includes(s.status)) liveCount++;
+
+      } catch (err) {
+        this.logger.error(
+          `[scraper] Failed to update ${s.homeTeam} vs ${s.awayTeam}`,
+          err,
+        );
+      }
+    }
+
+    return { updated, live: liveCount };
+  }
+
+  // ── Telegram notifications (unchanged) ────────────────────────────────────
 
   private async detectAndNotify(prev: any, curr: any, homeTeam: string, awayTeam: string) {
     const users = await this.prisma.user.findMany({
@@ -152,8 +248,10 @@ export class FootballApiService {
     const prevAway = prev?.awayScore ?? null;
     const currHome = curr.homeScore;
     const currAway = curr.awayScore;
-    const placarDisponivel = currHome !== null && currAway !== null;
-    const placarMudou = placarDisponivel && (currHome !== prevHome || currAway !== prevAway);
+    const placarMudou =
+      currHome !== null &&
+      currAway !== null &&
+      (currHome !== prevHome || currAway !== prevAway);
 
     if (placarMudou) {
       const golsHome = currHome - (prevHome ?? 0);
@@ -183,10 +281,12 @@ export class FootballApiService {
       if (!chatId) continue;
       for (const msg of messages) {
         try { await this.telegram.sendMessage(chatId, msg); }
-        catch (err) { this.logger.error(`Telegram failed for chatId=${chatId}`, err); }
+        catch (err) { this.logger.error(`Telegram failed chatId=${chatId}`, err); }
       }
     }
   }
+
+  // ── Standings & Scorers (cached) ───────────────────────────────────────────
 
   async getStandings() {
     return withCache(this.redis, 'standings:wc', 300, async () => {
