@@ -143,9 +143,13 @@ export class StatisticsPredictorService {
     const homeTactics = await this.generateSimulatedTactics(homeTeam);
     const awayTactics = await this.generateSimulatedTactics(awayTeam);
 
-    // Normalização da Posse de Bola: A soma deve ser 100%
-    const totalPossession = homeTactics.possession + awayTactics.possession;
-    homeTactics.possession = Math.round((homeTactics.possession / totalPossession) * 100);
+    // Normalização da Posse de Bola: A soma deve ser exatamente 100%
+    // Garantimos que nenhum time fique com 0% ou 100% a menos que seja um caso extremo
+    const rawHome = Math.max(10, Math.min(90, homeTactics.possession));
+    const rawAway = Math.max(10, Math.min(90, awayTactics.possession));
+    const total = rawHome + rawAway;
+    
+    homeTactics.possession = Math.round((rawHome / total) * 100);
     awayTactics.possession = 100 - homeTactics.possession;
 
     const aiAnalysis = await this.generateAiAnalysis(homeTeam, awayTeam, homeTactics, awayTactics);
@@ -181,11 +185,11 @@ export class StatisticsPredictorService {
             },
             {
               role: "user",
-              content: `Analise a seleção: ${teamName}. 
+              content: `Analise a seleção: ${teamName} baseando-se APENAS nos últimos 3 jogos oficiais. 
               Forneça:
-              1. Formação tática REAL atual (ex: 4-3-3, 3-5-2, 5-4-1, 4-4-2 losango).
-              2. Escalação provável com os 11 nomes REAIS e COMPLETOS.
-              3. O jogador estrela (Key Player).
+              1. Formação tática REAL utilizada nos últimos 3 jogos.
+              2. Escalação provável com os 11 nomes REAIS e MAIS RECENTES (titulares dos últimos jogos).
+              3. O jogador estrela atual (Key Player).
               4. Porcentagem de posse de bola esperada (0-100).
               5. Intensidade/Agressividade (0-100).
               6. Foco de ataque (wings, center, defense, counter, balanced).
