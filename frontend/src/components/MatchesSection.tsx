@@ -7,7 +7,7 @@ import { EmptyState } from './EmptyState';
 import { useMatches } from '../hooks/useMatches';
 import type { FootballMatch } from '../types';
 
-type StyleFilter = 'all' | 'pressing' | 'counter' | 'possession' | 'defensive' | 'balanced';
+type StyleFilter = 'all' | 'pressing' | 'counter' | 'possession' | 'defensive';
 
 const STYLE_OPTS: {
   key: StyleFilter;
@@ -21,7 +21,6 @@ const STYLE_OPTS: {
   { key: 'counter',    label: 'Contra-ataque',  icon: '⚡', pill: 'border-slate-700 text-slate-400 hover:border-yellow-700 hover:text-yellow-400', active: 'bg-yellow-950 border-yellow-700 text-yellow-400' },
   { key: 'possession', label: 'Posse de bola',  icon: '🔵', pill: 'border-slate-700 text-slate-400 hover:border-blue-700 hover:text-blue-400',    active: 'bg-blue-950 border-blue-700 text-blue-400' },
   { key: 'defensive',  label: 'Defensivo',      icon: '🛡️', pill: 'border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-300',  active: 'bg-slate-800 border-slate-500 text-slate-300' },
-  { key: 'balanced',   label: 'Equilibrado',    icon: '⚖️', pill: 'border-slate-700 text-slate-400 hover:border-green-700 hover:text-green-400',  active: 'bg-green-950 border-green-700 text-green-400' },
 ];
 
 function matchHasStyle(m: FootballMatch, style: StyleFilter): boolean {
