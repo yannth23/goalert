@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { api } from '../lib/api';
 import { useApiQuery } from './useApiQuery';
 import type { FootballMatch } from '../types';
@@ -9,6 +9,14 @@ export function useMatches() {
     fetcher,
     'Erro ao carregar partidas',
   );
+
+  // Polling para manter status atualizados (cada 30s)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      reload();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [reload]);
 
   return {
     matches: data ?? [],

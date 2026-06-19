@@ -6,7 +6,7 @@ import { ScraperService } from './scraper.service';
 import { getTodayRange, mapMatchToDto } from '../shared';
 
 const LIVE_STATUSES       = new Set(['1H', 'HT', '2H', 'ET', 'PEN']);
-const MAX_MATCH_DURATION  = 3.5 * 60 * 60 * 1000;
+const MAX_MATCH_DURATION  = 3 * 60 * 60 * 1000; // 3 horas é mais que suficiente para um jogo normal + intervalo
 
 export interface H2HResult {
   homeTeam: string;
@@ -55,8 +55,16 @@ export class FootballMatchService {
       orderBy: { date: 'asc' },
     });
     const sanitised = matches.map(m => {
-      if (LIVE_STATUSES.has(m.status) && now.getTime() - new Date(m.date).getTime() > MAX_MATCH_DURATION)
+      const matchTime = new Date(m.date).getTime();
+      const elapsedMs = now.getTime() - matchTime;
+      
+      // Lógica de segurança para evitar status "preso":
+      // 1. Se o jogo está em status LIVE mas já se passaram mais de 3 horas do início -> Força FT
+      // 2. Se o jogo está NS mas já se passaram mais de 3 horas e meia do início planejado -> Força FT
+      if ((LIVE_STATUSES.has(m.status) && elapsedMs > MAX_MATCH_DURATION) || 
+          (m.status === 'NS' && elapsedMs > MAX_MATCH_DURATION + (30 * 60 * 1000))) {
         return { ...m, status: 'FT' };
+      }
       return m;
     });
     return sanitised.map(mapMatchToDto);
