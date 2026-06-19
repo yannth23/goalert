@@ -124,49 +124,16 @@ function MiniDominanceBar({ match }: { match: FootballMatch }) {
 
   const p1 = home.gameDominanceProb ?? 50;
   const p2 = away.gameDominanceProb ?? 50;
-  const s1 = home.dominanceStyle ?? 'balanced';
-  const s2 = away.dominanceStyle ?? 'balanced';
   const dominant = p1 >= p2 ? match.team1 : match.team2;
-  const dominantProb = Math.max(p1, p2);
+  const dominantStyle = p1 >= p2 ? (home.dominanceStyle ?? 'balanced') : (away.dominanceStyle ?? 'balanced');
 
   return (
-    <div className="mt-3 pt-3 border-t border-slate-800">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">
-          Domínio Esperado
-        </span>
-        <span className="text-[10px] font-black text-indigo-400">
-          {traduzirTime(dominant)} {dominantProb}%
-        </span>
-      </div>
-
-      <div className="flex rounded-full overflow-hidden h-2 mb-2">
-        <div
-          className="bg-gradient-to-r from-green-600 to-green-400 transition-all duration-500"
-          style={{ width: `${p1}%` }}
-        />
-        <div
-          className="bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-500"
-          style={{ width: `${p2}%` }}
-        />
-      </div>
-
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-1">
-          <span className="text-[11px] leading-none">{STYLE_ICON[s1] ?? '⚖️'}</span>
-          <span className={`text-[10px] font-bold ${p1 >= p2 ? 'text-green-400' : 'text-slate-500'}`}>
-            {traduzirTime(match.team1)}
-          </span>
-          <span className="text-[10px] text-slate-600">· {STYLE_LABEL[s1] ?? s1}</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <span className="text-[10px] text-slate-600">{STYLE_LABEL[s2] ?? s2} ·</span>
-          <span className={`text-[10px] font-bold ${p2 > p1 ? 'text-blue-400' : 'text-slate-500'}`}>
-            {traduzirTime(match.team2)}
-          </span>
-          <span className="text-[11px] leading-none">{STYLE_ICON[s2] ?? '⚖️'}</span>
-        </div>
-      </div>
+    <div className="mt-3 pt-3 border-t border-slate-800 flex items-center gap-2">
+      <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold shrink-0">
+        Provável dominante:
+      </span>
+      <span className="text-[11px] leading-none">{STYLE_ICON[dominantStyle] ?? '⚽'}</span>
+      <span className="text-[11px] font-black text-white">{traduzirTime(dominant)}</span>
     </div>
   );
 }
