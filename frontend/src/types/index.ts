@@ -47,8 +47,10 @@ export interface FootballMatch {
     cards: number;
     fouls: number;
   };
-  homeTactics?: TacticalAnalysis;
-  awayTactics?: TacticalAnalysis;
+  tactics?: {
+    home: TacticalAnalysis;
+    away: TacticalAnalysis;
+  };
   aiAnalysis?: string;
   shortInsight?: string;
 }
