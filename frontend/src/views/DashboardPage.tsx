@@ -53,8 +53,6 @@ export function DashboardPage() {
   const [styleFilter, setStyleFilter] = useState<StyleFilter>('all');
   const { toast, showToast } = useToast();
   const goalNotifications = useGoalNotifications();
-  const [telegramChatId, setTelegramChatId] = useState('');
-
   useEffect(() => {
     if (!user) return;
     Promise.all([
@@ -64,7 +62,6 @@ export function DashboardPage() {
       setMatches(matchData);
       setFavoriteTeams(userData.favoriteTeams);
       setNotifications(userData.preferences?.receiveDailyNotifications ?? true);
-      setTelegramChatId(userData.preferences?.telegramChatId ?? '');
     }).catch(() => {
       showToast('Erro ao carregar dados.');
     }).finally(() => setLoadingData(false));
@@ -374,27 +371,7 @@ export function DashboardPage() {
               </div>
             )}
 
-            {/* Telegram */}
-            <Link
-              href="/dashboard/telegram"
-              className="flex items-center justify-between bg-slate-900 border border-slate-800 hover:border-blue-600/50 rounded-2xl p-5 transition-all group"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-blue-600/15 flex items-center justify-center text-base">✈️</div>
-                <div>
-                  <p className="font-semibold text-sm text-white group-hover:text-blue-400 transition">
-                    Alertas via Telegram
-                  </p>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    {telegramChatId ? 'Ativo · gols e resultados em tempo real' : 'Toque para configurar'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {telegramChatId && <span className="w-2 h-2 rounded-full bg-blue-500" />}
-                <span className="text-slate-600 group-hover:text-slate-300 transition text-xl leading-none">›</span>
-              </div>
-            </Link>
+            {/* Telegram removido */}
 
             {/* Times favoritos */}
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">

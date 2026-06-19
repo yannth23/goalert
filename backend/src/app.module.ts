@@ -8,7 +8,7 @@ import { JobsModule } from './jobs/jobs.module';
 import { FootballMatchModule } from './football-match/football-match.module';
 import { AuthModule } from './auth/auth.module';
 import { RedisModule } from './redis/redis.module';
-import { TelegramModule } from './telegram/telegram.module';
+// Telegram removido
 import { AppController } from './app.controller';
 
 @Module({
@@ -22,7 +22,6 @@ import { AppController } from './app.controller';
     JobsModule,
     FootballMatchModule,
     AuthModule,
-    TelegramModule,
   ],
   controllers: [AppController],
 })

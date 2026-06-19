@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import axios from 'axios';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
-import { TelegramService } from '../telegram/telegram.service';
+// Telegram removido
 import { StatisticsPredictorService } from './statistics-predictor.service';
 import { translateTeam } from './translation.util';
 
@@ -80,7 +80,6 @@ export class FootballApiService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
-    private readonly telegram: TelegramService,
     private readonly statisticsPredictor: StatisticsPredictorService,
   ) {}
 
@@ -192,64 +191,7 @@ export class FootballApiService {
   }
 
   private async detectAndNotify(prev: any, curr: any, homeTeam: string, awayTeam: string) {
-    const users = await this.prisma.user.findMany({
-      where: { preferences: { receiveTelegramNotifications: true } },
-      include: { preferences: true },
-    });
-
-    if (!users.length) return;
-
-    const messages: string[] = [];
-
-    if (prev?.status === 'NS' && curr.status === '1H') {
-      messages.push(`⚽ *Jogo começou!*
-${homeTeam} x ${awayTeam}
-🏆 ${curr.championship}`);
-    }
-
-    const prevHome = prev?.homeScore ?? null;
-    const prevAway = prev?.awayScore ?? null;
-    const currHome = curr.homeScore;
-    const currAway = curr.awayScore;
-
-    const placarDisponivel = currHome !== null && currAway !== null;
-    const placarMudou = placarDisponivel && (currHome !== prevHome || currAway !== prevAway);
-
-    if (placarMudou) {
-      const golsHome = currHome - (prevHome ?? 0);
-      const golsAway = currAway - (prevAway ?? 0);
-
-      for (let i = 0; i < golsHome; i++) {
-        const ph = (prevHome ?? 0) + i + 1;
-        const pa = prevAway ?? 0;
-        messages.push(`🥅 *GOL!* ${homeTeam}
-${homeTeam} ${ph} x ${pa} ${awayTeam}
-🏆 ${curr.championship}`);
-      }
-      for (let i = 0; i < golsAway; i++) {
-        const ph = prevHome ?? 0;
-        const pa = (prevAway ?? 0) + i + 1;
-        messages.push(`🥅 *GOL!* ${awayTeam}
-${homeTeam} ${ph} x ${pa} ${awayTeam}
-🏆 ${curr.championship}`);
-      }
-    }
-
-    if (prev && prev.status !== 'FT' && curr.status === 'FT') {
-      messages.push(`🏁 *Fim de jogo!*
-${homeTeam} ${curr.homeScore ?? 0} x ${curr.awayScore ?? 0} ${awayTeam}
-🏆 ${curr.championship}`);
-    }
-
-    if (!messages.length) return;
-
-    for (const user of users) {
-      const chatId = user.preferences?.telegramChatId;
-      if (!chatId) continue;
-      for (const msg of messages) {
-        await this.telegram.sendMessage(chatId, msg);
-      }
-    }
+    // Notificações removidas (Telegram)
   }
 
   async getTodayMatchesFromDb() {

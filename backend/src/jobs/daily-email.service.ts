@@ -3,7 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { FootballApiService } from '../football-match/football-api.service';
-import { TelegramService } from '../telegram/telegram.service';
+// Telegram removido
 import { getTodayRange, formatMatchTime } from '../shared';
 import { StatisticsPredictorService } from '../football-match/statistics-predictor.service';
 
@@ -18,7 +18,6 @@ export class DailyEmailService implements OnApplicationBootstrap {
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
     private readonly footballApiService: FootballApiService,
-    private readonly telegram: TelegramService,
     private readonly predictor: StatisticsPredictorService,
   ) {}
 
@@ -110,7 +109,7 @@ export class DailyEmailService implements OnApplicationBootstrap {
       include: { favoriteTeams: true, preferences: true },
     });
 
-    let emailSent = 0, telegramSent = 0;
+    let emailSent = 0;
 
     for (const user of users) {
       const favoriteTeams = user.favoriteTeams.map(t => t.teamName);
@@ -127,19 +126,9 @@ export class DailyEmailService implements OnApplicationBootstrap {
           this.logger.error(`Email failed for ${user.email}`, err);
         }
       }
-
-      const chatId = user.preferences?.telegramChatId;
-      if (user.preferences?.receiveTelegramNotifications && chatId) {
-        try {
-          await this.telegram.sendMessage(chatId, buildTelegramSummary(filtered));
-          telegramSent++;
-        } catch (err) {
-          this.logger.error(`Telegram failed for chatId=${chatId}`, err);
-        }
-      }
     }
 
-    this.logger.log(`Notifications done — emails: ${emailSent}, Telegram: ${telegramSent}`);
+    this.logger.log(`Notifications done — emails: ${emailSent}`);
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────

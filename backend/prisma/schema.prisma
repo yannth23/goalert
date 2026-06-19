@@ -42,8 +42,6 @@ model UserPreference {
   receiveDailyNotifications    Boolean  @default(true)
   createdAt                    DateTime @default(now())
   updatedAt                    DateTime @updatedAt
-  telegramChatId               String?
-  receiveTelegramNotifications Boolean  @default(false)
   user                         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
