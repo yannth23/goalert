@@ -177,13 +177,97 @@ export class ScraperService {
   private mapESPNStatus(name: string): string {
     switch (name) {
       case 'STATUS_SCHEDULED':   return 'NS';
-      case 'STATUS_IN_PROGRESS': return '1H'; // ESPN doesn't expose 1H vs 2H easily
+      case 'STATUS_IN_PROGRESS': return '1H';
       case 'STATUS_HALFTIME':    return 'HT';
       case 'STATUS_FINAL':       return 'FT';
       case 'STATUS_EXTRA_TIME':  return 'ET';
       case 'STATUS_PENALTIES':   return 'PEN';
       case 'STATUS_POSTPONED':   return 'PST';
       default:                   return 'NS';
+    }
+  }
+
+  // ── Lineup scraping ────────────────────────────────────────────────────────
+
+  /**
+   * Tenta buscar a escalação mais recente do time via Sofascore.
+   * Retorna lista com os 11 titulares ou [] se falhar.
+   */
+  async scrapeLineup(teamName: string): Promise<string[]> {
+    const cacheKey = `lineup:${teamName.toLowerCase().replace(/\s+/g, '-')}`;
+    try {
+      const cached = await this.redis.getJson<string[]>(cacheKey);
+      if (cached && cached.length >= 11) {
+        this.logger.log(`[scraper] lineup cache hit: ${teamName}`);
+        return cached;
+      }
+    } catch {}
+
+    try {
+      const sofascoreHeaders = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+        'Referer': 'https://www.sofascore.com/',
+        'Accept': 'application/json',
+      };
+
+      // 1. Busca ID do time pelo nome
+      const searchRes = await axios.get(
+        `https://api.sofascore.com/api/v1/search/all?q=${encodeURIComponent(teamName)}&page=0`,
+        { headers: sofascoreHeaders, timeout: SCRAPER_TIMEOUT_MS },
+      );
+
+      const teamResult = (searchRes.data?.results ?? [])
+        .find((r: any) => r.type === 'team');
+      if (!teamResult) {
+        this.logger.warn(`[scraper] time não encontrado no Sofascore: ${teamName}`);
+        return [];
+      }
+      const teamId: number = teamResult.entity.id;
+
+      // 2. Pega últimos eventos do time
+      const eventsRes = await axios.get(
+        `https://api.sofascore.com/api/v1/team/${teamId}/events/last/0`,
+        { headers: sofascoreHeaders, timeout: SCRAPER_TIMEOUT_MS },
+      );
+
+      const events: any[] = eventsRes.data?.events ?? [];
+      // Prefere jogo da Copa do Mundo, senão pega o mais recente
+      const worldCupEvent = events.reverse().find((e: any) => {
+        const tname = (e.tournament?.name ?? e.tournament?.uniqueTournament?.name ?? '').toLowerCase();
+        return tname.includes('world cup') || tname.includes('mundial');
+      });
+      const targetEvent = worldCupEvent ?? events[events.length - 1];
+      if (!targetEvent) return [];
+
+      const eventId: number = targetEvent.id;
+
+      // 3. Busca a escalação do jogo
+      const lineupRes = await axios.get(
+        `https://api.sofascore.com/api/v1/event/${eventId}/lineups`,
+        { headers: sofascoreHeaders, timeout: SCRAPER_TIMEOUT_MS },
+      );
+
+      // Determina se o time é home ou away
+      const homeId: number = targetEvent.homeTeam?.id;
+      const side = homeId === teamId ? lineupRes.data?.home : lineupRes.data?.away;
+      if (!side?.players) return [];
+
+      const starters: string[] = (side.players as any[])
+        .filter((p: any) => !p.substitute)
+        .map((p: any) => p.player?.name ?? p.player?.shortName ?? '')
+        .filter(Boolean)
+        .slice(0, 11);
+
+      if (starters.length >= 11) {
+        // Cache por 6h — escalação não muda tão rápido
+        await this.redis.setJson(cacheKey, starters, 6 * 60 * 60).catch(() => {});
+        this.logger.log(`[scraper] escalação obtida para ${teamName}: ${starters.join(', ')}`);
+      }
+
+      return starters;
+    } catch (err: any) {
+      this.logger.warn(`[scraper] falha ao buscar escalação de ${teamName}: ${err.message}`);
+      return [];
     }
   }
 }
