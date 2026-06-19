@@ -20,6 +20,7 @@ interface TacticalAnalysis {
   keyPlayer: string;
   possession: number;
   intensity: number; // 0-100
+  focus: string;
   heatmapData: { x: number; y: number; value: number }[];
 }
 
@@ -140,22 +141,15 @@ export class StatisticsPredictorService {
     // Predição de faltas: média das faltas dos dois times
     const predictedFouls = Math.round((homeStats.averageFouls + awayStats.averageFouls) / 2);
 
-    const homeTacticsRaw = await this.generateSimulatedTactics(homeTeam);
-    const awayTacticsRaw = await this.generateSimulatedTactics(awayTeam);
+    const homeTactics = await this.generateSimulatedTactics(homeTeam);
+    const awayTactics = await this.generateSimulatedTactics(awayTeam);
 
-    // Criamos cópias para garantir a normalização sem mutar os objetos de forma errada
-    const homeTactics = { ...homeTacticsRaw };
-    const awayTactics = { ...awayTacticsRaw };
-
-    // Normalização da Posse de Bola: A soma deve ser exatamente 100%
-    const rawHome = homeTactics.possession || 50;
-    const rawAway = awayTactics.possession || 50;
-    const total = rawHome + rawAway;
+    // Unificação: Posse e Análise decididas pelo duelo tático
+    const matchAnalysis = await this.generateMatchTacticalAnalysis(homeTeam, awayTeam, homeTactics, awayTactics);
     
-    homeTactics.possession = Math.round((rawHome / total) * 100);
-    awayTactics.possession = 100 - homeTactics.possession;
-
-    const aiAnalysis = await this.generateAiAnalysis(homeTeam, awayTeam, homeTactics, awayTactics);
+    homeTactics.possession = matchAnalysis.homePossession;
+    awayTactics.possession = 100 - matchAnalysis.homePossession;
+    const aiAnalysis = matchAnalysis.analysis;
 
     return {
       predictedGoalsHome: Math.max(0, predictedGoalsHome),
@@ -219,6 +213,7 @@ export class StatisticsPredictorService {
           keyPlayer: data.keyPlayer || 'Destaque',
           possession: data.possession || 50,
           intensity: data.intensity || 70,
+          focus: data.focus || 'balanced',
           heatmapData: this.generateHeatmap(data.focus || 'balanced')
         };
       } catch (error) {
@@ -235,29 +230,52 @@ export class StatisticsPredictorService {
       keyPlayer: 'Jogador Chave',
       possession: 50,
       intensity: 75,
+      focus: 'balanced',
       heatmapData: this.generateHeatmap('balanced')
     };
   }
 
-  private async generateAiAnalysis(homeTeam: string, awayTeam: string, homeTactics: TacticalAnalysis, awayTactics: TacticalAnalysis): Promise<string> {
+  private async generateMatchTacticalAnalysis(homeTeam: string, awayTeam: string, homeTactics: TacticalAnalysis, awayTactics: TacticalAnalysis): Promise<{ homePossession: number; analysis: string }> {
     try {
       const response = await this.openai.chat.completions.create({
         model: 'llama-3.3-70b-versatile',
         messages: [
           {
             role: "system",
-            content: "Você é um analista tático de futebol. Escreva um parágrafo curto e profissional (máximo 300 caracteres) em português sobre o confronto tático."
+            content: "Você é um analista tático de futebol de elite. Sua missão é realizar uma análise profunda do CONFRONTO DIRETO entre os dois times."
           },
           {
             role: "user",
-            content: `Analise o confronto: ${homeTeam} (${homeTactics.formation}) vs ${awayTeam} (${awayTactics.formation}). 
-            Destaque como o estilo de jogo de ${homeTactics.keyPlayer} e ${awayTactics.keyPlayer} influenciará o resultado.`
+            content: `Analise o duelo tático: ${homeTeam} (${homeTactics.formation}) vs ${awayTeam} (${awayTactics.formation}). 
+            
+            Considere:
+            - O time da casa (${homeTeam}) tem como destaque ${homeTactics.keyPlayer} e joga com foco em ${homeTactics.focus}.
+            - O visitante (${awayTeam}) tem como destaque ${awayTactics.keyPlayer} e joga com foco em ${awayTactics.focus}.
+            
+            Determine:
+            1. Como a posse de bola será dividida entre os dois (a soma deve ser 100).
+            2. Um insight estratégico real sobre como as formações vão interagir (ex: se o 4-3-3 vai sofrer contra o 3-5-2 no meio campo).
+            
+            Responda APENAS o JSON:
+            {
+              "homePossession": number,
+              "analysis": "string (máximo 350 caracteres em português focando no CONFRONTO)"
+            }`
           }
-        ]
-      });
-      return response.choices[0].message.content || '';
+        ],
+        response_format: { type: "json_object" }
+      } as any);
+
+      const data = JSON.parse(response.choices[0].message.content || '{}');
+      return {
+        homePossession: data.homePossession || 50,
+        analysis: data.analysis || `Duelo tático entre ${homeTeam} e ${awayTeam}.`
+      };
     } catch (error) {
-      return `Confronto equilibrado entre ${homeTeam} e ${awayTeam}. Espera-se um jogo tático com foco nas formações ${homeTactics.formation} e ${awayTactics.formation}.`;
+      return {
+        homePossession: 50,
+        analysis: `Confronto equilibrado entre ${homeTeam} e ${awayTeam}. Espera-se um jogo tático com foco nas formações ${homeTactics.formation} e ${awayTactics.formation}.`
+      };
     }
   }
 
