@@ -3,6 +3,7 @@ import axios from 'axios';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { StatisticsPredictorService } from './statistics-predictor.service';
 import { translateTeam } from './translation.util';
 
 const BASE_URL = 'https://api.football-data.org/v4';
@@ -73,6 +74,7 @@ export class FootballApiService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly telegram: TelegramService,
+    private readonly statisticsPredictor: StatisticsPredictorService,
   ) {}
 
   private get headers() {
@@ -116,6 +118,9 @@ export class FootballApiService {
     }) as any[];
 
     for (const match of matches) {
+      // Gera predições baseadas em histórico
+      const predictions = await this.statisticsPredictor.predictMatch(
+        translateTeam(match.homeTeam.name), translateTeam(match.awayTeam.name));
       const mappedStatus = STATUS_MAP[match.status] ?? match.status;
       const { home: homeScore, away: awayScore } = extractScore(match.score);
       const homeTeam = translateTeam(match.homeTeam.name);
@@ -145,11 +150,11 @@ export class FootballApiService {
           status:       mappedStatus,
           homeScore,
           awayScore,
-          // Placeholder para predições
-          predictedGoalsHome: Math.random() * 3,
-          predictedGoalsAway: Math.random() * 3,
-          predictedCards:     Math.floor(Math.random() * 6),
-          predictedFouls:     Math.floor(Math.random() * 25),
+          // Predições baseadas em histórico
+          predictedGoalsHome: predictions.predictedGoalsHome,
+          predictedGoalsAway: predictions.predictedGoalsAway,
+          predictedCards:     predictions.predictedCards,
+          predictedFouls:     predictions.predictedFouls,
         },
       });
 
