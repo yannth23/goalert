@@ -337,34 +337,88 @@ Responda APENAS este JSON:
       const data = JSON.parse(response.choices[0].message.content || '{}');
 
       const validStyles = new Set(['possession', 'counter', 'pressing', 'defensive', 'balanced']);
-      let homeStyle = validStyles.has(data.homeStyle) ? data.homeStyle : 'possession';
-      let awayStyle = validStyles.has(data.awayStyle) ? data.awayStyle : 'counter';
+      let homeStyle = validStyles.has(data.homeStyle) ? data.homeStyle : null;
+      let awayStyle = validStyles.has(data.awayStyle) ? data.awayStyle : null;
 
-      // Garante que não são iguais — se a IA ignorar a regra, força contraste
-      if (homeStyle === awayStyle) {
-        const alt: Record<string, TacticalAnalysis['dominanceStyle']> = {
-          possession: 'counter', counter: 'defensive', pressing: 'counter',
-          defensive: 'counter', balanced: 'pressing',
-        };
-        awayStyle = alt[homeStyle] ?? 'counter';
-      }
-      // Garante que não são os dois "balanced"
-      if (homeStyle === 'balanced' && awayStyle === 'balanced') awayStyle = 'counter';
+      // Garante estilos diferentes e taticamente opostos
+      [homeStyle, awayStyle] = this.enforceContrastingStyles(
+        homeStyle as TacticalAnalysis['dominanceStyle'] | null,
+        awayStyle as TacticalAnalysis['dominanceStyle'] | null,
+        homeTactics.intensity,
+        awayTactics.intensity,
+      );
 
       let hProb = Math.min(92, Math.max(8, Math.round(data.homeDominanceProb ?? 50)));
-      if (hProb === 50) hProb = homeTactics.intensity >= awayTactics.intensity ? 55 : 45;
+      if (Math.abs(hProb - 50) < 5) hProb = homeTactics.intensity >= awayTactics.intensity ? 57 : 43;
 
       return {
         homeDominanceProb: hProb,
         homeStyle: homeStyle as TacticalAnalysis['dominanceStyle'],
-        homeDesc: data.homeDesc || `Estilo de ${homeStyle}`,
+        homeDesc: data.homeDesc || this.defaultDesc(homeStyle),
         awayStyle: awayStyle as TacticalAnalysis['dominanceStyle'],
-        awayDesc: data.awayDesc || `Estilo de ${awayStyle}`,
+        awayDesc: data.awayDesc || this.defaultDesc(awayStyle),
         analysis: data.analysis || `${homeTeam} vs ${awayTeam}: estilos contrastantes na Copa 2026.`,
       };
     } catch {
       return fallbackPair();
     }
+  }
+
+  /**
+   * Garante que os dois times tenham estilos OBRIGATORIAMENTE diferentes e taticamente opostos.
+   * Se a IA enviou estilos iguais ou inválidos, aplica resposta natural (pressing → counter, etc.)
+   */
+  private enforceContrastingStyles(
+    home: TacticalAnalysis['dominanceStyle'] | null,
+    away: TacticalAnalysis['dominanceStyle'] | null,
+    homeIntensity: number,
+    awayIntensity: number,
+  ): [TacticalAnalysis['dominanceStyle'], TacticalAnalysis['dominanceStyle']] {
+    // Resposta tática natural: dado o estilo do time A, o time B naturalmente joga assim
+    const NATURAL_RESPONSE: Record<string, TacticalAnalysis['dominanceStyle']> = {
+      pressing:   'counter',    // contra pressão alta → contra-ataque
+      possession: 'defensive',  // contra posse → bloco defensivo
+      counter:    'possession', // contra contra-ataque → controlar a posse
+      defensive:  'pressing',   // contra bloco fechado → pressionar para abrir
+      balanced:   'counter',    // contra equilíbrio → contra-ataque como diferencial
+    };
+
+    // Se apenas um veio da IA, calcula o outro como resposta natural
+    if (home && !away) return [home, NATURAL_RESPONSE[home]];
+    if (!home && away) return [NATURAL_RESPONSE[away] ?? 'possession', away];
+
+    // Se ambos vieram e são iguais, força a resposta natural para o away
+    if (home && away && home === away) {
+      return [home, NATURAL_RESPONSE[home]];
+    }
+
+    // Se ambos são válidos e diferentes, aceita como está
+    if (home && away && home !== away) return [home, away];
+
+    // Fallback determinístico baseado na intensidade relativa dos times
+    const FALLBACK_PAIRS: Array<[TacticalAnalysis['dominanceStyle'], TacticalAnalysis['dominanceStyle']]> = [
+      ['pressing',   'counter'],
+      ['possession', 'defensive'],
+      ['possession', 'counter'],
+      ['pressing',   'defensive'],
+      ['counter',    'defensive'],
+      ['possession', 'pressing'],
+    ];
+    const idx = Math.abs(Math.round(homeIntensity + awayIntensity)) % FALLBACK_PAIRS.length;
+    return homeIntensity >= awayIntensity
+      ? FALLBACK_PAIRS[idx]
+      : [FALLBACK_PAIRS[idx][1], FALLBACK_PAIRS[idx][0]];
+  }
+
+  private defaultDesc(style: string | null): string {
+    const map: Record<string, string> = {
+      pressing:   'Pressão alta e sufoca o adversário',
+      counter:    'Explora espaços no contra-ataque',
+      possession: 'Controla o jogo com a posse',
+      defensive:  'Bloco defensivo bem organizado',
+      balanced:   'Jogo equilibrado sem tendência clara',
+    };
+    return map[style ?? 'balanced'] ?? 'Estilo equilibrado';
   }
 
   private generateHeatmap(focus: string) {
