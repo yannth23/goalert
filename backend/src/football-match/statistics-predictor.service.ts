@@ -140,13 +140,16 @@ export class StatisticsPredictorService {
     // Predição de faltas: média das faltas dos dois times
     const predictedFouls = Math.round((homeStats.averageFouls + awayStats.averageFouls) / 2);
 
-    const homeTactics = await this.generateSimulatedTactics(homeTeam);
-    const awayTactics = await this.generateSimulatedTactics(awayTeam);
+    const homeTacticsRaw = await this.generateSimulatedTactics(homeTeam);
+    const awayTacticsRaw = await this.generateSimulatedTactics(awayTeam);
+
+    // Criamos cópias para garantir a normalização sem mutar os objetos de forma errada
+    const homeTactics = { ...homeTacticsRaw };
+    const awayTactics = { ...awayTacticsRaw };
 
     // Normalização da Posse de Bola: A soma deve ser exatamente 100%
-    // Garantimos que nenhum time fique com 0% ou 100% a menos que seja um caso extremo
-    const rawHome = Math.max(10, Math.min(90, homeTactics.possession));
-    const rawAway = Math.max(10, Math.min(90, awayTactics.possession));
+    const rawHome = homeTactics.possession || 50;
+    const rawAway = awayTactics.possession || 50;
     const total = rawHome + rawAway;
     
     homeTactics.possession = Math.round((rawHome / total) * 100);
