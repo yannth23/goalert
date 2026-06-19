@@ -117,23 +117,77 @@ interface MatchCardProps {
   highlighted?: boolean;
 }
 
-function MiniDominanceBar({ match }: { match: FootballMatch }) {
+const STYLE_COLOR: Record<string, string> = {
+  pressing:   'text-orange-400',
+  counter:    'text-yellow-400',
+  possession: 'text-blue-400',
+  defensive:  'text-slate-400',
+  balanced:   'text-green-400',
+};
+
+const STYLE_BG: Record<string, string> = {
+  pressing:   'bg-orange-950/60 border-orange-800/40',
+  counter:    'bg-yellow-950/60 border-yellow-800/40',
+  possession: 'bg-blue-950/60  border-blue-800/40',
+  defensive:  'bg-slate-800/60  border-slate-700/40',
+  balanced:   'bg-green-950/60  border-green-800/40',
+};
+
+function TacticalClash({ match }: { match: FootballMatch }) {
   const home = match.tactics?.home;
   const away = match.tactics?.away;
   if (!home || !away) return null;
 
+  const hs = home.dominanceStyle ?? 'balanced';
+  const as_ = away.dominanceStyle ?? 'balanced';
+
   const p1 = home.gameDominanceProb ?? 50;
   const p2 = away.gameDominanceProb ?? 50;
-  const dominant = p1 >= p2 ? match.team1 : match.team2;
-  const dominantStyle = p1 >= p2 ? (home.dominanceStyle ?? 'balanced') : (away.dominanceStyle ?? 'balanced');
+  const homeLeads = p1 >= p2;
 
   return (
-    <div className="mt-3 pt-3 border-t border-slate-800 flex items-center gap-2">
-      <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold shrink-0">
-        Provável dominante:
-      </span>
-      <span className="text-[11px] leading-none">{STYLE_ICON[dominantStyle] ?? '⚽'}</span>
-      <span className="text-[11px] font-black text-white">{traduzirTime(dominant)}</span>
+    <div className="mt-3 pt-3 border-t border-slate-800">
+      <p className="text-[9px] uppercase tracking-widest text-slate-600 font-bold mb-2 text-center">
+        Confronto tático
+      </p>
+
+      <div className="flex items-center gap-2">
+        {/* Time da casa */}
+        <div className={`flex-1 flex flex-col items-center gap-1 px-2 py-2 rounded-xl border ${STYLE_BG[hs]}`}>
+          <span className="text-base leading-none">{STYLE_ICON[hs] ?? '⚽'}</span>
+          <span className={`text-[10px] font-black uppercase tracking-wide leading-none ${STYLE_COLOR[hs]}`}>
+            {STYLE_LABEL[hs]}
+          </span>
+          <span className="text-[9px] text-slate-500 truncate max-w-full font-medium">
+            {traduzirTime(match.team1)}
+          </span>
+        </div>
+
+        {/* Separador central com probabilidade */}
+        <div className="flex flex-col items-center shrink-0 gap-1">
+          <span className="text-slate-700 text-base leading-none">⚔️</span>
+          <div className="flex gap-0.5 items-end">
+            <span className={`text-[10px] font-black leading-none ${homeLeads ? 'text-white' : 'text-slate-600'}`}>
+              {p1}%
+            </span>
+            <span className="text-[9px] text-slate-700 leading-none">·</span>
+            <span className={`text-[10px] font-black leading-none ${!homeLeads ? 'text-white' : 'text-slate-600'}`}>
+              {p2}%
+            </span>
+          </div>
+        </div>
+
+        {/* Time visitante */}
+        <div className={`flex-1 flex flex-col items-center gap-1 px-2 py-2 rounded-xl border ${STYLE_BG[as_]}`}>
+          <span className="text-base leading-none">{STYLE_ICON[as_] ?? '⚽'}</span>
+          <span className={`text-[10px] font-black uppercase tracking-wide leading-none ${STYLE_COLOR[as_]}`}>
+            {STYLE_LABEL[as_]}
+          </span>
+          <span className="text-[9px] text-slate-500 truncate max-w-full font-medium">
+            {traduzirTime(match.team2)}
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -219,7 +273,7 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
         </div>
       </div>
 
-      <MiniDominanceBar match={match} />
+      <TacticalClash match={match} />
 
       {match.predictions && (
         <div className="mt-3 pt-3 border-t border-slate-800">
