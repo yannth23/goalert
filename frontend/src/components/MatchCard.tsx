@@ -132,24 +132,30 @@ const STYLE_BG: Record<string, string> = {
   defensive:  'bg-slate-800/60  border-slate-700/40',
 };
 
+const VALID_STYLES = new Set(['pressing', 'counter', 'possession', 'defensive']);
+
+const CONTRAST: Record<string, string> = {
+  pressing:   'counter',
+  counter:    'possession',
+  possession: 'defensive',
+  defensive:  'pressing',
+};
+
+function normalizeStyle(style: string | undefined): 'pressing' | 'counter' | 'possession' | 'defensive' {
+  if (!style || !VALID_STYLES.has(style)) return 'pressing';
+  return style as 'pressing' | 'counter' | 'possession' | 'defensive';
+}
+
 function TacticalClash({ match }: { match: FootballMatch }) {
   const home = match.tactics?.home;
   const away = match.tactics?.away;
   if (!home || !away) return null;
 
-  const hs = home.dominanceStyle ?? 'pressing';
-  const rawAway = away.dominanceStyle ?? 'counter';
+  const hs  = normalizeStyle(home.dominanceStyle);
+  const raw = normalizeStyle(away.dominanceStyle);
 
-  const CONTRAST: Record<string, string> = {
-    pressing:   'counter',
-    counter:    'possession',
-    possession: 'defensive',
-    defensive:  'pressing',
-  };
-
-  const as_ = rawAway === hs
-    ? (CONTRAST[hs] as typeof rawAway)
-    : rawAway;
+  // Garante estilos sempre diferentes
+  const as_ = raw === hs ? (CONTRAST[hs] as typeof raw) : raw;
 
   return (
     <div className="mt-3 pt-3 border-t border-slate-800">
