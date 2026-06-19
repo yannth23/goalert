@@ -10,6 +10,15 @@ import { withCache } from '../shared';
 const BASE_URL       = 'https://api.football-data.org/v4';
 const COMPETITION_WC = 'WC';
 const AXIOS_TIMEOUT  = 8_000;
+const FAILURE_THRESHOLD   = 3;
+const ALERT_COOLDOWN_SECS = 1800; // 30 min between repeated alerts
+
+const SOURCE_LABELS: Record<string, string> = {
+  primary:   'football-data.org (API principal)',
+  sofascore: 'SofaScore (fallback 1)',
+  espn:      'ESPN (fallback 2)',
+  none:      '— nenhuma fonte disponível',
+};
 
 const STATUS_MAP: Record<string, string> = {
   SCHEDULED: 'NS', TIMED: 'NS', IN_PLAY: '1H', PAUSED: 'HT',
@@ -49,26 +58,75 @@ export class FootballApiService {
   ) {}
 
   private get headers() { return { 'X-Auth-Token': process.env.FOOTBALL_DATA_API_KEY }; }
-  private async cacheDel(key: string) {
-    try { await this.redis.del(key); } catch { /* non-critical */ }
+  private async cacheDel(key: string) { try { await this.redis.del(key); } catch { } }
+
+  // ── Admin Telegram notification ───────────────────────────────────────────
+  private async notifyAdmin(message: string): Promise<void> {
+    const chatId = process.env.ADMIN_TELEGRAM_CHAT_ID;
+    if (!chatId) {
+      this.logger.warn('[admin-alert] ADMIN_TELEGRAM_CHAT_ID not set — skipping notification');
+      return;
+    }
+    try {
+      await this.telegram.sendMessage(chatId, message);
+      this.logger.log('[admin-alert] sent');
+    } catch (err) {
+      this.logger.error('[admin-alert] failed to send', err);
+    }
   }
 
-  // ── Persist sync result to Redis for the status dashboard ────────────────
+  // ── Persist sync result + handle admin alerts ─────────────────────────────
   private async trackSyncResult(r: { source: string; synced: number; live: number; errors: number }) {
     const today = new Date().toISOString().split('T')[0];
+
+    // Save last result snapshot
     await this.redis.setJson('sync:last_result', { ts: new Date().toISOString(), ...r }, 600).catch(() => {});
 
+    // Daily error counter
     if (r.errors > 0) {
       const errKey = `sync:errors:${today}`;
       const cur = parseInt((await this.redis.get(errKey).catch(() => null)) ?? '0', 10);
       await this.redis.set(errKey, String(cur + r.errors), 86400).catch(() => {});
     }
 
+    // Consecutive failure counter + admin alerts
     const failKey = 'sync:consecutive_failures';
+    const cur     = parseInt((await this.redis.get(failKey).catch(() => null)) ?? '0', 10);
+    const nowPT   = new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' });
+
     if (r.source === 'none') {
-      const cur = parseInt((await this.redis.get(failKey).catch(() => null)) ?? '0', 10);
-      await this.redis.set(failKey, String(cur + 1), 7200).catch(() => {});
+      // ── Failure path ──
+      const newCount = cur + 1;
+      await this.redis.set(failKey, String(newCount), 7200).catch(() => {});
+
+      if (newCount >= FAILURE_THRESHOLD) {
+        const alreadyAlerted = await this.redis.get('sync:alert_sent').catch(() => null);
+        if (!alreadyAlerted) {
+          await this.notifyAdmin(
+            `🚨 *GoalAlert — Falha de Sincronização*\n` +
+            `Todas as fontes de dados falharam *${newCount}x* seguidas.\n` +
+            `O placar pode estar desatualizado.\n\n` +
+            `🕐 ${nowPT} (horário de Brasília)\n` +
+            `\n_Próximo alerta em 30 min se persistir._`,
+          );
+          await this.redis.set('sync:alert_sent', '1', ALERT_COOLDOWN_SECS).catch(() => {});
+        }
+      }
     } else {
+      // ── Recovery path ──
+      if (cur >= FAILURE_THRESHOLD) {
+        // Only notify recovery if an alert was previously sent
+        const wasAlerted = await this.redis.get('sync:alert_sent').catch(() => null);
+        if (wasAlerted) {
+          await this.notifyAdmin(
+            `✅ *GoalAlert — Sincronização Recuperada*\n` +
+            `Fonte ativa: *${SOURCE_LABELS[r.source] ?? r.source}*\n` +
+            `Após *${cur}* falha(s) consecutiva(s).\n\n` +
+            `🕐 ${nowPT} (horário de Brasília)`,
+          );
+          await this.redis.del('sync:alert_sent').catch(() => {});
+        }
+      }
       await this.redis.set(failKey, '0', 7200).catch(() => {});
     }
   }
