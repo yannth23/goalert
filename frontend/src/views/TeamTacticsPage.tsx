@@ -73,36 +73,31 @@ const STYLE_ICON: Record<string, string> = {
   counter:    '⚡',
   possession: '🔵',
   defensive:  '🛡️',
-  balanced:   '⚖️',
 };
 const STYLE_LABEL: Record<string, string> = {
   pressing:   'Pressão',
   counter:    'Contra-ataque',
   possession: 'Posse de bola',
   defensive:  'Defensivo',
-  balanced:   'Equilibrado',
 };
 const STYLE_COLOR: Record<string, string> = {
   pressing:   'text-orange-400',
   counter:    'text-yellow-400',
   possession: 'text-blue-400',
   defensive:  'text-slate-300',
-  balanced:   'text-green-400',
 };
 const STYLE_BG: Record<string, string> = {
   pressing:   'bg-orange-950/60 border-orange-800/40',
   counter:    'bg-yellow-950/60 border-yellow-800/40',
   possession: 'bg-blue-950/60 border-blue-800/40',
   defensive:  'bg-slate-800/60 border-slate-700/40',
-  balanced:   'bg-green-950/60 border-green-800/40',
 };
 
 const HISTORY_PATTERNS: Record<string, string[]> = {
-  pressing:   ['pressing', 'pressing', 'balanced', 'pressing', 'counter'],
-  counter:    ['counter', 'balanced', 'counter', 'counter', 'pressing'],
-  possession: ['possession', 'possession', 'balanced', 'possession', 'possession'],
-  defensive:  ['defensive', 'balanced', 'defensive', 'defensive', 'counter'],
-  balanced:   ['balanced', 'counter', 'pressing', 'balanced', 'balanced'],
+  pressing:   ['pressing', 'pressing', 'defensive', 'pressing', 'counter'],
+  counter:    ['counter', 'pressing', 'counter', 'counter', 'pressing'],
+  possession: ['possession', 'possession', 'counter', 'possession', 'possession'],
+  defensive:  ['defensive', 'counter', 'defensive', 'defensive', 'counter'],
 };
 
 const FLAGS: Record<string, string> = {
