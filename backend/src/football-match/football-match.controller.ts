@@ -25,6 +25,11 @@ export class FootballMatchController {
   @Get('competition')
   getByCompetition(@Query('name') name: string) { return this.footballMatchService.getMatchesByCompetition(name); }
 
+  @Get('h2h')
+  getHeadToHead(@Query('team1') team1: string, @Query('team2') team2: string) {
+    return this.footballMatchService.getHeadToHead(team1, team2);
+  }
+
   /** Admin-only: system health dashboard data. Requires JWT. */
   @Get('system-status')
   @UseGuards(JwtAuthGuard)

@@ -33,6 +33,25 @@ export interface SystemStatus {
   serverTime:          string;
 }
 
+export interface H2HData {
+  homeTeam: string;
+  awayTeam: string;
+  homeWins: number;
+  draws: number;
+  awayWins: number;
+  totalGoalsHome: number;
+  totalGoalsAway: number;
+  totalMatches: number;
+  recentMatches: {
+    date: string;
+    homeTeam: string;
+    awayTeam: string;
+    homeScore: number;
+    awayScore: number;
+    championship: string;
+  }[];
+}
+
 export const api = {
   login: (email: string, password: string) =>
     request<{ accessToken: string; user: { id: string; email: string; name?: string } }>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
@@ -50,6 +69,9 @@ export const api = {
 
   getTopScorers: () =>
     request<{ playerId: number; playerName: string; teamName: string; goals: number; assists: number }[]>('/matches/scorers'),
+
+  getHeadToHead: (team1: string, team2: string) =>
+    request<H2HData>(`/matches/h2h?team1=${encodeURIComponent(team1)}&team2=${encodeURIComponent(team2)}`),
 
   getSystemStatus: () => request<SystemStatus>('/matches/system-status'),
 

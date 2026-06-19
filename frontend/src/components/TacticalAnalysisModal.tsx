@@ -1,6 +1,8 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { FootballMatch, TacticalAnalysis } from '../types';
+import { api, H2HData } from '../lib/api';
 
 interface TacticalAnalysisModalProps {
   match: FootballMatch;
@@ -58,6 +60,17 @@ const DOMINANCE_CONFIG: Record<string, {
 };
 
 export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalProps) {
+  const [h2h, setH2h] = useState<H2HData | null>(null);
+  const [h2hLoading, setH2hLoading] = useState(true);
+
+  useEffect(() => {
+    setH2hLoading(true);
+    api.getHeadToHead(match.team1, match.team2)
+      .then(setH2h)
+      .catch(() => setH2h(null))
+      .finally(() => setH2hLoading(false));
+  }, [match.team1, match.team2]);
+
   const tactics = match.tactics || {
     home: {
       formation: '4-3-3',
@@ -169,6 +182,109 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
     </div>
   );
 
+  const renderH2H = () => {
+    if (h2hLoading) {
+      return (
+        <div className="mt-8 bg-slate-800/30 border border-slate-700/40 rounded-2xl p-6 text-center">
+          <div className="flex items-center justify-center gap-2 text-slate-500">
+            <div className="w-4 h-4 border-2 border-slate-600 border-t-indigo-500 rounded-full animate-spin" />
+            <span className="text-sm">Buscando confronto histórico...</span>
+          </div>
+        </div>
+      );
+    }
+
+    if (!h2h || h2h.totalMatches === 0) {
+      return (
+        <div className="mt-8 bg-slate-800/30 border border-slate-700/40 rounded-2xl p-6 text-center">
+          <p className="text-slate-500 text-sm">Nenhum confronto direto encontrado no histórico.</p>
+        </div>
+      );
+    }
+
+    const total = h2h.homeWins + h2h.draws + h2h.awayWins;
+    const homeWinPct = total > 0 ? Math.round((h2h.homeWins / total) * 100) : 0;
+    const drawPct    = total > 0 ? Math.round((h2h.draws    / total) * 100) : 0;
+    const awayWinPct = 100 - homeWinPct - drawPct;
+
+    return (
+      <div className="mt-8 bg-slate-800/30 border border-slate-700/40 rounded-2xl p-6">
+        <h4 className="text-[10px] uppercase text-slate-500 font-bold tracking-widest mb-5 text-center">
+          Confronto Histórico — {h2h.totalMatches} {h2h.totalMatches === 1 ? 'jogo' : 'jogos'}
+        </h4>
+
+        {/* Placar do H2H */}
+        <div className="flex items-center justify-between mb-4 gap-2">
+          <div className="text-center flex-1">
+            <p className="text-white font-black text-sm mb-1">{match.team1}</p>
+            <p className="text-3xl font-black text-green-400">{h2h.homeWins}</p>
+            <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">Vitórias</p>
+          </div>
+          <div className="text-center px-4">
+            <p className="text-2xl font-black text-slate-500">{h2h.draws}</p>
+            <p className="text-[10px] text-slate-600 uppercase tracking-wider mt-0.5">Empates</p>
+          </div>
+          <div className="text-center flex-1">
+            <p className="text-white font-black text-sm mb-1">{match.team2}</p>
+            <p className="text-3xl font-black text-blue-400">{h2h.awayWins}</p>
+            <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">Vitórias</p>
+          </div>
+        </div>
+
+        {/* Barra de percentual */}
+        <div className="flex rounded-full overflow-hidden h-2.5 mb-4">
+          {homeWinPct > 0 && (
+            <div className="bg-green-500 transition-all duration-700" style={{ width: `${homeWinPct}%` }} />
+          )}
+          {drawPct > 0 && (
+            <div className="bg-slate-500 transition-all duration-700" style={{ width: `${drawPct}%` }} />
+          )}
+          {awayWinPct > 0 && (
+            <div className="bg-blue-500 transition-all duration-700" style={{ width: `${awayWinPct}%` }} />
+          )}
+        </div>
+
+        {/* Gols */}
+        <div className="flex justify-between text-xs text-slate-500 mb-5">
+          <span>{h2h.totalGoalsHome} gols marcados</span>
+          <span>{h2h.totalGoalsAway} gols marcados</span>
+        </div>
+
+        {/* Últimos confrontos */}
+        {h2h.recentMatches.length > 0 && (
+          <div>
+            <p className="text-[10px] uppercase text-slate-500 font-bold tracking-widest mb-3">Últimos Confrontos</p>
+            <div className="space-y-2">
+              {h2h.recentMatches.map((m, i) => {
+                const isTeam1Home = m.homeTeam.toLowerCase().includes(match.team1.toLowerCase());
+                const t1Score = isTeam1Home ? m.homeScore : m.awayScore;
+                const t2Score = isTeam1Home ? m.awayScore : m.homeScore;
+                const winner = t1Score > t2Score ? match.team1 : t1Score < t2Score ? match.team2 : null;
+                return (
+                  <div key={i} className="flex items-center justify-between bg-slate-900/40 rounded-xl px-4 py-2.5 border border-slate-800/50">
+                    <span className="text-[11px] text-slate-500 w-20 shrink-0">{m.date}</span>
+                    <div className="flex items-center gap-2 flex-1 justify-center">
+                      <span className={`text-xs font-bold ${winner === match.team1 ? 'text-green-400' : 'text-slate-300'}`}>
+                        {match.team1}
+                      </span>
+                      <span className="text-sm font-black text-white bg-slate-800 px-2 py-0.5 rounded-lg">
+                        {t1Score} – {t2Score}
+                      </span>
+                      <span className={`text-xs font-bold ${winner === match.team2 ? 'text-blue-400' : 'text-slate-300'}`}>
+                        {match.team2}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-slate-600 w-20 text-right shrink-0 truncate">{m.championship}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
       <div className="bg-slate-900 border border-slate-800 w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl">
@@ -187,7 +303,7 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
           </button>
         </div>
 
-        {/* Painel de Domínio de Jogo — visão geral do confronto */}
+        {/* Painel de Domínio de Jogo */}
         <div className="px-8 pt-6">
           <div className="bg-slate-800/30 border border-slate-700/40 rounded-2xl p-5">
             <h4 className="text-[10px] uppercase text-slate-500 font-bold tracking-widest mb-4 text-center">Domínio de Jogo — Confronto Direto</h4>
@@ -210,7 +326,11 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
             {renderTactics(match.team2, tactics.away)}
           </div>
 
-          <div className="mt-12 bg-indigo-950/30 border border-indigo-900/50 rounded-3xl p-8 text-center">
+          {/* Confronto Histórico H2H */}
+          {renderH2H()}
+
+          {/* Conclusão da IA */}
+          <div className="mt-8 bg-indigo-950/30 border border-indigo-900/50 rounded-3xl p-8 text-center">
             <h4 className="text-indigo-400 font-black text-lg mb-2">Conclusão Estratégica da IA</h4>
             <p className="text-slate-400 text-sm max-w-2xl mx-auto leading-relaxed italic">
               {match.aiAnalysis || `Analisando o confronto entre ${match.team1} e ${match.team2} na Copa do Mundo 2026, o duelo das formações ${tactics.home.formation} e ${tactics.away.formation} define os estilos opostos de jogo.`}

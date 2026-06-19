@@ -7,6 +7,25 @@ import { getTodayRange, mapMatchToDto } from '../shared';
 const LIVE_STATUSES       = new Set(['1H', 'HT', '2H', 'ET', 'PEN']);
 const MAX_MATCH_DURATION  = 3.5 * 60 * 60 * 1000;
 
+export interface H2HResult {
+  homeTeam: string;
+  awayTeam: string;
+  homeWins: number;
+  draws: number;
+  awayWins: number;
+  totalGoalsHome: number;
+  totalGoalsAway: number;
+  totalMatches: number;
+  recentMatches: {
+    date: string;
+    homeTeam: string;
+    awayTeam: string;
+    homeScore: number;
+    awayScore: number;
+    championship: string;
+  }[];
+}
+
 @Injectable()
 export class FootballMatchService {
   constructor(
@@ -18,8 +37,7 @@ export class FootballMatchService {
   async getTodayMatches() {
     const { start, end } = getTodayRange();
     const now = new Date();
-    
-    // Força a limpeza do cache de partidas de hoje no Redis para garantir dados novos
+
     const todayBrazil = new Intl.DateTimeFormat('en-CA', {
       timeZone: 'America/Sao_Paulo',
       year: 'numeric',
@@ -70,7 +88,64 @@ export class FootballMatchService {
     return Object.entries(counts).map(([date, count]) => ({ date, count })).sort((a,b) => a.date.localeCompare(b.date));
   }
 
-  // ── System status for the admin dashboard ─────────────────────────────────
+  async getHeadToHead(team1: string, team2: string): Promise<H2HResult> {
+    const matches = await this.prisma.footballMatch.findMany({
+      where: {
+        status: 'FT',
+        OR: [
+          { homeTeam: { contains: team1, mode: 'insensitive' }, awayTeam: { contains: team2, mode: 'insensitive' } },
+          { homeTeam: { contains: team2, mode: 'insensitive' }, awayTeam: { contains: team1, mode: 'insensitive' } },
+        ],
+      },
+      orderBy: { date: 'desc' },
+      take: 20,
+    });
+
+    let homeWins = 0;
+    let draws = 0;
+    let awayWins = 0;
+    let totalGoalsHome = 0;
+    let totalGoalsAway = 0;
+
+    for (const m of matches) {
+      const hScore = m.homeScore ?? 0;
+      const aScore = m.awayScore ?? 0;
+      const isTeam1Home = m.homeTeam.toLowerCase().includes(team1.toLowerCase());
+
+      totalGoalsHome += isTeam1Home ? hScore : aScore;
+      totalGoalsAway += isTeam1Home ? aScore : hScore;
+
+      if (hScore > aScore) {
+        if (isTeam1Home) homeWins++; else awayWins++;
+      } else if (hScore < aScore) {
+        if (isTeam1Home) awayWins++; else homeWins++;
+      } else {
+        draws++;
+      }
+    }
+
+    const recentMatches = matches.slice(0, 5).map(m => ({
+      date: m.date.toISOString().split('T')[0],
+      homeTeam: m.homeTeam,
+      awayTeam: m.awayTeam,
+      homeScore: m.homeScore ?? 0,
+      awayScore: m.awayScore ?? 0,
+      championship: m.championship,
+    }));
+
+    return {
+      homeTeam: team1,
+      awayTeam: team2,
+      homeWins,
+      draws,
+      awayWins,
+      totalGoalsHome,
+      totalGoalsAway,
+      totalMatches: matches.length,
+      recentMatches,
+    };
+  }
+
   async getSystemStatus() {
     const today = new Date().toISOString().split('T')[0];
     const { start, end } = getTodayRange();
