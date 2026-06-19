@@ -37,15 +37,10 @@ export class StatisticsPredictorService {
   private readonly logger = new Logger(StatisticsPredictorService.name);
   private readonly openai: OpenAI;
 
-  private readonly groq: OpenAI;
-
   constructor(private readonly prisma: PrismaService) {
-    this.groq = new OpenAI({
+    this.openai = new OpenAI({
       apiKey: process.env.GROQ_API_KEY,
       baseURL: 'https://api.groq.com/openai/v1',
-    });
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
     });
   }
 
@@ -155,12 +150,13 @@ export class StatisticsPredictorService {
 
   private async generateSimulatedTactics(teamName: string): Promise<TacticalAnalysis> {
     const models = [
-      { client: this.groq, model: 'llama-3.3-70b-versatile', name: 'Groq Llama 3.3' },
-      { client: this.groq, model: 'mixtral-8x7b-32768', name: 'Groq Mixtral' },
-      { client: this.openai, model: 'gpt-4o-mini', name: 'OpenAI GPT-4o-mini' },
+      { model: 'llama-3.3-70b-versatile', name: 'Groq Llama 3.3' },
+      { model: 'mixtral-8x7b-32768', name: 'Groq Mixtral' },
+      { model: 'llama-3.1-70b-versatile', name: 'Groq Llama 3.1' },
     ];
 
-    for (const { client, model, name } of models) {
+    for (const { model, name } of models) {
+      const client = this.openai; // No projeto, 'openai' está configurado com o baseURL do Groq
       try {
         this.logger.log(`Tentando gerar táticas para ${teamName} usando ${name}...`);
         const response = await client.chat.completions.create({
