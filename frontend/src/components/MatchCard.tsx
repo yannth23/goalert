@@ -295,14 +295,22 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
               >
                 Análise Tática
               </button>
-              <span className="text-[10px] bg-indigo-950 text-indigo-400 px-2 py-0.5 rounded-full font-bold">
-                AI Insight
+            </div>
+          </div>
+
+          {/* AI Insight Textual */}
+          <div className="bg-indigo-950/30 border border-indigo-900/50 p-3 rounded-xl mb-3">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[9px] bg-indigo-500 text-white px-1.5 py-0.5 rounded font-black uppercase tracking-tighter">AI Insight</span>
+              <span className="text-[10px] text-indigo-300 font-bold italic">
+                {match.shortInsight || "Analisando padrões táticos..."}
               </span>
             </div>
           </div>
+
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-slate-800/50 p-2 rounded-lg text-center">
-              <span className="block text-[10px] text-slate-500 mb-0.5">Gols</span>
+              <span className="block text-[10px] text-slate-500 mb-0.5">Gols (Proj.)</span>
               <span className="text-xs font-bold text-white">
                 {match.predictions.goalsHome.toFixed(1)} - {match.predictions.goalsAway.toFixed(1)}
               </span>

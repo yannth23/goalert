@@ -129,13 +129,14 @@ export class StatisticsPredictorService {
     awayTactics.heatmapData = this.generateHeatmap(matchAnalysis.awayStyle);
 
     return {
-      predictedGoalsHome: Math.max(0, predictedGoalsHome),
-      predictedGoalsAway: Math.max(0, predictedGoalsAway),
-      predictedCards: Math.max(0, predictedCards),
-      predictedFouls: Math.max(0, predictedFouls),
+      predictedGoalsHome: parseFloat(predictedGoalsHome.toFixed(1)),
+      predictedGoalsAway: parseFloat(predictedGoalsAway.toFixed(1)),
+      predictedCards,
+      predictedFouls,
       homeTactics,
       awayTactics,
       aiAnalysis: matchAnalysis.analysis,
+      shortInsight: matchAnalysis.shortInsight,
     };
   }
 
@@ -279,6 +280,7 @@ Responda APENAS o JSON:
     awayStyle: TacticalAnalysis['dominanceStyle'];
     awayDesc: string;
     analysis: string;
+    shortInsight: string;
   }> {
     // Pares de estilos contrastantes válidos — nunca iguais, nunca ambos "balanced"
     const CONTRAST_PAIRS: Array<[TacticalAnalysis['dominanceStyle'], TacticalAnalysis['dominanceStyle']]> = [
@@ -335,7 +337,8 @@ Responda APENAS este JSON:
   "homeDesc": "string (até 60 chars)",
   "awayStyle": "possession|counter|pressing|defensive",
   "awayDesc": "string (até 60 chars)",
-  "analysis": "string (até 350 chars) - Use os dados de xG para enriquecer o insight tático."
+  "analysis": "string (até 350 chars) - Use os dados de xG para enriquecer o insight tático.",
+  "shortInsight": "string (até 80 chars) - Uma frase curta e impactante sobre o que esperar do jogo (ex: 'Jogo de poucos gols e muita pressão no meio')"
 }`,
           },
         ],

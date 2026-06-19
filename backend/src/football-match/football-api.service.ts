@@ -155,6 +155,7 @@ export class FootballApiService {
             homeTactics:        predictions.homeTactics as unknown as Prisma.InputJsonValue,
             awayTactics:        predictions.awayTactics as unknown as Prisma.InputJsonValue,
             aiAnalysis:         predictions.aiAnalysis,
+            shortInsight:       (predictions as any).shortInsight,
           }),
         },
         create: {
@@ -175,6 +176,7 @@ export class FootballApiService {
           homeTactics:        predictions.homeTactics as unknown as Prisma.InputJsonValue,
           awayTactics:        predictions.awayTactics as unknown as Prisma.InputJsonValue,
           aiAnalysis:         predictions.aiAnalysis,
+          shortInsight:       (predictions as any).shortInsight,
         },
       });
 

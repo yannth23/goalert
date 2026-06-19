@@ -47,11 +47,10 @@ export interface FootballMatch {
     cards: number;
     fouls: number;
   };
-  tactics?: {
-    home: TacticalAnalysis;
-    away: TacticalAnalysis;
-  };
+  homeTactics?: TacticalAnalysis;
+  awayTactics?: TacticalAnalysis;
   aiAnalysis?: string;
+  shortInsight?: string;
 }
 
 export interface AuthResponse {
