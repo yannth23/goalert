@@ -18,6 +18,16 @@ export class FootballMatchService {
   async getTodayMatches() {
     const { start, end } = getTodayRange();
     const now = new Date();
+    
+    // Força a limpeza do cache de partidas de hoje no Redis para garantir dados novos
+    const todayBrazil = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+    await this.redis.del(`matches:${todayBrazil}`).catch(() => {});
+
     const matches = await this.prisma.footballMatch.findMany({
       where: { date: { gte: start, lte: end } },
       orderBy: { date: 'asc' },
