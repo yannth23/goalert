@@ -79,7 +79,10 @@ export class DailyEmailService implements OnApplicationBootstrap {
    * so that an empty database can be seeded even if the bootstrap
    * or 7am cron failed (e.g. the API was down at that time).
    */
-  @Cron('* * * * *', { name: 'sync-live-matches' })
+  /**
+   * Live sync — a cada 30 segundos durante jogos ao vivo.
+   */
+  @Cron('*/30 * * * * *', { name: 'sync-live-matches' })
   async syncLiveMatches(): Promise<void> {
     const hasActivity = await this.hasLiveOrUpcomingToday();
     if (!hasActivity) return;

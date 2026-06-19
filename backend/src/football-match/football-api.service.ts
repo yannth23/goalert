@@ -54,13 +54,19 @@ function utcToBrt(utcDate: string): Date {
 }
 
 function extractScore(score: any): { home: number | null; away: number | null } {
+  // A API football-data.org coloca o placar atual em fullTime mesmo durante o jogo
+  // mas se estiver em prorrogação ou pênaltis, pode estar em outros campos.
   const candidates = [
     score?.fullTime,
     score?.regularTime,
+    score?.extraTime,
     score?.halfTime,
   ];
+  
+  // Para jogos AO VIVO, a API costuma preencher fullTime com o placar parcial.
+  // Vamos procurar o primeiro campo que tenha valores numéricos.
   for (const c of candidates) {
-    if (c?.home !== null && c?.home !== undefined) {
+    if (typeof c?.home === 'number' && typeof c?.away === 'number') {
       return { home: c.home, away: c.away };
     }
   }
@@ -139,13 +145,17 @@ export class FootballApiService {
           awayScore,
           homeFlag: match.homeTeam.crest,
           awayFlag: match.awayTeam.crest,
-          predictedGoalsHome: predictions.predictedGoalsHome,
-          predictedGoalsAway: predictions.predictedGoalsAway,
-          predictedCards:     predictions.predictedCards,
-          predictedFouls:     predictions.predictedFouls,
-          homeTactics:        predictions.homeTactics as unknown as Prisma.InputJsonValue,
-          awayTactics:        predictions.awayTactics as unknown as Prisma.InputJsonValue,
-          aiAnalysis:         predictions.aiAnalysis,
+          // Não sobrescrevemos predições e táticas se o jogo já começou e já temos elas,
+          // para evitar gastar tokens de IA desnecessariamente e manter a consistência.
+          ...(existing?.homeTactics ? {} : {
+            predictedGoalsHome: predictions.predictedGoalsHome,
+            predictedGoalsAway: predictions.predictedGoalsAway,
+            predictedCards:     predictions.predictedCards,
+            predictedFouls:     predictions.predictedFouls,
+            homeTactics:        predictions.homeTactics as unknown as Prisma.InputJsonValue,
+            awayTactics:        predictions.awayTactics as unknown as Prisma.InputJsonValue,
+            aiAnalysis:         predictions.aiAnalysis,
+          }),
         },
         create: {
           externalId:   match.id.toString(),
