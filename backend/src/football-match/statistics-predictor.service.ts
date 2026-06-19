@@ -88,9 +88,11 @@ export class StatisticsPredictorService {
   }
 
   async predictMatch(homeTeam: string, awayTeam: string): Promise<PredictionResult> {
-    const [homeStats, awayStats] = await Promise.all([
+    const [homeStats, awayStats, homeXG, awayXG] = await Promise.all([
       this.getTeamStatistics(homeTeam, 10),
       this.getTeamStatistics(awayTeam, 10),
+      this.scraper.scrapeXG(homeTeam),
+      this.scraper.scrapeXG(awayTeam),
     ]);
 
     const predictedGoalsHome = homeStats.totalMatches > 0 && awayStats.totalMatches > 0
@@ -107,7 +109,11 @@ export class StatisticsPredictorService {
       this.generateSimulatedTactics(awayTeam),
     ]);
 
-    const matchAnalysis = await this.generateMatchTacticalAnalysis(homeTeam, awayTeam, homeTactics, awayTactics);
+    // Injeta xG nas táticas para exibição e análise
+    (homeTactics as any).expectedGoals = homeXG;
+    (awayTactics as any).expectedGoals = awayXG;
+
+    const matchAnalysis = await this.generateMatchTacticalAnalysis(homeTeam, awayTeam, homeTactics, awayTactics, homeXG, awayXG);
 
     // Domínio — quem manda no jogo
     homeTactics.gameDominanceProb = matchAnalysis.homeDominanceProb;
@@ -264,6 +270,8 @@ Responda APENAS o JSON:
     awayTeam: string,
     homeTactics: TacticalAnalysis,
     awayTactics: TacticalAnalysis,
+    homeXG?: number,
+    awayXG?: number,
   ): Promise<{
     homeDominanceProb: number;
     homeStyle: TacticalAnalysis['dominanceStyle'];
@@ -318,7 +326,7 @@ REGRAS ABSOLUTAS:
           },
           {
             role: 'user',
-            content: `Copa do Mundo 2026: ${homeTeam} (${homeTactics.formation}, destaque: ${homeTactics.keyPlayer}, intensidade ${homeTactics.intensity}/100) vs ${awayTeam} (${awayTactics.formation}, destaque: ${awayTactics.keyPlayer}, intensidade ${awayTactics.intensity}/100).
+            content: `Copa do Mundo 2026: ${homeTeam} (${homeTactics.formation}, destaque: ${homeTactics.keyPlayer}, intensidade ${homeTactics.intensity}/100, xG médio: ${homeXG || 'N/A'}) vs ${awayTeam} (${awayTactics.formation}, destaque: ${awayTactics.keyPlayer}, intensidade ${awayTactics.intensity}/100, xG médio: ${awayXG || 'N/A'}).
 
 Responda APENAS este JSON:
 {
@@ -327,7 +335,7 @@ Responda APENAS este JSON:
   "homeDesc": "string (até 60 chars)",
   "awayStyle": "possession|counter|pressing|defensive",
   "awayDesc": "string (até 60 chars)",
-  "analysis": "string (até 350 chars)"
+  "analysis": "string (até 350 chars) - Use os dados de xG para enriquecer o insight tático."
 }`,
           },
         ],

@@ -83,17 +83,31 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
         {renderDominanceBadge(data)}
       </div>
 
-      {/* Intensidade */}
-      <div className="mb-5">
-        <div className="flex justify-between items-center mb-1.5">
-          <span className="text-[10px] uppercase text-slate-500 font-bold tracking-widest">Intensidade</span>
-          <span className="text-sm font-black text-orange-400">{data.intensity.toFixed(0)}%</span>
+      {/* xG e Intensidade */}
+      <div className="grid grid-cols-2 gap-4 mb-5">
+        <div>
+          <div className="flex justify-between items-center mb-1.5">
+            <span className="text-[10px] uppercase text-slate-500 font-bold tracking-widest">xG Médio</span>
+            <span className="text-sm font-black text-indigo-400">{data.expectedGoals?.toFixed(2) || '1.25'}</span>
+          </div>
+          <div className="h-2 bg-slate-900 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full bg-indigo-500 transition-all duration-700"
+              style={{ width: `${((data.expectedGoals || 1.25) / 3) * 100}%` }}
+            />
+          </div>
         </div>
-        <div className="h-2 bg-slate-900 rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-orange-600 to-orange-400 transition-all duration-700"
-            style={{ width: `${data.intensity}%` }}
-          />
+        <div>
+          <div className="flex justify-between items-center mb-1.5">
+            <span className="text-[10px] uppercase text-slate-500 font-bold tracking-widest">Intensidade</span>
+            <span className="text-sm font-black text-orange-400">{data.intensity.toFixed(0)}%</span>
+          </div>
+          <div className="h-2 bg-slate-900 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-orange-600 to-orange-400 transition-all duration-700"
+              style={{ width: `${data.intensity}%` }}
+            />
+          </div>
         </div>
       </div>
 

@@ -6,6 +6,21 @@ import { FootballMatch, TacticalAnalysis } from '@/types';
 import { Navbar } from '@/components/Navbar';
 import { Loading } from '@/components/Loading';
 
+interface TeamOption {
+  id: string;
+  name: string;
+  flag?: string;
+  championship: string;
+  tactics?: TacticalAnalysis;
+  predictions?: {
+    goalsHome: number;
+    goalsAway: number;
+    cards: number;
+    fouls: number;
+    expectedGoals?: number;
+  };
+}
+
 export default function CompararPage() {
   const [matches, setMatches] = useState<FootballMatch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,12 +34,48 @@ export default function CompararPage() {
     });
   }, []);
 
-  const t1 = matches.find(m => m.id === team1Id);
-  const t2 = matches.find(m => m.id === team2Id);
+  // Extrair times únicos das partidas para as opções de seleção
+  const teamOptions: TeamOption[] = [];
+  const seenTeams = new Set<string>();
+
+  matches.forEach(m => {
+    // Adiciona Time 1
+    if (!seenTeams.has(m.team1)) {
+      seenTeams.add(m.team1);
+      teamOptions.push({
+        id: `${m.id}_home`,
+        name: m.team1,
+        flag: m.team1Flag,
+        championship: m.championship,
+        tactics: m.tactics?.home,
+        predictions: m.predictions ? { ...m.predictions } : undefined
+      });
+    }
+    // Adiciona Time 2
+    if (!seenTeams.has(m.team2)) {
+      seenTeams.add(m.team2);
+      teamOptions.push({
+        id: `${m.id}_away`,
+        name: m.team2,
+        flag: m.team2Flag,
+        championship: m.championship,
+        tactics: m.tactics?.away,
+        predictions: m.predictions ? { 
+          goalsHome: m.predictions.goalsAway, // Inverte para o time de fora
+          goalsAway: m.predictions.goalsHome,
+          cards: m.predictions.cards,
+          fouls: m.predictions.fouls
+        } : undefined
+      });
+    }
+  });
+
+  const t1 = teamOptions.find(t => t.id === team1Id);
+  const t2 = teamOptions.find(t => t.id === team2Id);
 
   const renderStatBar = (label: string, val1: number, val2: number, max: number) => {
-    const p1 = (val1 / max) * 100;
-    const p2 = (val2 / max) * 100;
+    const p1 = Math.min(100, (val1 / (max || 1)) * 100);
+    const p2 = Math.min(100, (val2 / (max || 1)) * 100);
     return (
       <div className="mb-6">
         <div className="flex justify-between text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">
@@ -67,8 +118,8 @@ export default function CompararPage() {
               className="w-full bg-slate-800 border-none rounded-xl p-4 text-white font-bold focus:ring-2 focus:ring-indigo-500"
             >
               <option value="">Selecione um time...</option>
-              {matches.map(m => (
-                <option key={m.id} value={m.id}>{m.team1} ({m.championship})</option>
+              {teamOptions.map(t => (
+                <option key={t.id} value={t.id}>{t.name} ({t.championship})</option>
               ))}
             </select>
           </div>
@@ -81,8 +132,8 @@ export default function CompararPage() {
               className="w-full bg-slate-800 border-none rounded-xl p-4 text-white font-bold focus:ring-2 focus:ring-orange-500"
             >
               <option value="">Selecione um time...</option>
-              {matches.map(m => (
-                <option key={m.id} value={m.id}>{m.team1} ({m.championship})</option>
+              {teamOptions.map(t => (
+                <option key={t.id} value={t.id}>{t.name} ({t.championship})</option>
               ))}
             </select>
           </div>
@@ -94,15 +145,19 @@ export default function CompararPage() {
             <div className="flex items-center justify-around bg-slate-900 border border-slate-800 p-12 rounded-[3rem] relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-orange-500/5" />
               <div className="text-center z-10">
-                <div className="text-6xl mb-4">{t1.team1Flag?.startsWith('http') ? <img src={t1.team1Flag} className="w-24 h-16 object-contain mx-auto" /> : '🏳️'}</div>
-                <h2 className="text-3xl font-black">{t1.team1}</h2>
-                <span className="text-indigo-400 font-bold">{t1.tactics?.home.formation}</span>
+                <div className="text-6xl mb-4">
+                  {t1.flag?.startsWith('http') ? <img src={t1.flag} className="w-24 h-16 object-contain mx-auto" alt={t1.name} /> : '🏳️'}
+                </div>
+                <h2 className="text-3xl font-black">{t1.name}</h2>
+                <span className="text-indigo-400 font-bold">{t1.tactics?.formation || 'N/A'}</span>
               </div>
               <div className="text-5xl font-black text-slate-800 italic">VS</div>
               <div className="text-center z-10">
-                <div className="text-6xl mb-4">{t2.team1Flag?.startsWith('http') ? <img src={t2.team1Flag} className="w-24 h-16 object-contain mx-auto" /> : '🏳️'}</div>
-                <h2 className="text-3xl font-black">{t2.team1}</h2>
-                <span className="text-orange-400 font-bold">{t2.tactics?.home.formation}</span>
+                <div className="text-6xl mb-4">
+                  {t2.flag?.startsWith('http') ? <img src={t2.flag} className="w-24 h-16 object-contain mx-auto" alt={t2.name} /> : '🏳️'}
+                </div>
+                <h2 className="text-3xl font-black">{t2.name}</h2>
+                <span className="text-orange-400 font-bold">{t2.tactics?.formation || 'N/A'}</span>
               </div>
             </div>
 
@@ -110,10 +165,11 @@ export default function CompararPage() {
             <div className="bg-slate-900/50 border border-slate-800 p-12 rounded-[3rem]">
               <h3 className="text-xl font-black mb-12 text-center uppercase tracking-tighter">Confronto de Dados</h3>
               {renderStatBar("Expectativa de Gols", t1.predictions?.goalsHome || 0, t2.predictions?.goalsHome || 0, 5)}
-              {renderStatBar("Posse de Bola (%)", t1.tactics?.home.possession || 0, t2.tactics?.home.possession || 0, 100)}
-              {renderStatBar("Intensidade Tática", t1.tactics?.home.intensity || 0, t2.tactics?.home.intensity || 0, 100)}
-              {renderStatBar("Faltas por Jogo", t1.predictions?.fouls || 0, t2.predictions?.fouls || 0, 30)}
-              {renderStatBar("Cartões", t1.predictions?.cards || 0, t2.predictions?.cards || 0, 10)}
+              {renderStatBar("xG Médio (Qualidade)", t1.tactics?.expectedGoals || 0, t2.tactics?.expectedGoals || 0, 3)}
+              {renderStatBar("Intensidade Tática", t1.tactics?.intensity || 0, t2.tactics?.intensity || 0, 100)}
+              {renderStatBar("Probabilidade de Domínio", t1.tactics?.gameDominanceProb || 50, t2.tactics?.gameDominanceProb || 50, 100)}
+              {renderStatBar("Faltas Projetadas", t1.predictions?.fouls || 0, t2.predictions?.fouls || 0, 30)}
+              {renderStatBar("Cartões Projetados", t1.predictions?.cards || 0, t2.predictions?.cards || 0, 10)}
             </div>
 
             {/* Análise de Probabilidade */}
@@ -121,16 +177,17 @@ export default function CompararPage() {
               <div className="lg:col-span-2 bg-indigo-950/20 border border-indigo-900/50 p-8 rounded-[2rem]">
                 <h4 className="text-indigo-400 font-black text-xl mb-4">Análise AI de Confronto</h4>
                 <p className="text-slate-400 leading-relaxed">
-                  O duelo entre {t1.team1} e {t2.team1} promete ser equilibrado. Enquanto o {t1.team1} aposta em uma formação {t1.tactics?.home.formation} com foco em {t1.tactics?.home.possession.toFixed(0)}% de posse, 
-                  o {t2.team1} traz uma intensidade de {t2.tactics?.home.intensity.toFixed(0)}%. Matematicamente, a vantagem pende levemente para o {t1.predictions?.goalsHome! > t2.predictions?.goalsHome! ? t1.team1 : t2.team1} devido à eficiência ofensiva projetada.
+                  O duelo entre {t1.name} e {t2.name} promete ser taticamente rico. Enquanto o {t1.name} utiliza uma formação {t1.tactics?.formation} com estilo "{t1.tactics?.dominanceDescription}", 
+                  o {t2.name} responde com {t2.tactics?.formation} e foco em "{t2.tactics?.dominanceDescription}". 
+                  Matematicamente, a vantagem pende para o {t1.predictions?.goalsHome! > t2.predictions?.goalsHome! ? t1.name : t2.name} devido à eficiência ofensiva projetada de {Math.max(t1.predictions?.goalsHome || 0, t2.predictions?.goalsHome || 0).toFixed(1)} gols.
                 </p>
               </div>
               <div className="bg-slate-900 border border-slate-800 p-8 rounded-[2rem] flex flex-col justify-center items-center text-center">
                 <span className="text-[10px] uppercase font-bold text-slate-500 mb-2">Probabilidade de Vitória</span>
                 <div className="text-5xl font-black text-white mb-2">
-                  {((t1.predictions?.goalsHome || 1) / ((t1.predictions?.goalsHome || 1) + (t2.predictions?.goalsHome || 1)) * 100).toFixed(0)}%
+                  {((t1.predictions?.goalsHome || 1) / ((t1.predictions?.goalsHome || 1) + (t2.predictions?.goalsHome || 1) || 1) * 100).toFixed(0)}%
                 </div>
-                <span className="text-sm text-indigo-400 font-bold">Favoritismo: {t1.team1}</span>
+                <span className="text-sm text-indigo-400 font-bold">Favorito: {t1.predictions?.goalsHome! > t2.predictions?.goalsHome! ? t1.name : t2.name}</span>
               </div>
             </div>
           </div>
