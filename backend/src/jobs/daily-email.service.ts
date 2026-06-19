@@ -135,10 +135,8 @@ export class DailyEmailService implements OnApplicationBootstrap {
    *  - DB has matches for today but all are FT/PST → tournament day is over
    */
   private async hasLiveOrUpcomingToday(): Promise<boolean> {
-    const now = new Date();
-    // Use UTC date boundaries — matches are stored in UTC
-    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
-    const end   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+    // Usa horário do Brasil para garantir que jogos à meia-noite UTC apareçam
+    const { start, end } = getTodayRange();
 
     const [total, active] = await Promise.all([
       this.prisma.footballMatch.count({ where: { date: { gte: start, lte: end } } }),
