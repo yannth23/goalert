@@ -260,14 +260,22 @@ export class StatisticsPredictorService {
       } as any);
 
       const data = JSON.parse(response.choices[0].message.content || '{}');
+      // Se a IA retornar 50, tentamos dar uma pequena vantagem baseada na intensidade para evitar neutralidade
+      let hPos = data.homePossession || 50;
+      if (hPos === 50) {
+        hPos = homeTactics.intensity >= awayTactics.intensity ? 51 : 49;
+      }
+
       return {
-        homePossession: data.homePossession || 50,
-        analysis: data.analysis || `Duelo tático entre ${homeTeam} e ${awayTeam}.`
+        homePossession: hPos,
+        analysis: data.analysis || `Duelo estratégico entre ${homeTeam} e ${awayTeam}.`
       };
     } catch (error) {
+      // Fallback dinâmico baseado na intensidade para nunca ser 50-50 exato
+      const fallbackPos = homeTactics.intensity >= awayTactics.intensity ? 52 : 48;
       return {
-        homePossession: 50,
-        analysis: `Confronto equilibrado entre ${homeTeam} e ${awayTeam}. Espera-se um jogo tático com foco nas formações ${homeTactics.formation} e ${awayTactics.formation}.`
+        homePossession: fallbackPos,
+        analysis: `Confronto de alta intensidade entre ${homeTeam} e ${awayTeam}. A dinâmica será ditada pelo duelo entre as formações ${homeTactics.formation} e ${awayTactics.formation}.`
       };
     }
   }

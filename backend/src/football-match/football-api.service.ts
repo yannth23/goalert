@@ -175,7 +175,9 @@ export class FootballApiService {
       where: { status: { in: ['1H', 'HT', '2H', 'ET', 'PEN'] } },
     });
 
+    // Força a limpeza do cache deletando a chave específica e qualquer variação
     await this.cacheDel(`matches:${todayBrazil}`);
+    await this.cacheDel(`matches:${todayBrazil}:v2`); // Chave de segurança para forçar refresh
     this.logger.log(`Synced ${matches.length} matches for ${todayBrazil}`);
     return { synced: matches.length, live: liveCount, errors: 0, source: 'football-data.org' };
   }
@@ -244,6 +246,10 @@ ${homeTeam} ${curr.homeScore ?? 0} x ${curr.awayScore ?? 0} ${awayTeam}
   async getTodayMatchesFromDb() {
     // Busca jogos do dia de hoje no horário do Brasil
     const { start, end } = getBrazilDayRange();
+    
+    // Forçamos a limpeza do cache de hoje para garantir que dados novos (posse de bola corrigida) apareçam
+    const todayBrazil = getTodayBrazil();
+    await this.cacheDel(`matches:${todayBrazil}`);
 
     return this.prisma.footballMatch.findMany({
       where: { date: { gte: start, lte: end } },
