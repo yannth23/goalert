@@ -243,8 +243,8 @@ export class StatisticsPredictorService {
         predictedGoalsAway: predictions.predictedGoalsAway,
         predictedCards: predictions.predictedCards,
         predictedFouls: predictions.predictedFouls,
-        homeTactics: predictions.homeTactics,
-        awayTactics: predictions.awayTactics,
+        homeTactics: predictions.homeTactics as any,
+        awayTactics: predictions.awayTactics as any,
       },
     });
 
