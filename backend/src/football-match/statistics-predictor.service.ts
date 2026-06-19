@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import OpenAI from 'openai';
 
 interface TeamStatistics {
   totalMatches: number;
@@ -34,8 +35,13 @@ interface PredictionResult {
 @Injectable()
 export class StatisticsPredictorService {
   private readonly logger = new Logger(StatisticsPredictorService.name);
+  private readonly openai: OpenAI;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {
+    this.openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
 
   /**
    * Calcula estatísticas de um time baseado em seus últimos jogos.
@@ -116,6 +122,8 @@ export class StatisticsPredictorService {
         predictedGoalsAway: 1.5,
         predictedCards: 4,
         predictedFouls: 22,
+        homeTactics: await this.generateSimulatedTactics(homeTeam),
+        awayTactics: await this.generateSimulatedTactics(awayTeam),
       };
     }
 
@@ -134,70 +142,58 @@ export class StatisticsPredictorService {
       predictedGoalsAway: Math.max(0, predictedGoalsAway),
       predictedCards: Math.max(0, predictedCards),
       predictedFouls: Math.max(0, predictedFouls),
-      homeTactics: this.generateSimulatedTactics(homeTeam),
-      awayTactics: this.generateSimulatedTactics(awayTeam),
+      homeTactics: await this.generateSimulatedTactics(homeTeam),
+      awayTactics: await this.generateSimulatedTactics(awayTeam),
     };
   }
 
-  private generateSimulatedTactics(teamName: string): TacticalAnalysis {
-    // Dados reais coletados para os times específicos
-    const realData: Record<string, any> = {
-      'Estados Unidos': {
-        formation: '4-2-3-1',
-        lineup: ['Freese', 'Freeman', 'Richards', 'Ream', 'Robinson', 'Adams', 'Tillman', 'Dest', 'McKenzie', 'Pulisic', 'Balogun'],
-        keyPlayer: 'Christian Pulisic',
-        possession: 58,
-        intensity: 88,
-        focus: 'wings'
-      },
-      'Austrália': {
-        formation: '3-4-2-1',
-        lineup: ['Beach', 'Circati', 'Souttar', 'Burgess', 'Italiano', 'O\'Neill', 'Okon-Engstler', 'Bos', 'Metcalfe', 'Irankunda', 'Toure'],
-        keyPlayer: 'Harry Souttar',
-        possession: 42,
-        intensity: 92,
-        focus: 'defense'
-      },
-      'Turquia': {
-        formation: '4-2-3-1',
-        lineup: ['Çakir', 'Çelik', 'Demiral', 'Bardakci', 'Kadioglu', 'Kokçu', 'Çalhanoglu', 'Yilmaz', 'Arda Guler', 'Yildiz', 'Akturkoglu'],
-        keyPlayer: 'Arda Guler',
-        possession: 62,
-        intensity: 84,
-        focus: 'center'
-      },
-      'Paraguai': {
-        formation: '4-4-2',
-        lineup: ['Gill', 'Cáceres', 'Gustavo Gómez', 'Alderete', 'Júnior Alonso', 'Diego Gómez', 'Cubas', 'Galarza', 'Almirón', 'Enciso', 'Sanabria'],
-        keyPlayer: 'Miguel Almirón',
-        possession: 38,
-        intensity: 89,
-        focus: 'counter'
-      }
-    };
+  private async generateSimulatedTactics(teamName: string): Promise<TacticalAnalysis> {
+    try {
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: "Você é um analista tático de futebol. Forneça dados reais e precisos em formato JSON."
+          },
+          {
+            role: "user",
+            content: `Forneça a formação tática provável, a escalação de 11 jogadores reais, o jogador chave, a posse de bola média esperada (0-100), a intensidade de jogo (0-100) e o foco tático (wings, center, defense, counter, balanced) para o time: ${teamName}.
+            Responda APENAS o JSON no formato:
+            {
+              "formation": "string",
+              "lineup": ["string", ...],
+              "keyPlayer": "string",
+              "possession": number,
+              "intensity": number,
+              "focus": "string"
+            }`
+          }
+        ],
+        response_format: { type: "json_object" }
+      });
 
-    const team = realData[teamName];
-    
-    if (team) {
+      const data = JSON.parse(response.choices[0].message.content || '{}');
+      
       return {
-        formation: team.formation,
-        lineup: team.lineup,
-        keyPlayer: team.keyPlayer,
-        possession: team.possession,
-        intensity: team.intensity,
-        heatmapData: this.generateHeatmap(team.focus)
+        formation: data.formation || '4-4-2',
+        lineup: data.lineup || [],
+        keyPlayer: data.keyPlayer || 'Star Player',
+        possession: data.possession || 50,
+        intensity: data.intensity || 75,
+        heatmapData: this.generateHeatmap(data.focus || 'balanced')
+      };
+    } catch (error) {
+      this.logger.error(`Erro ao gerar táticas via AI para ${teamName}: ${error.message}`);
+      return {
+        formation: '4-4-2',
+        lineup: ['Player 1', 'Player 2', 'Player 3', 'Player 4', 'Player 5', 'Player 6', 'Player 7', 'Player 8', 'Player 9', 'Player 10', 'Player 11'],
+        keyPlayer: 'Star Player',
+        possession: 50,
+        intensity: 75,
+        heatmapData: this.generateHeatmap('balanced')
       };
     }
-
-    // Fallback para outros times
-    return {
-      formation: '4-4-2',
-      lineup: ['Player 1', 'Player 2', 'Player 3', 'Player 4', 'Player 5', 'Player 6', 'Player 7', 'Player 8', 'Player 9', 'Player 10', 'Player 11'],
-      keyPlayer: 'Star Player',
-      possession: 50,
-      intensity: 75,
-      heatmapData: this.generateHeatmap('balanced')
-    };
   }
 
   private generateHeatmap(focus: string) {
@@ -247,6 +243,8 @@ export class StatisticsPredictorService {
         predictedGoalsAway: predictions.predictedGoalsAway,
         predictedCards: predictions.predictedCards,
         predictedFouls: predictions.predictedFouls,
+        homeTactics: predictions.homeTactics,
+        awayTactics: predictions.awayTactics,
       },
     });
 
