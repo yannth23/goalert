@@ -303,9 +303,15 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
             <div className="flex items-center gap-2 mb-1">
               <span className="text-[9px] bg-indigo-500 text-white px-1.5 py-0.5 rounded font-black uppercase tracking-tighter">AI Insight</span>
               <span className="text-[10px] text-indigo-300 font-bold italic">
-                {match.shortInsight || "Analisando padrões táticos..."}
+                {match.shortInsight || "Analisando padroes taticos..."}
               </span>
             </div>
+            {match.attentionPoint && (
+              <div className="mt-2 pt-2 border-t border-indigo-800/50">
+                <p className="text-[9px] text-indigo-400 font-bold uppercase tracking-tighter mb-0.5">Ponto de Atencao</p>
+                <p className="text-[10px] text-indigo-200">{match.attentionPoint}</p>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-3 gap-2">

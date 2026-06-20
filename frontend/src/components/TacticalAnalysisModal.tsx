@@ -326,9 +326,15 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
           {/* 3. Insight da IA — específico para este jogo */}
           <div className="bg-indigo-950/30 border border-indigo-900/50 rounded-2xl p-5">
             <p className="text-[10px] uppercase text-indigo-400 font-bold tracking-widest mb-2">Insight Tático da IA — {match.team1} vs {match.team2}</p>
-            <p className="text-slate-300 text-sm leading-relaxed italic">
+            <p className="text-slate-300 text-sm leading-relaxed italic whitespace-pre-wrap">
               {match.aiAnalysis || `O confronto entre ${match.team1} (${tactics.home.formation}) e ${match.team2} (${tactics.away.formation}) será definido pelo duelo entre os estilos opostos de jogo de cada seleção na Copa do Mundo 2026.`}
             </p>
+            {match.attentionPoint && (
+              <div className="mt-4 p-3 bg-indigo-900/50 rounded-lg border border-indigo-800/50">
+                <p className="text-[10px] uppercase text-indigo-300 font-bold tracking-widest mb-1">Ponto de Atenção</p>
+                <p className="text-white text-sm font-medium">{match.attentionPoint}</p>
+              </div>
+            )}
           </div>
 
           {/* 4. Táticas individuais */}

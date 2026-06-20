@@ -58,6 +58,7 @@ export interface FootballMatch {
   };
   aiAnalysis?: string;
   shortInsight?: string;
+  attentionPoint?: string;
 }
 
 export interface AuthResponse {

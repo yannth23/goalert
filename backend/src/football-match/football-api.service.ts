@@ -106,6 +106,7 @@ export class FootballApiService {
           awayTactics:        predictions.awayTactics as unknown as Prisma.InputJsonValue,
           aiAnalysis:         predictions.aiAnalysis,
           shortInsight:       (predictions as any).shortInsight,
+          attentionPoint:     (predictions as any).attentionPoint,
         },
         create: {
           externalId:   match.fixture.id.toString(),
@@ -126,6 +127,7 @@ export class FootballApiService {
           awayTactics:        predictions.awayTactics as unknown as Prisma.InputJsonValue,
           aiAnalysis:         predictions.aiAnalysis,
           shortInsight:       (predictions as any).shortInsight,
+          attentionPoint:     (predictions as any).attentionPoint,
         },
       });
 

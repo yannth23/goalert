@@ -40,8 +40,9 @@ interface PredictionResult {
   predictedFouls: number;
   homeTactics?: TacticalAnalysis;
   awayTactics?: TacticalAnalysis;
-  aiAnalysis?: string;
-  shortInsight?: string;
+  aiAnalysis: string;
+  shortInsight: string;
+  attentionPoint: string;
 }
 
 @Injectable()
@@ -363,7 +364,9 @@ REGRAS ABSOLUTAS:
           },
           {
             role: 'user',
-            content: `Copa do Mundo 2026: ${homeTeam} (${homeTactics.formation}, destaque: ${homeTactics.keyPlayer}, intensidade ${homeTactics.intensity}/100, xG médio: ${homeXG || 'N/A'}, passes progressivos: ${homeTactics.advancedStats?.passesProgressive}, eficiência de pressão: ${homeTactics.advancedStats?.pressingEfficiency}%) vs ${awayTeam} (${awayTactics.formation}, destaque: ${awayTactics.keyPlayer}, intensidade ${awayTactics.intensity}/100, xG médio: ${awayXG || 'N/A'}, passes progressivos: ${awayTactics.advancedStats?.passesProgressive}, eficiência de pressão: ${awayTactics.advancedStats?.pressingEfficiency}%).
+            content: `Copa do Mundo 2026: ${homeTeam} (${homeTactics.formation}, destaque: ${homeTactics.keyPlayer}, intensidade ${homeTactics.intensity}/100, xG médio: ${homeXG || 'N/A'}, passes progressivos: ${homeTactics.advancedStats?.passesProgressive}, eficiência de pressão: ${homeTactics.advancedStats?.pressingEfficiency}%, deep completions: ${homeTactics.advancedStats?.deepCompletions}) vs ${awayTeam} (${awayTactics.formation}, destaque: ${awayTactics.keyPlayer}, intensidade ${awayTactics.intensity}/100, xG médio: ${awayXG || 'N/A'}, passes progressivos: ${awayTactics.advancedStats?.passesProgressive}, eficiência de pressão: ${awayTactics.advancedStats?.pressingEfficiency}%, deep completions: ${awayTactics.advancedStats?.deepCompletions}).
+
+Analise o confronto tático, considerando os estilos de jogo, formações, jogadores-chave e as métricas avançadas (xG, passes progressivos, eficiência de pressão, deep completions). Descreva como os estilos se chocam e quais times podem ter vantagem. Inclua um "Ponto de Atenção" que destaque um duelo individual ou uma área crítica do campo. A análise deve ser detalhada, com no mínimo 200 caracteres e no máximo 500 caracteres.
 
 Responda APENAS este JSON:
 {
@@ -372,8 +375,9 @@ Responda APENAS este JSON:
   "homeDesc": "string (até 60 chars)",
   "awayStyle": "possession|counter|pressing|defensive",
   "awayDesc": "string (até 60 chars)",
-  "analysis": "string (até 350 chars) - Use os dados de xG para enriquecer o insight tático.",
-  "shortInsight": "string (até 80 chars) - Uma frase curta e impactante sobre o que esperar do jogo (ex: 'Jogo de poucos gols e muita pressão no meio')"
+  "analysis": "string (200-500 chars) - Análise tática detalhada, citando métricas avançadas e como os estilos se chocam.",
+  "shortInsight": "string (até 120 chars) - Uma frase curta e impactante sobre o que esperar do jogo (ex: 'Duelo de xG alto: ataque contra defesa organizada').",
+  "attentionPoint": "string (até 150 chars) - Destaque um duelo individual ou uma área crítica do campo (ex: 'Meio-campo: Bruno Guimarães vs Rodri')."
 }`,
           },
         ],
