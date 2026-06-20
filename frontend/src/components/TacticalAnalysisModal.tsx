@@ -16,7 +16,6 @@ const DOMINANCE_CONFIG: Record<string, {
   counter:    { label: 'Contra-Ataque',       icon: '⚡', color: 'text-yellow-400', bg: 'bg-yellow-950/40', border: 'border-yellow-800/50' },
   pressing:   { label: 'Pressão Alta',        icon: '🔥', color: 'text-orange-400', bg: 'bg-orange-950/40', border: 'border-orange-800/50' },
   defensive:  { label: 'Bloco Defensivo',     icon: '🛡️', color: 'text-slate-400',  bg: 'bg-slate-800/40',  border: 'border-slate-700/50'  },
-  balanced:   { label: 'Jogo Equilibrado',    icon: '⚖️', color: 'text-green-400',  bg: 'bg-green-950/40',  border: 'border-green-800/50'  },
 };
 
 
@@ -83,65 +82,17 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
         {renderDominanceBadge(data)}
       </div>
 
-      {/* xG e Intensidade */}
-      <div className="grid grid-cols-2 gap-4 mb-5">
-        <div>
-          <div className="flex justify-between items-center mb-1.5">
-            <span className="text-[10px] uppercase text-slate-500 font-bold tracking-widest">xG Médio</span>
-            <span className="text-sm font-black text-indigo-400">{data.expectedGoals?.toFixed(2) || '1.25'}</span>
-          </div>
-          <div className="h-2 bg-slate-900 rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full bg-indigo-500 transition-all duration-700"
-              style={{ width: `${((data.expectedGoals || 1.25) / 3) * 100}%` }}
-            />
-          </div>
+      {/* Intensidade */}
+      <div className="mb-5">
+        <div className="flex justify-between items-center mb-1.5">
+          <span className="text-[10px] uppercase text-slate-500 font-bold tracking-widest">Intensidade</span>
+          <span className="text-sm font-black text-orange-400">{data.intensity.toFixed(0)}%</span>
         </div>
-        <div>
-          <div className="flex justify-between items-center mb-1.5">
-            <span className="text-[10px] uppercase text-slate-500 font-bold tracking-widest">Intensidade</span>
-            <span className="text-sm font-black text-orange-400">{data.intensity.toFixed(0)}%</span>
-          </div>
-          <div className="h-2 bg-slate-900 rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-orange-600 to-orange-400 transition-all duration-700"
-              style={{ width: `${data.intensity}%` }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Stats Avançadas (StatsBomb Style) */}
-      <div className="bg-slate-900/40 rounded-xl p-4 border border-slate-800/50 mb-5">
-        <p className="text-[10px] uppercase text-slate-500 font-bold mb-3 tracking-widest">Métricas Avançadas (StatsBomb)</p>
-        <div className="space-y-3">
-          <div>
-            <div className="flex justify-between text-[11px] mb-1">
-              <span className="text-slate-400">Passes Progressivos</span>
-              <span className="text-white font-bold">{data.advancedStats?.passesProgressive || 42}</span>
-            </div>
-            <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-500" style={{ width: `${((data.advancedStats?.passesProgressive || 42) / 70) * 100}%` }} />
-            </div>
-          </div>
-          <div>
-            <div className="flex justify-between text-[11px] mb-1">
-              <span className="text-slate-400">Eficiência de Pressão</span>
-              <span className="text-white font-bold">{data.advancedStats?.pressingEfficiency || 55}%</span>
-            </div>
-            <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
-              <div className="h-full bg-orange-500" style={{ width: `${data.advancedStats?.pressingEfficiency || 55}%` }} />
-            </div>
-          </div>
-          <div>
-            <div className="flex justify-between text-[11px] mb-1">
-              <span className="text-slate-400">Deep Completions</span>
-              <span className="text-white font-bold">{data.advancedStats?.deepCompletions || 12}</span>
-            </div>
-            <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
-              <div className="h-full bg-emerald-500" style={{ width: `${((data.advancedStats?.deepCompletions || 12) / 25) * 100}%` }} />
-            </div>
-          </div>
+        <div className="h-2 bg-slate-900 rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-orange-600 to-orange-400 transition-all duration-700"
+            style={{ width: `${data.intensity}%` }}
+          />
         </div>
       </div>
 
@@ -326,15 +277,9 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
           {/* 3. Insight da IA — específico para este jogo */}
           <div className="bg-indigo-950/30 border border-indigo-900/50 rounded-2xl p-5">
             <p className="text-[10px] uppercase text-indigo-400 font-bold tracking-widest mb-2">Insight Tático da IA — {match.team1} vs {match.team2}</p>
-            <p className="text-slate-300 text-sm leading-relaxed italic whitespace-pre-wrap">
+            <p className="text-slate-300 text-sm leading-relaxed italic">
               {match.aiAnalysis || `O confronto entre ${match.team1} (${tactics.home.formation}) e ${match.team2} (${tactics.away.formation}) será definido pelo duelo entre os estilos opostos de jogo de cada seleção na Copa do Mundo 2026.`}
             </p>
-            {match.attentionPoint && (
-              <div className="mt-4 p-3 bg-indigo-900/50 rounded-lg border border-indigo-800/50">
-                <p className="text-[10px] uppercase text-indigo-300 font-bold tracking-widest mb-1">Ponto de Atenção</p>
-                <p className="text-white text-sm font-medium">{match.attentionPoint}</p>
-              </div>
-            )}
           </div>
 
           {/* 4. Táticas individuais */}
