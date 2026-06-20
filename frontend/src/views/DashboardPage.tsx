@@ -13,9 +13,10 @@ import { StandingsTable } from '../components/StandingsTable';
 import { TopScorers } from '../components/TopScorers';
 import { Loading } from '../components/Loading';
 import { EmptyState } from '../components/EmptyState';
+import { AlertsTab } from '../components/AlertsTab';
 import type { FootballMatch } from '../types';
 
-type Tab = 'jogos' | 'grupos' | 'conta';
+type Tab = 'jogos' | 'previsoes' | 'grupos' | 'conta';
 type StyleFilter = 'all' | 'pressing' | 'counter' | 'possession' | 'defensive';
 
 const STYLE_OPTS: { key: StyleFilter; label: string; icon: string; active: string; inactive: string }[] = [
@@ -160,6 +161,7 @@ export function DashboardPage() {
         <div className="max-w-4xl mx-auto px-2 sm:px-4 flex min-w-max sm:min-w-0">
           {([
             { key: 'jogos', label: 'Jogos' },
+            { key: 'previsoes', label: 'Previsões 🔮' },
             { key: 'grupos', label: 'Grupos' },
             { key: 'conta', label: 'Conta' },
           ] as { key: Tab; label: string }[]).map(({ key, label }) => (
@@ -269,6 +271,9 @@ export function DashboardPage() {
             )}
           </>
         )}
+
+        {/* ── ABA PREVISÕES ── */}
+        {tab === 'previsoes' && <AlertsTab />}
 
         {/* ── ABA GRUPOS ── */}
         {tab === 'grupos' && (
