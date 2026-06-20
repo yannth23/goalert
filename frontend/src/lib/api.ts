@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://goal-alert.onrender.com';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -96,7 +96,4 @@ export const api = {
 
   getUser: (userId: string) =>
     request<{ id: string; email: string; name?: string; favoriteTeams: { id: string; teamName: string }[]; preferences: { receiveDailyNotifications: boolean; receiveWhatsappNotifications: boolean; whatsappNumber: string | null; receiveTelegramNotifications: boolean; telegramChatId: string | null } | null }>(`/users/${userId}`),
-
-  getTeamReport: (teamName: string) =>
-    request<any>(`/matches/team/${encodeURIComponent(teamName)}/report`),
 };
