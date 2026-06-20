@@ -111,7 +111,7 @@ function traduzirCompeticao(nome: string): string {
   return COMPETITION_PT[nome] ?? nome;
 }
 
-const LIVE_STATUSES = new Set(['1H', '2H', 'ET', 'PEN']);
+const LIVE_STATUSES = new Set(['1H', '2H', 'ET', 'PEN', 'LIVE']);
 
 interface MatchCardProps {
   match: FootballMatch;

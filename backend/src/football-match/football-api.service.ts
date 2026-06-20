@@ -14,6 +14,16 @@ const COMPETITION_WC = 'WC';
 const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY;
 
 const STATUS_MAP: Record<string, string> = {
+  // API-Football v3 Statuses
+  'TBD': 'NS',  'NS': 'NS',
+  '1H':  '1H',  'HT': 'HT',  '2H': '2H',
+  'ET':  'ET',  'BT': 'ET',  'P':  'PEN',
+  'FT':  'FT',  'AET':'FT',  'PEN':'FT',
+  'SUSP':'PST', 'PST':'PST', 'CANC':'PST', 'ABD':'PST',
+  'AWD': 'FT',  'WO': 'FT',
+  'LIVE':'1H',
+
+  // Legacy mappings (just in case)
   SCHEDULED:        'NS',
   TIMED:            'NS',
   IN_PLAY:          '1H',
@@ -21,10 +31,6 @@ const STATUS_MAP: Record<string, string> = {
   EXTRA_TIME:       'ET',
   PENALTY_SHOOTOUT: 'PEN',
   FINISHED:         'FT',
-  SUSPENDED:        'PST',
-  POSTPONED:        'PST',
-  CANCELLED:        'PST',
-  AWARDED:          'FT',
 };
 
 
