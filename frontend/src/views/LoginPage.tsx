@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../lib/api';
-import { TactiqSenseLogo } from '../components/TactiqSenseLogo';
+import { GoalAlertLogo } from '../components/GoalAlertLogo';
 
 export function LoginPage() {
   const { login } = useAuth();
@@ -34,10 +34,10 @@ export function LoginPage() {
 
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 mb-4 shadow-xl shadow-black/40">
-            <TactiqSenseLogo size={44} />
+            <GoalAlertLogo size={44} />
           </div>
           <h1 className="text-yellow-400 font-black text-2xl tracking-tight">TACTIQSENSE</h1>
-          <p className="text-slate-500 text-sm mt-1">Inteligência Tática para Copa 2026</p>
+          <p className="text-slate-500 text-sm mt-1">Copa do Mundo 2026</p>
         </div>
 
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
