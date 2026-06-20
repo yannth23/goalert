@@ -1,5 +1,6 @@
 import { Navbar } from '../components/Navbar';
 import { Hero } from '../components/Hero';
+import { TacticalSpotlight } from '../components/TacticalSpotlight';
 import { StandingsTable } from '../components/StandingsTable';
 import { TopScorers } from '../components/TopScorers';
 import { MatchesSection } from '@/components/MatchesSection';
@@ -11,6 +12,7 @@ export function HomePage() {
       <ApiDebug />
       <Navbar />
       <Hero />
+      <TacticalSpotlight />
       <MatchesSection />
       <div id="standings">
         <StandingsTable />
