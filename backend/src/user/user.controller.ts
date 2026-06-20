@@ -6,8 +6,6 @@ import { UserService } from './user.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreateUserDto } from './dto/create-user.dto';
 import { AddFavoriteTeamDto } from './dto/add-favorite-team.dto';
-import { UpdatePreferencesDto } from './dto/update-preferences.dto';
-import { UpdateTelegramDto } from './dto/update-telegram.dto';
 
 @Controller('users')
 export class UserController {
@@ -47,17 +45,4 @@ export class UserController {
     if (req.user.id !== id) throw new ForbiddenException();
     return this.userService.removeFavoriteTeam(id, teamName);
   }
-
-  @Patch(':id/preferences')
-  @UseGuards(JwtAuthGuard)
-  updatePreferences(
-    @Param('id') id: string,
-    @Body() body: UpdatePreferencesDto,
-    @Request() req: { user: { id: string } },
-  ) {
-    if (req.user.id !== id) throw new ForbiddenException();
-    return this.userService.updatePreferences(id, body.receiveDailyNotifications);
-  }
-
-  // Rota de Telegram removida
 }
