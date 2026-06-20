@@ -3,12 +3,10 @@ import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { PrismaModule } from './prisma/prisma.module';
 import { UserModule } from './user/user.module';
-import { EmailModule } from './email/email.module';
 import { JobsModule } from './jobs/jobs.module';
 import { FootballMatchModule } from './football-match/football-match.module';
 import { AuthModule } from './auth/auth.module';
 import { RedisModule } from './redis/redis.module';
-// Telegram removido
 import { AppController } from './app.controller';
 
 @Module({
@@ -18,7 +16,6 @@ import { AppController } from './app.controller';
     PrismaModule,
     RedisModule,
     UserModule,
-    EmailModule,
     JobsModule,
     FootballMatchModule,
     AuthModule,
