@@ -1,9 +1,7 @@
 import { Navbar } from '../components/Navbar';
 import { Hero } from '../components/Hero';
-import { AlertBanner } from '../components/AlertBanner';
 import { StandingsTable } from '../components/StandingsTable';
 import { TopScorers } from '../components/TopScorers';
-import { SignupForm } from '../components/SignupForm';
 import { MatchesSection } from '@/components/MatchesSection';
 import { ApiDebug } from '@/components/ApiDebug';
 
@@ -13,11 +11,11 @@ export function HomePage() {
       <ApiDebug />
       <Navbar />
       <Hero />
-      <AlertBanner />
       <MatchesSection />
-      <StandingsTable />
+      <div id="standings">
+        <StandingsTable />
+      </div>
       <TopScorers />
-      <SignupForm />
     </main>
   );
 }
