@@ -22,15 +22,9 @@ export interface TacticalAnalysis {
   lineup: string[];
   keyPlayer: string;
   intensity: number;
-  dominanceStyle: 'possession' | 'counter' | 'pressing' | 'defensive' | 'balanced';
+  dominanceStyle: 'possession' | 'counter' | 'pressing' | 'defensive';
   dominanceDescription: string;
   gameDominanceProb: number; // 0-100: quanto este time domina o jogo
-  expectedGoals?: number;
-  advancedStats?: {
-    passesProgressive: number;
-    pressingEfficiency: number;
-    deepCompletions: number;
-  };
   heatmapData: { x: number; y: number; value: number }[];
 }
 
@@ -57,8 +51,6 @@ export interface FootballMatch {
     away: TacticalAnalysis;
   };
   aiAnalysis?: string;
-  shortInsight?: string;
-  attentionPoint?: string;
 }
 
 export interface AuthResponse {
@@ -94,48 +86,4 @@ export interface Scorer {
   teamName: string;
   goals: number;
   assists: number;
-}
-
-export interface TeamReportProfile {
-  formation: string;
-  keyPlayer: string;
-  intensity: number;
-  dominanceStyle: 'possession' | 'counter' | 'pressing' | 'defensive';
-  description: string;
-}
-
-export interface TeamReportStatistics {
-  matchesPlayed: number;
-  wins: number;
-  draws: number;
-  losses: number;
-  goalsFor: number;
-  goalsAgainst: number;
-  goalDifference: number;
-  averageGoalsPerMatch: number;
-  averageXG: number;
-}
-
-export interface TeamReportMatch {
-  date: string;
-  opponent: string;
-  result: string;
-  score: string;
-  tactics: string;
-}
-
-export interface TeamReportWebInsights {
-  recentNews: string[];
-  pressAnalysis: string;
-  teamSentiment: string;
-}
-
-export interface TeamReport {
-  teamName: string;
-  lastUpdated: string;
-  profile: TeamReportProfile;
-  statistics: TeamReportStatistics;
-  recentMatches: TeamReportMatch[];
-  webInsights: TeamReportWebInsights;
-  aiAnalysis: string;
 }
