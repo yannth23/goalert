@@ -172,6 +172,7 @@ export class StatisticsPredictorService {
       awayTactics,
       aiAnalysis: matchAnalysis.analysis,
       shortInsight: matchAnalysis.shortInsight,
+      attentionPoint: matchAnalysis.attentionPoint ?? matchAnalysis.shortInsight ?? 'Fique de olho nesse confronto',
     };
   }
 
