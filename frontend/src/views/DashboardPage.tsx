@@ -6,17 +6,17 @@ import { useAuth } from '../hooks/useAuth';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useToast } from '../hooks/useToast';
 import { Toast } from '../components/Toast';
-import { TactiqSenseLogo } from '../components/TactiqSenseLogo';
+import { GoalAlertLogo } from '../components/GoalAlertLogo';
+import { LiveTicker } from '../components/LiveTicker';
 import { api } from '../lib/api';
 import { MatchCard } from '../components/MatchCard';
 import { StandingsTable } from '../components/StandingsTable';
 import { TopScorers } from '../components/TopScorers';
 import { Loading } from '../components/Loading';
 import { EmptyState } from '../components/EmptyState';
-import { PrevisaoTab } from '../components/PrevisaoTab';
 import type { FootballMatch } from '../types';
 
-type Tab = 'jogos' | 'previsoes' | 'grupos' | 'conta';
+type Tab = 'jogos' | 'grupos' | 'conta';
 type StyleFilter = 'all' | 'pressing' | 'counter' | 'possession' | 'defensive';
 
 const STYLE_OPTS: { key: StyleFilter; label: string; icon: string; active: string; inactive: string }[] = [
@@ -49,6 +49,7 @@ export function DashboardPage() {
   const [filter, setFilter] = useState<'all' | 'favorites'>('all');
   const [styleFilter, setStyleFilter] = useState<StyleFilter>('all');
   const { toast, showToast } = useToast();
+
   useEffect(() => {
     if (!user) return;
     Promise.all([
@@ -131,9 +132,9 @@ export function DashboardPage() {
 
           {/* Logo — clicável volta para a landing */}
           <Link href="/" className="flex items-center gap-2 shrink-0 group">
-            <TactiqSenseLogo size={30} />
+            <GoalAlertLogo size={30} />
             <span className="text-yellow-400 font-black text-xl tracking-tight group-hover:text-yellow-300 transition">
-              TACTIQSENSE
+              GOALALERT
             </span>
           </Link>
 
@@ -161,7 +162,6 @@ export function DashboardPage() {
         <div className="max-w-4xl mx-auto px-2 sm:px-4 flex min-w-max sm:min-w-0">
           {([
             { key: 'jogos', label: 'Jogos' },
-            { key: 'previsoes', label: 'Previsões 🔮' },
             { key: 'grupos', label: 'Grupos' },
             { key: 'conta', label: 'Conta' },
           ] as { key: Tab; label: string }[]).map(({ key, label }) => (
@@ -179,6 +179,8 @@ export function DashboardPage() {
           ))}
         </div>
       </div>
+
+      <LiveTicker />
 
       <div className="max-w-4xl mx-auto px-4 py-6">
 
@@ -271,9 +273,6 @@ export function DashboardPage() {
             )}
           </>
         )}
-
-        {/* ── ABA PREVISÕES ── */}
-        {tab === 'previsoes' && <PrevisaoTab />}
 
         {/* ── ABA GRUPOS ── */}
         {tab === 'grupos' && (
