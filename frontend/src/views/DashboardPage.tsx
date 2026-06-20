@@ -7,7 +7,7 @@ import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useToast } from '../hooks/useToast';
 import { useGoalNotifications } from '../hooks/useGoalNotifications';
 import { Toast } from '../components/Toast';
-import { GoalAlertLogo } from '../components/GoalAlertLogo';
+import { TaticadLogo } from '../components/TaticadLogo';
 import { LiveTicker } from '../components/LiveTicker';
 import { AlertsTab } from '../components/AlertsTab';
 import { api } from '../lib/api';
@@ -148,9 +148,9 @@ export function DashboardPage() {
 
           {/* Logo — clicável volta para a landing */}
           <Link href="/" className="flex items-center gap-2 shrink-0 group">
-            <GoalAlertLogo size={30} />
+            <TaticadLogo size={30} />
             <span className="text-yellow-400 font-black text-xl tracking-tight group-hover:text-yellow-300 transition">
-              GOALALERT
+              TATICAD
             </span>
           </Link>
 
