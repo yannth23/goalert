@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { TactiqSenseLogo } from './TactiqSenseLogo';
+import { GoalAlertLogo } from './GoalAlertLogo';
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
@@ -13,7 +13,7 @@ export function Navbar() {
 
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2">
-            <TactiqSenseLogo size={28} />
+            <GoalAlertLogo size={28} />
             <span className="text-yellow-500 font-black text-xl tracking-tight">
               TACTIQSENSE
             </span>
@@ -21,7 +21,6 @@ export function Navbar() {
           <nav className="hidden md:flex items-center gap-6">
             <Link href="/" className="text-sm font-bold text-slate-400 hover:text-white transition-colors">Jogos</Link>
             <Link href="/comparar" className="text-sm font-bold text-indigo-400 hover:text-indigo-300 transition-colors">Comparador AI</Link>
-            <Link href="/selecoes" className="text-sm font-bold text-slate-400 hover:text-white transition-colors">Seleções</Link>
           </nav>
         </div>
 
@@ -60,13 +59,6 @@ export function Navbar() {
             className="text-sm font-bold text-indigo-400 hover:text-indigo-300 py-2.5 px-3 rounded-xl hover:bg-slate-800 transition"
           >
             Comparador AI
-          </Link>
-          <Link
-            href="/selecoes"
-            onClick={() => setOpen(false)}
-            className="text-sm font-bold text-slate-300 hover:text-white py-2.5 px-3 rounded-xl hover:bg-slate-800 transition"
-          >
-            Seleções
           </Link>
           <Link
             href="/login"
