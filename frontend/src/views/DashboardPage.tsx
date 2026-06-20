@@ -13,7 +13,7 @@ import { StandingsTable } from '../components/StandingsTable';
 import { TopScorers } from '../components/TopScorers';
 import { Loading } from '../components/Loading';
 import { EmptyState } from '../components/EmptyState';
-import { AlertsTab } from '../components/AlertsTab';
+import { PrevisaoTab } from '../components/PrevisaoTab';
 import type { FootballMatch } from '../types';
 
 type Tab = 'jogos' | 'previsoes' | 'grupos' | 'conta';
@@ -273,7 +273,7 @@ export function DashboardPage() {
         )}
 
         {/* ── ABA PREVISÕES ── */}
-        {tab === 'previsoes' && <AlertsTab />}
+        {tab === 'previsoes' && <PrevisaoTab />}
 
         {/* ── ABA GRUPOS ── */}
         {tab === 'grupos' && (
