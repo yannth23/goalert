@@ -22,7 +22,8 @@ export function Hero() {
           </h1>
 
           <p className="max-w-2xl mx-auto mt-6 text-slate-400 text-base sm:text-lg">
-            Inteligência tática avançada, análise de eventos em tempo real e previsões de IA para a Copa do Mundo 2026.
+            Análise tática em tempo real — formações, estilos de jogo, domínio e
+            probabilidades da Copa do Mundo 2026.
           </p>
 
           <div className="mt-8 flex justify-center">
@@ -34,17 +35,17 @@ export function Hero() {
           <div className="flex justify-center gap-4 mt-10 flex-wrap">
 
             <a
-              href="#signup"
+              href="#matches"
               className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold px-8 py-4 rounded-xl"
             >
-              Receber alertas grátis
+              Ver análises táticas
             </a>
 
             <a
-              href="#matches"
+              href="#standings"
               className="border border-slate-700 hover:border-slate-500 px-8 py-4 rounded-xl"
             >
-              Ver jogos
+              Ver grupos
             </a>
 
           </div>
