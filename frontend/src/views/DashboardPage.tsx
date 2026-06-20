@@ -5,11 +5,8 @@ import Link from 'next/link';
 import { useAuth } from '../hooks/useAuth';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useToast } from '../hooks/useToast';
-import { useGoalNotifications } from '../hooks/useGoalNotifications';
 import { Toast } from '../components/Toast';
 import { TactiqSenseLogo } from '../components/TactiqSenseLogo';
-import { LiveTicker } from '../components/LiveTicker';
-import { AlertsTab } from '../components/AlertsTab';
 import { api } from '../lib/api';
 import { MatchCard } from '../components/MatchCard';
 import { StandingsTable } from '../components/StandingsTable';
@@ -18,7 +15,7 @@ import { Loading } from '../components/Loading';
 import { EmptyState } from '../components/EmptyState';
 import type { FootballMatch } from '../types';
 
-type Tab = 'jogos' | 'alertas' | 'grupos' | 'conta';
+type Tab = 'jogos' | 'grupos' | 'conta';
 type StyleFilter = 'all' | 'pressing' | 'counter' | 'possession' | 'defensive';
 
 const STYLE_OPTS: { key: StyleFilter; label: string; icon: string; active: string; inactive: string }[] = [
@@ -46,13 +43,11 @@ export function DashboardPage() {
 
   const [matches, setMatches] = useState<FootballMatch[]>([]);
   const [favoriteTeams, setFavoriteTeams] = useState<{ id: string; teamName: string }[]>([]);
-  const [notifications, setNotifications] = useState(true);
   const [newTeam, setNewTeam] = useState('');
   const [loadingData, setLoadingData] = useState(true);
   const [filter, setFilter] = useState<'all' | 'favorites'>('all');
   const [styleFilter, setStyleFilter] = useState<StyleFilter>('all');
   const { toast, showToast } = useToast();
-  const goalNotifications = useGoalNotifications();
   useEffect(() => {
     if (!user) return;
     Promise.all([
@@ -61,7 +56,6 @@ export function DashboardPage() {
     ]).then(([matchData, userData]) => {
       setMatches(matchData);
       setFavoriteTeams(userData.favoriteTeams);
-      setNotifications(userData.preferences?.receiveDailyNotifications ?? true);
     }).catch(() => {
       showToast('Erro ao carregar dados.');
     }).finally(() => setLoadingData(false));
@@ -100,18 +94,6 @@ export function DashboardPage() {
       showToast('Time removido.');
     } catch {
       showToast('Erro ao remover time.');
-    }
-  }
-
-  async function handleToggleNotifications() {
-    if (!user) return;
-    const newVal = !notifications;
-    try {
-      await api.updatePreferences(user.id, newVal);
-      setNotifications(newVal);
-      showToast(newVal ? 'Emails ativados.' : 'Emails desativados.');
-    } catch {
-      showToast('Erro ao salvar.');
     }
   }
 
@@ -178,7 +160,6 @@ export function DashboardPage() {
         <div className="max-w-4xl mx-auto px-2 sm:px-4 flex min-w-max sm:min-w-0">
           {([
             { key: 'jogos', label: 'Jogos' },
-            { key: 'alertas', label: 'Alertas ⚡' },
             { key: 'grupos', label: 'Grupos' },
             { key: 'conta', label: 'Conta' },
           ] as { key: Tab; label: string }[]).map(({ key, label }) => (
@@ -196,8 +177,6 @@ export function DashboardPage() {
           ))}
         </div>
       </div>
-
-      <LiveTicker />
 
       <div className="max-w-4xl mx-auto px-4 py-6">
 
@@ -291,9 +270,6 @@ export function DashboardPage() {
           </>
         )}
 
-        {/* ── ABA ALERTAS ── */}
-        {tab === 'alertas' && <AlertsTab />}
-
         {/* ── ABA GRUPOS ── */}
         {tab === 'grupos' && (
           <div className="space-y-8">
@@ -313,65 +289,6 @@ export function DashboardPage() {
                 <p className="text-lg font-black text-white">{displayName}</p>
               </div>
             )}
-
-            {/* Email diário */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center text-base">📧</div>
-                  <div>
-                    <p className="font-semibold text-white text-sm">Emails diários</p>
-                    <p className="text-xs text-slate-500 mt-0.5">Resumo dos jogos toda manhã</p>
-                  </div>
-                </div>
-                <button
-                  onClick={handleToggleNotifications}
-                  aria-label="Toggle emails"
-                  className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${
-                    notifications ? 'bg-yellow-500' : 'bg-slate-700'
-                  }`}
-                >
-                  <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                    notifications ? 'translate-x-6' : 'translate-x-1'
-                  }`} />
-                </button>
-              </div>
-            </div>
-
-            {/* Notificações no navegador */}
-            {goalNotifications.supported && (
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-orange-500/10 flex items-center justify-center text-base">🔔</div>
-                    <div>
-                      <p className="font-semibold text-white text-sm">Notificações no navegador</p>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        {goalNotifications.permission === 'denied'
-                          ? 'Bloqueado — habilite nas configurações'
-                          : goalNotifications.enabled
-                          ? 'Ativo · alertas de gol em tempo real'
-                          : 'Alertas de gol direto no Chrome'}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={goalNotifications.toggle}
-                    disabled={goalNotifications.permission === 'denied'}
-                    aria-label="Toggle browser notifications"
-                    className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${
-                      goalNotifications.enabled ? 'bg-orange-500' : 'bg-slate-700'
-                    } disabled:opacity-40 disabled:cursor-not-allowed`}
-                  >
-                    <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                      goalNotifications.enabled ? 'translate-x-6' : 'translate-x-1'
-                    }`} />
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Telegram removido */}
 
             {/* Times favoritos */}
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
