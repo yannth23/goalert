@@ -134,7 +134,7 @@ export function DashboardPage() {
           <Link href="/" className="flex items-center gap-2 shrink-0 group">
             <GoalAlertLogo size={30} />
             <span className="text-yellow-400 font-black text-xl tracking-tight group-hover:text-yellow-300 transition">
-              GOALALERT
+              TACTIQSENSE
             </span>
           </Link>
 
