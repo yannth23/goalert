@@ -10,7 +10,7 @@ import { translateTeam } from './translation.util';
 
 const BASE_URL = 'https://api.football-data.org/v4';
 const API_FOOTBALL_BASE_URL = 'https://v3.football.api-sports.io'; // Nova URL para API-Football
-const COMPETITION_WC = 'WC';
+const COMPETITION_WC = 1; // FIFA World Cup ID in API-Football v3
 const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY;
 
 const STATUS_MAP: Record<string, string> = {
@@ -179,21 +179,22 @@ export class FootballApiService {
       params: { league: COMPETITION_WC }, // Assumindo que COMPETITION_WC é o ID da liga na API-Football v3
     });
 
-    const standings = (response.data.standings as any[]).map((group) => ({
-      group: group.group ?? group.stage,
-      table: group.table.map((entry: any) => ({
-        position:       entry.position,
+    const standingsData = response.data.response?.[0]?.league?.standings || [];
+    const standings = standingsData.map((group: any) => ({
+      group: Array.isArray(group) ? (group[0]?.group ?? 'Group') : (group.group ?? group.stage),
+      table: (Array.isArray(group) ? group : group.table).map((entry: any) => ({
+        position:       entry.rank,
         teamId:         entry.team.id,
         teamName:       translateTeam(entry.team.name),
-        crest:          entry.team.crest,
+        crest:          entry.team.logo,
         points:         entry.points,
-        played:         entry.playedGames,
-        wins:           entry.won,
-        draws:          entry.draw,
-        losses:         entry.lost,
-        goalsFor:       entry.goalsFor,
-        goalsAgainst:   entry.goalsAgainst,
-        goalDifference: entry.goalDifference,
+        played:         entry.all.played,
+        wins:           entry.all.win,
+        draws:          entry.all.draw,
+        losses:         entry.all.lose,
+        goalsFor:       entry.all.goals.for,
+        goalsAgainst:   entry.all.goals.against,
+        goalDifference: entry.goalsDiff,
       })),
     }));
 
@@ -211,12 +212,12 @@ export class FootballApiService {
       params: { league: COMPETITION_WC, season: new Date().getFullYear() }, // Assumindo que COMPETITION_WC é o ID da liga na API-Football v3
     });
 
-    const scorers = (response.data.scorers as any[]).map((entry) => ({
+    const scorers = (response.data.response as any[] || []).map((entry) => ({
       playerId:   entry.player.id,
       playerName: entry.player.name,
-      teamName:   entry.team?.name ? translateTeam(entry.team.name) : '—',
-      goals:      entry.goals ?? 0,
-      assists:    entry.assists ?? 0,
+      teamName:   entry.statistics?.[0]?.team?.name ? translateTeam(entry.statistics[0].team.name) : '—',
+      goals:      entry.statistics?.[0]?.goals?.total ?? 0,
+      assists:    entry.statistics?.[0]?.goals?.assists ?? 0,
     }));
 
     await this.cacheSet(cacheKey, scorers, 300);

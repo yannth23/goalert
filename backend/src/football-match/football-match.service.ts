@@ -42,13 +42,8 @@ export class FootballMatchService {
     const { start, end } = getTodayRange();
     const now = new Date();
 
-    const todayBrazil = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'America/Sao_Paulo',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).format(new Date());
-    await this.redis.del(`matches:${todayBrazil}`).catch(() => {});
+    // Cache deletion removed to allow normal cache behavior and avoid hitting API limits unnecessarily
+    // The sync job handles cache invalidation when new data is fetched.
 
     const matches = await this.prisma.footballMatch.findMany({
       where: { date: { gte: start, lte: end } },
