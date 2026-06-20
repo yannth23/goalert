@@ -1,14 +1,15 @@
-# Guia de Deploy para Produção
+# Guia de Deploy para Produção - TactiqSense
 
-Este documento descreve como fazer o deploy da aplicação Taticad em produção usando **Neon** (PostgreSQL), **Upstash** (Redis), **Resend** (E-mail) e plataformas como **Vercel** (Frontend) e **Render/Railway** (Backend).
+Este documento descreve como fazer o deploy da aplicação **TactiqSense** em produção usando **Neon** (PostgreSQL), **Upstash** (Redis) e plataformas como **Vercel** (Frontend) e **Render/Railway** (Backend).
 
 ## 📋 Pré-requisitos
 
 - Conta no [Neon](https://neon.tech)
 - Conta no [Upstash](https://upstash.com)
-- Conta no [Resend](https://resend.com)
 - Conta no [Vercel](https://vercel.com) ou similar
 - Conta no [Render](https://render.com) ou [Railway](https://railway.app)
+- Chave de API da [API-Football](https://api-sports.io)
+- Chave de API do [Groq](https://console.groq.com) para acesso ao modelo Llama 3
 
 ## 🗄️ 1. Configurar Banco de Dados (Neon)
 
@@ -16,7 +17,7 @@ Este documento descreve como fazer o deploy da aplicação Taticad em produção
 
 1. Acesse [neon.tech](https://neon.tech) e faça login
 2. Clique em **"Create a new project"**
-3. Escolha um nome para o projeto (ex: `taticad-prod`)
+3. Escolha um nome para o projeto (ex: `tactiqsense-prod`)
 4. Selecione a região mais próxima
 5. Clique em **"Create project"**
 
@@ -41,7 +42,7 @@ npx prisma migrate deploy
 
 1. Acesse [console.upstash.com](https://console.upstash.com)
 2. Clique em **"Create database"**
-3. Escolha um nome (ex: `taticad-prod`)
+3. Escolha um nome (ex: `tactiqsense-prod`)
 4. Selecione a região
 5. Clique em **"Create"**
 
@@ -51,77 +52,7 @@ npx prisma migrate deploy
 2. Para usar com Node.js, copie a string no formato: `redis://default:password@host:port`
 3. Guarde como `REDIS_URL`
 
-## 📱 3. Configurar WhatsApp (Z-API)
-
-### Passo 1: Criar Instância
-
-1. Acesse [app.z-api.io](https://app.z-api.io) e faça login
-2. Clique em **"Criar instância"**
-3. Dê um nome (ex: `taticad-prod`)
-4. Clique em **"Criar"**
-
-### Passo 2: Conectar o WhatsApp
-
-1. Na página da instância, clique em **"Conectar"**
-2. Aparecerá um QR code
-3. No celular: **WhatsApp → ⋮ → Dispositivos vinculados → Vincular dispositivo**
-4. Escaneie o QR code
-5. Aguarde a confirmação de conexão ✅
-
-### Passo 3: Obter as Credenciais
-
-Na página da instância, copie:
-- **Instance ID** → URL da instância (ex: `3F4CF36F...`)
-- **Token** → Token da instância (ex: `235A691E...`)
-
-Para o **Client-Token** (se exigido pelo seu plano):
-1. Clique no seu avatar/perfil
-2. Vá em **Conta → Security**
-3. Copie o **"Client-Token"**
-
-### Passo 4: Variáveis de Ambiente
-
-```
-ZAPI_INSTANCE_ID=sua-instance-id
-ZAPI_TOKEN=seu-token
-ZAPI_CLIENT_TOKEN=seu-client-token  # deixe vazio se não tiver
-```
-
-### Passo 5: Testar Envio
-
-Após configurar, teste via curl:
-```bash
-curl -X POST "https://api.z-api.io/instances/SEU_INSTANCE_ID/token/SEU_TOKEN/send-text" \
-  -H "Content-Type: application/json" \
-  -d '{"phone": "5581999990000", "message": "Teste Taticad ⚽"}'
-```
-
-### Troubleshooting Z-API
-
-- **`connected: false`** → Escaneie o QR code novamente (sessão expirada)
-- **`401 Unauthorized`** → Verifique se Instance ID e Token estão corretos
-- **Mensagem não chega** → Confirme que o número tem o formato `55DDDnúmero` (ex: `5581999990000`)
-
----
-
-## 📧 4. Configurar E-mail (Resend)
-
-### Passo 1: Criar Conta e Domínio
-
-1. Acesse [resend.com](https://resend.com)
-2. Faça login e vá para **"Domains"**
-3. Clique em **"Add Domain"**
-4. Adicione seu domínio (ex: `noreply@taticad.com`)
-5. Siga as instruções para configurar os registros DNS
-
-### Passo 2: Obter API Key
-
-1. Vá para **"API Keys"**
-2. Clique em **"Create API Key"**
-3. Copie a chave no formato: `re_xxx...`
-4. Guarde como `RESEND_API_KEY`
-
-## 🚀 4. Deploy do Backend (Render ou Railway)
+## 🚀 3. Deploy do Backend (Render ou Railway)
 
 ### Opção A: Render
 
@@ -130,12 +61,12 @@ curl -X POST "https://api.z-api.io/instances/SEU_INSTANCE_ID/token/SEU_TOKEN/sen
 1. Acesse [render.com](https://render.com)
 2. Clique em **"New +"** → **"Web Service"**
 3. Selecione **"Connect a repository"**
-4. Escolha o repositório `meu-site`
+4. Escolha o repositório `goalert`
 5. Clique em **"Connect"**
 
 #### Passo 2: Configurar Serviço
 
-1. **Name:** `taticad-backend`
+1. **Name:** `tactiqsense-backend`
 2. **Environment:** `Node`
 3. **Build Command:** `cd backend && npm install && npm run build`
 4. **Start Command:** `cd backend && npm run start:prod`
@@ -148,11 +79,10 @@ Clique em **"Environment"** e adicione:
 ```
 DATABASE_URL=postgresql://...
 REDIS_URL=redis://...
-RESEND_API_KEY=re_...
-RESEND_FROM_EMAIL=noreply@yourdomain.com
 JWT_SECRET=seu-secret-aleatorio-muito-seguro
 FOOTBALL_DATA_API_KEY=sua-chave-api
 API_FOOTBALL_KEY=sua-chave-api-sports
+GROQ_API_KEY=sua-chave-groq
 CORS_ORIGINS=https://seu-frontend.vercel.app
 NODE_ENV=production
 ```
@@ -185,13 +115,13 @@ Vá para **"Variables"** e adicione as mesmas variáveis listadas acima.
 
 Railway fará o deploy automaticamente ao detectar mudanças no repositório.
 
-## 🌐 5. Deploy do Frontend (Vercel)
+## 🌐 4. Deploy do Frontend (Vercel)
 
 ### Passo 1: Conectar Repositório
 
 1. Acesse [vercel.com](https://vercel.com)
 2. Clique em **"Add New"** → **"Project"**
-3. Selecione o repositório `meu-site`
+3. Selecione o repositório `goalert`
 4. Clique em **"Import"**
 
 ### Passo 2: Configurar Build
@@ -223,7 +153,7 @@ Clique em **"Deploy"**. Vercel fará o deploy e fornecerá uma URL pública.
 - [ ] Variáveis sensíveis **nunca** estão commitadas no repositório
 - [ ] `.env.production` está no `.gitignore`
 - [ ] HTTPS está ativado em todas as URLs
-- [ ] Domínio do Resend está verificado e configurado
+- [ ] `GROQ_API_KEY` e `API_FOOTBALL_KEY` estão protegidas
 
 ## 📊 Monitoramento
 
@@ -277,13 +207,13 @@ Configure alertas para:
 
 **Solução:** Verifique se `REDIS_URL` está correto e se o Upstash está ativo.
 
-### Erro: "Failed to send email"
-
-**Solução:** Verifique se `RESEND_API_KEY` e `RESEND_FROM_EMAIL` estão corretos e se o domínio está verificado.
-
 ### Erro: "Connection refused" no Frontend
 
 **Solução:** Verifique se `NEXT_PUBLIC_API_URL` aponta para a URL correta do backend e se CORS está configurado.
+
+### Erro: "Groq API key not found"
+
+**Solução:** Verifique se `GROQ_API_KEY` está configurado corretamente nas variáveis de ambiente.
 
 ### Migrations não foram executadas
 
@@ -298,10 +228,11 @@ npx prisma migrate deploy
 Para problemas com:
 - **Neon:** https://neon.tech/docs
 - **Upstash:** https://upstash.com/docs
-- **Resend:** https://resend.com/docs
 - **Render:** https://render.com/docs
 - **Railway:** https://docs.railway.app
 - **Vercel:** https://vercel.com/docs
+- **API-Football:** https://api-sports.io/documentation
+- **Groq:** https://console.groq.com/docs
 
 ---
 

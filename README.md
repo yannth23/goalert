@@ -1,6 +1,6 @@
-# Taticad - Inteligência Tática para a Copa do Mundo 2026
+# TactiqSense - Inteligência Tática para a Copa do Mundo 2026
 
-Taticad é uma plataforma de inteligência tática avançada para a Copa do Mundo 2026. O sistema integra dados em tempo real da API-Football com análises profundas de eventos da StatsBomb, utilizando IA (Llama 3 via Groq) para prever comportamentos táticos, formações e dominância de jogo.
+TactiqSense é uma plataforma de inteligência tática avançada para a Copa do Mundo 2026. O sistema integra dados em tempo real da API-Football com análises profundas de eventos da StatsBomb, utilizando IA (Llama 3 via Groq) para prever comportamentos táticos, formações e dominância de jogo.
 
 ## Table of Contents
 
@@ -22,11 +22,12 @@ The MVP includes the following core functionalities:
 
 1.  **User Registration and Authentication:** Secure user accounts with JWT-based authentication.
 2.  **Favorite Teams Management:** Users can select and manage their favorite football teams.
-3.  **Daily Match Fetching:** Integration with an external soccer API to fetch daily match schedules.
-4.  **Redis Caching:** Cache fetched match data to improve performance and reduce API calls.
-5.  **Homepage Display:** Display daily football matches to users.
-6.  **Daily Email Notifications:** Users receive email notifications containing matches involving their favorite teams.
-7.  **User Preferences:** A dedicated page for users to manage their notification settings.
+3.  **Real-time Match Fetching:** Integration with API-Football v3 to fetch daily match schedules and live scores.
+4.  **Advanced Tactical Analysis:** AI-powered tactical predictions using Llama 3 (via Groq) combined with StatsBomb-style metrics.
+5.  **Expected Goals (xG) & Advanced Stats:** Display xG, progressive passes, pressing efficiency, and deep completions for each team.
+6.  **Tactical Style Classification:** Automatic classification of team playing styles (possession, counter, pressing, defensive).
+7.  **Head-to-Head Analysis:** Historical match data and confrontation statistics between teams.
+8.  **Redis Caching:** Cache fetched match data and predictions to improve performance and reduce API calls.
 
 ## Architecture & Technologies
 
@@ -38,8 +39,8 @@ The project follows a modern microservice-oriented architecture with a clear sep
     *   **NestJS:** A progressive Node.js framework for building efficient, reliable, and scalable server-side applications.
     *   **PostgreSQL + Prisma:** PostgreSQL as the primary database, managed by Prisma ORM for type-safe database interactions and migrations.
     *   **Redis Cache:** Used for caching frequently accessed data and improving response times.
-    *   **BullMQ:** For robust background job processing and scheduling daily tasks (e.g., fetching matches, sending emails).
-    *   **Resend:** For reliable email notification delivery.
+    *   **BullMQ:** For robust background job processing and scheduling daily tasks (e.g., fetching matches, updating predictions).
+    *   **Groq API:** For accessing Llama 3 model for tactical AI analysis.
 
 ## Getting Started
 
@@ -61,15 +62,8 @@ REDIS_HOST="localhost" # Or your Upstash host
 REDIS_PORT=6379 # Or your Upstash port
 REDIS_PASSWORD="" # Your Upstash password, if applicable
 JWT_SECRET="YOUR_SUPER_SECRET_KEY" # A strong, random key for JWT
-RESEND_API_KEY="YOUR_RESEND_API_KEY"
-RESEND_FROM_EMAIL="Taticad <noreply@yourdomain.com>"
 FOOTBALL_DATA_API_KEY="YOUR_FOOTBALL_API_KEY" # Key for football-data.org
 API_FOOTBALL_KEY="YOUR_API_FOOTBALL_KEY" # Key for api-sports.io
-
-# WhatsApp via Z-API (app.z-api.io)
-ZAPI_INSTANCE_ID="YOUR_INSTANCE_ID"  # ID da instância no painel Z-API
-ZAPI_TOKEN="YOUR_INSTANCE_TOKEN"     # Token da instância
-ZAPI_CLIENT_TOKEN="YOUR_CLIENT_TOKEN" # Client Token da conta (Conta > Security)
 GROQ_API_KEY="YOUR_GROQ_API_KEY" # Get it for free at https://console.groq.com
 ```
 

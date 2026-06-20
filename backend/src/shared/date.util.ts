@@ -1,5 +1,5 @@
 /**
- * Shared date utilities used across job services and match queries for Taticad.
+ * Shared date utilities used across job services and match queries for TactiqSense.
  * All day ranges are computed in America/SaoPaulo (BRT = UTC-3).
  */
 
@@ -21,7 +21,7 @@ export function getTodayBrazil(): string {
 }
 
 /**
- * Returns start/end of the current day in São Paulo timezone as UTC Date objects for Taticad.
+ * Returns start/end of the current day in São Paulo timezone as UTC Date objects for TactiqSense.
  * BRT = UTC-3, so midnight BRT = 03:00 UTC.
  */
 export function getTodayRange(): DayRange {

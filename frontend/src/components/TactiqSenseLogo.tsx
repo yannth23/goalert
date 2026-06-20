@@ -1,8 +1,8 @@
-interface TaticadLogoProps {
+interface TactiqSenseLogoProps {
   size?: number;
 }
 
-export function TaticadLogo({ size = 28 }: TaticadLogoProps) {
+export function TactiqSenseLogo({ size = 28 }: TactiqSenseLogoProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
       {/* Trave (goalpost) */}
