@@ -2,7 +2,7 @@
 
 ## Visão Geral do Sistema Atual
 
-Após analisar detalhadamente o repositório `goalert` e o site em produção (https://goalert-nine.vercel.app/), observei que o sistema atual possui uma arquitetura robusta baseada em Next.js (Frontend) e NestJS (Backend), com banco de dados PostgreSQL (via Prisma) e cache no Redis.
+Após analisar detalhadamente o repositório `taticad` e o site em produção (https://taticad-nine.vercel.app/), observei que o sistema atual possui uma arquitetura robusta baseada em Next.js (Frontend) e NestJS (Backend), com banco de dados PostgreSQL (via Prisma) e cache no Redis.
 
 A principal funcionalidade de destaque é o **Comparador Tático AI** e a **Análise Tática**, que utilizam IA (Groq/Llama 3) para inferir o estilo de jogo, formação e probabilidade de domínio das seleções com base em estatísticas e escalações extraídas via scraping (SofaScore, ESPN, TheSportsDB).
 

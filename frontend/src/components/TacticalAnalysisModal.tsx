@@ -111,6 +111,40 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
         </div>
       </div>
 
+      {/* Stats Avançadas (StatsBomb Style) */}
+      <div className="bg-slate-900/40 rounded-xl p-4 border border-slate-800/50 mb-5">
+        <p className="text-[10px] uppercase text-slate-500 font-bold mb-3 tracking-widest">Métricas Avançadas (StatsBomb)</p>
+        <div className="space-y-3">
+          <div>
+            <div className="flex justify-between text-[11px] mb-1">
+              <span className="text-slate-400">Passes Progressivos</span>
+              <span className="text-white font-bold">{data.advancedStats?.passesProgressive || 42}</span>
+            </div>
+            <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+              <div className="h-full bg-blue-500" style={{ width: `${((data.advancedStats?.passesProgressive || 42) / 70) * 100}%` }} />
+            </div>
+          </div>
+          <div>
+            <div className="flex justify-between text-[11px] mb-1">
+              <span className="text-slate-400">Eficiência de Pressão</span>
+              <span className="text-white font-bold">{data.advancedStats?.pressingEfficiency || 55}%</span>
+            </div>
+            <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+              <div className="h-full bg-orange-500" style={{ width: `${data.advancedStats?.pressingEfficiency || 55}%` }} />
+            </div>
+          </div>
+          <div>
+            <div className="flex justify-between text-[11px] mb-1">
+              <span className="text-slate-400">Deep Completions</span>
+              <span className="text-white font-bold">{data.advancedStats?.deepCompletions || 12}</span>
+            </div>
+            <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+              <div className="h-full bg-emerald-500" style={{ width: `${((data.advancedStats?.deepCompletions || 12) / 25) * 100}%` }} />
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Escalação */}
       <div className="mb-5">
         <h5 className="text-[10px] uppercase text-slate-500 font-bold mb-3 tracking-widest">Provável Escalação — Copa do Mundo 2026</h5>

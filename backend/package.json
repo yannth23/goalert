@@ -1,5 +1,5 @@
 {
-  "name": "backend",
+  "name": "taticad-backend",
   "version": "1.0.0",
   "scripts": {
     "build": "npx prisma generate && npx nest build",

@@ -22,8 +22,7 @@ export function Hero() {
           </h1>
 
           <p className="max-w-2xl mx-auto mt-6 text-slate-400 text-base sm:text-lg">
-            Jogos ao vivo, classificação, artilheiros e alertas diários
-            da Copa do Mundo 2026.
+            Inteligência tática avançada, análise de eventos em tempo real e previsões de IA para a Copa do Mundo 2026.
           </p>
 
           <div className="mt-8 flex justify-center">

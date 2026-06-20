@@ -26,6 +26,11 @@ export interface TacticalAnalysis {
   dominanceDescription: string;
   gameDominanceProb: number; // 0-100: quanto este time domina o jogo
   expectedGoals?: number;
+  advancedStats?: {
+    passesProgressive: number;
+    pressingEfficiency: number;
+    deepCompletions: number;
+  };
   heatmapData: { x: number; y: number; value: number }[];
 }
 

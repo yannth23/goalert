@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { getTodayRange, getTodayBrazil } from '../shared/date.util';
 import { Prisma } from '@prisma/client';
 import axios from 'axios';
 import { PrismaService } from '../prisma/prisma.service';
@@ -8,7 +9,9 @@ import { StatisticsPredictorService } from './statistics-predictor.service';
 import { translateTeam } from './translation.util';
 
 const BASE_URL = 'https://api.football-data.org/v4';
+const API_FOOTBALL_BASE_URL = 'https://v3.football.api-sports.io'; // Nova URL para API-Football
 const COMPETITION_WC = 'WC';
+const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY;
 
 const STATUS_MAP: Record<string, string> = {
   SCHEDULED:        'NS',
@@ -24,54 +27,9 @@ const STATUS_MAP: Record<string, string> = {
   AWARDED:          'FT',
 };
 
-/** Retorna a data de hoje no fuso de Brasília (America/Sao_Paulo) no formato YYYY-MM-DD */
-function getTodayBrazil(): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date());
-}
 
-/** Retorna início e fim do dia de hoje no horário de Brasília como objetos Date (UTC) */
-function getBrazilDayRange(): { start: Date; end: Date } {
-  const dateStr = getTodayBrazil(); // ex: "2026-06-19"
-  // Meia-noite em Brasília = 03:00 UTC (BRT = UTC-3)
-  const start = new Date(`${dateStr}T00:00:00-03:00`);
-  const end   = new Date(`${dateStr}T23:59:59-03:00`);
-  return { start, end };
-}
 
-/**
- * Converte uma data UTC para o horário de Brasília (BRT = UTC-3).
- * Garante que jogos às 00:30 UTC (21:30 BRT) ficam salvos no dia correto brasileiro.
- */
-function utcToBrt(utcDate: string): Date {
-  const utc = new Date(utcDate);
-  // BRT = UTC-3 → subtrai 3 horas
-  return new Date(utc.getTime() - 3 * 60 * 60 * 1000);
-}
 
-function extractScore(score: any): { home: number | null; away: number | null } {
-  // A API football-data.org coloca o placar atual em fullTime mesmo durante o jogo
-  // mas se estiver em prorrogação ou pênaltis, pode estar em outros campos.
-  const candidates = [
-    score?.fullTime,
-    score?.regularTime,
-    score?.extraTime,
-    score?.halfTime,
-  ];
-  
-  // Para jogos AO VIVO, a API costuma preencher fullTime com o placar parcial.
-  // Vamos procurar o primeiro campo que tenha valores numéricos.
-  for (const c of candidates) {
-    if (typeof c?.home === 'number' && typeof c?.away === 'number') {
-      return { home: c.home, away: c.away };
-    }
-  }
-  return { home: null, away: null };
-}
 
 @Injectable()
 export class FootballApiService {
@@ -100,51 +58,46 @@ export class FootballApiService {
   }
 
   async syncTodayMatches() {
-    // Busca hoje BRT + amanhã UTC para pegar jogos que passam da meia-noite
-    // Ex: jogo às 21:30 BRT = 00:30 UTC do dia seguinte
+    const { start, end } = getTodayRange();
     const todayBrazil = getTodayBrazil();
-    const tomorrowUtc = new Date();
-    tomorrowUtc.setUTCDate(tomorrowUtc.getUTCDate() + 1);
-    const tomorrowStr = tomorrowUtc.toISOString().split('T')[0];
 
-    this.logger.log(`Syncing matches for BRT: ${todayBrazil} + UTC next day: ${tomorrowStr}`);
+    this.logger.log(`Syncing matches for BRT: ${todayBrazil} (range: ${start.toISOString()} - ${end.toISOString()})`);
 
-    // Busca os dois dias em paralelo
-    const [todayResp, tomorrowResp] = await Promise.all([
-      axios.get(`${BASE_URL}/matches`, { params: { date: todayBrazil }, headers: this.headers }),
-      axios.get(`${BASE_URL}/matches`, { params: { date: tomorrowStr }, headers: this.headers }),
-    ]);
+    const response = await axios.get(`${API_FOOTBALL_BASE_URL}/fixtures`, {
+      headers: { 'x-apisports-key': API_FOOTBALL_KEY },
+      params: {
+        date: todayBrazil, // A API-Football v3 usa a data no formato YYYY-MM-DD
+        timezone: 'America/Sao_Paulo',
+      },
+    });
 
-    // Une e deduplica por id
-    const seen = new Set<string>();
-    const matches = [...todayResp.data.matches, ...tomorrowResp.data.matches].filter((m: any) => {
-      if (seen.has(m.id.toString())) return false;
-      seen.add(m.id.toString());
-      return true;
-    }) as any[];
+    const matches = response.data.response.filter((match: any) => {
+      const matchDate = new Date(match.fixture.date);
+      return matchDate >= start && matchDate <= end;
+    });
 
     for (const match of matches) {
       // Gera predições baseadas em histórico
       const predictions = await this.statisticsPredictor.predictMatch(
-        translateTeam(match.homeTeam.name), translateTeam(match.awayTeam.name));
-      const mappedStatus = STATUS_MAP[match.status] ?? match.status;
-      const { home: homeScore, away: awayScore } = extractScore(match.score);
-      const homeTeam = translateTeam(match.homeTeam.name);
-      const awayTeam = translateTeam(match.awayTeam.name);
+        translateTeam(match.teams.home.name), translateTeam(match.teams.away.name));
+      const mappedStatus = STATUS_MAP[match.fixture.status.short] ?? match.fixture.status.short;
+      const homeScore = match.goals.home;
+      const awayScore = match.goals.away;
+      const homeTeam = translateTeam(match.teams.home.name);
+      const awayTeam = translateTeam(match.teams.away.name);
 
       const existing = await this.prisma.footballMatch.findUnique({
-        where: { externalId: match.id.toString() },
+        where: { externalId: match.fixture.id.toString() },
       });
 
       const saved = await this.prisma.footballMatch.upsert({
-        where:  { externalId: match.id.toString() },
+        where:  { externalId: match.fixture.id.toString() },
         update: { 
           status: mappedStatus, 
           homeScore, 
           awayScore,
-          homeFlag: match.homeTeam.crest,
-          awayFlag: match.awayTeam.crest,
-          // ATENÇÃO: Forçando atualização para aplicar novo AI Insight textual
+          homeFlag: match.teams.home.logo,
+          awayFlag: match.teams.away.logo,
           predictedGoalsHome: predictions.predictedGoalsHome,
           predictedGoalsAway: predictions.predictedGoalsAway,
           predictedCards:     predictions.predictedCards,
@@ -155,13 +108,13 @@ export class FootballApiService {
           shortInsight:       (predictions as any).shortInsight,
         },
         create: {
-          externalId:   match.id.toString(),
-          date:         utcToBrt(match.utcDate),
-          championship: match.competition.name,
+          externalId:   match.fixture.id.toString(),
+          date:         new Date(match.fixture.date),
+          championship: match.league.name,
           homeTeam,
           awayTeam,
-          homeFlag:     match.homeTeam.crest,
-          awayFlag:     match.awayTeam.crest,
+          homeFlag:     match.teams.home.logo,
+          awayFlag:     match.teams.away.logo,
           status:       mappedStatus,
           homeScore,
           awayScore,
@@ -196,7 +149,7 @@ export class FootballApiService {
 
   async getTodayMatchesFromDb() {
     // Busca jogos do dia de hoje no horário do Brasil
-    const { start, end } = getBrazilDayRange();
+      const { start, end } = getTodayRange();
     
     // Forçamos a limpeza do cache de hoje para garantir que dados novos (posse de bola corrigida) apareçam
     const todayBrazil = getTodayBrazil();
@@ -213,10 +166,10 @@ export class FootballApiService {
     const cached   = await this.cacheGet(cacheKey);
     if (cached) return cached;
 
-    const response = await axios.get(
-      `${BASE_URL}/competitions/${COMPETITION_WC}/standings`,
-      { headers: this.headers },
-    );
+    const response = await axios.get(`${API_FOOTBALL_BASE_URL}/standings`, {
+      headers: { 'x-apisports-key': API_FOOTBALL_KEY },
+      params: { league: COMPETITION_WC }, // Assumindo que COMPETITION_WC é o ID da liga na API-Football v3
+    });
 
     const standings = (response.data.standings as any[]).map((group) => ({
       group: group.group ?? group.stage,
@@ -245,10 +198,10 @@ export class FootballApiService {
     const cached   = await this.cacheGet(cacheKey);
     if (cached) return cached;
 
-    const response = await axios.get(
-      `${BASE_URL}/competitions/${COMPETITION_WC}/scorers`,
-      { params: { limit: 10 }, headers: this.headers },
-    );
+    const response = await axios.get(`${API_FOOTBALL_BASE_URL}/topscorers`, {
+      headers: { 'x-apisports-key': API_FOOTBALL_KEY },
+      params: { league: COMPETITION_WC, season: new Date().getFullYear() }, // Assumindo que COMPETITION_WC é o ID da liga na API-Football v3
+    });
 
     const scorers = (response.data.scorers as any[]).map((entry) => ({
       playerId:   entry.player.id,

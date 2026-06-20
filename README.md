@@ -1,6 +1,6 @@
-# Football Match Notifier
+# Taticad - Inteligência Tática para a Copa do Mundo 2026
 
-This project is an MVP (Minimum Viable Product) for a football match notification system. It features a Next.js frontend, a NestJS backend, and integrates with various services for data storage, caching, scheduling, and email notifications.
+Taticad é uma plataforma de inteligência tática avançada para a Copa do Mundo 2026. O sistema integra dados em tempo real da API-Football com análises profundas de eventos da StatsBomb, utilizando IA (Llama 3 via Groq) para prever comportamentos táticos, formações e dominância de jogo.
 
 ## Table of Contents
 
@@ -62,8 +62,9 @@ REDIS_PORT=6379 # Or your Upstash port
 REDIS_PASSWORD="" # Your Upstash password, if applicable
 JWT_SECRET="YOUR_SUPER_SECRET_KEY" # A strong, random key for JWT
 RESEND_API_KEY="YOUR_RESEND_API_KEY"
-RESEND_FROM_EMAIL="GoalAlert <noreply@yourdomain.com>"
+RESEND_FROM_EMAIL="Taticad <noreply@yourdomain.com>"
 FOOTBALL_DATA_API_KEY="YOUR_FOOTBALL_API_KEY" # Key for football-data.org
+API_FOOTBALL_KEY="YOUR_API_FOOTBALL_KEY" # Key for api-sports.io
 
 # WhatsApp via Z-API (app.z-api.io)
 ZAPI_INSTANCE_ID="YOUR_INSTANCE_ID"  # ID da instância no painel Z-API

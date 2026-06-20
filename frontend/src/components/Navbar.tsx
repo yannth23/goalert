@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { GoalAlertLogo } from './GoalAlertLogo';
+import { TaticadLogo } from './TaticadLogo';
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
@@ -13,9 +13,9 @@ export function Navbar() {
 
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2">
-            <GoalAlertLogo size={28} />
+            <TaticadLogo size={28} />
             <span className="text-yellow-500 font-black text-xl tracking-tight">
-              GOALALERT
+              TATICAD
             </span>
           </Link>
           <nav className="hidden md:flex items-center gap-6">

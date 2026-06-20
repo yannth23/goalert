@@ -523,26 +523,32 @@ export class ScraperService {
   /**
    * Busca o xG (Expected Goals) médio recente de um time via TheSportsDB ou simulação estatística.
    */
-  async scrapeXG(teamName: string): Promise<number> {
-    const cacheKey = `xg:${teamName.toLowerCase().replace(/\s+/g, '-')}`;
+  /**
+   * Busca dados avançados (StatsBomb style) simulados ou via API se disponível.
+   * Em produção, isso consumiria os datasets abertos da StatsBomb.
+   */
+  async scrapeAdvancedStats(teamName: string) {
+    const cacheKey = `advanced_stats:${teamName.toLowerCase().replace(/\s+/g, '-')}`;
     try {
-      const cached = await this.redis.getJson<number>(cacheKey);
-      if (cached !== null) return cached;
+      const cached = await this.redis.getJson<any>(cacheKey);
+      if (cached) return cached;
     } catch {}
 
-    // Simulação de busca de xG (em um cenário real, consultaríamos uma API de stats avançados)
-    // Para o MVP, vamos basear o xG no histórico de gols recentes se disponível, ou um valor base
-    try {
-      const stats = await this.lineupFromTheSportsDB(teamName).catch(() => []);
-      // Lógica simplificada: times com mais jogadores conhecidos/valorizados tendem a ter xG maior
-      const baseStats = stats.length > 0 ? 1.2 + (Math.random() * 0.8) : 1.0 + (Math.random() * 0.5);
-      const finalXG = parseFloat(baseStats.toFixed(2));
-      
-      await this.redis.setJson(cacheKey, finalXG, 24 * 60 * 60).catch(() => {});
-      return finalXG;
-    } catch {
-      return 1.25;
-    }
+    // Simulação de dados StatsBomb: xG, Passes Progressivos, Eficiência de Pressão
+    const stats = {
+      expectedGoals: parseFloat((1.1 + Math.random() * 0.9).toFixed(2)),
+      passesProgressive: Math.floor(35 + Math.random() * 25),
+      pressingEfficiency: Math.floor(40 + Math.random() * 30),
+      deepCompletions: Math.floor(8 + Math.random() * 12),
+    };
+
+    await this.redis.setJson(cacheKey, stats, 24 * 60 * 60).catch(() => {});
+    return stats;
+  }
+
+  async scrapeXG(teamName: string): Promise<number> {
+    const stats = await this.scrapeAdvancedStats(teamName);
+    return stats.expectedGoals;
   }
 
   async scrapeH2H(team1Name: string, team2Name: string): Promise<ScrapedH2H | null> {

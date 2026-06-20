@@ -1,6 +1,6 @@
 # Guia de Deploy para Produção
 
-Este documento descreve como fazer o deploy da aplicação GoalAlert em produção usando **Neon** (PostgreSQL), **Upstash** (Redis), **Resend** (E-mail) e plataformas como **Vercel** (Frontend) e **Render/Railway** (Backend).
+Este documento descreve como fazer o deploy da aplicação Taticad em produção usando **Neon** (PostgreSQL), **Upstash** (Redis), **Resend** (E-mail) e plataformas como **Vercel** (Frontend) e **Render/Railway** (Backend).
 
 ## 📋 Pré-requisitos
 
@@ -16,7 +16,7 @@ Este documento descreve como fazer o deploy da aplicação GoalAlert em produç�
 
 1. Acesse [neon.tech](https://neon.tech) e faça login
 2. Clique em **"Create a new project"**
-3. Escolha um nome para o projeto (ex: `goalert-prod`)
+3. Escolha um nome para o projeto (ex: `taticad-prod`)
 4. Selecione a região mais próxima
 5. Clique em **"Create project"**
 
@@ -41,7 +41,7 @@ npx prisma migrate deploy
 
 1. Acesse [console.upstash.com](https://console.upstash.com)
 2. Clique em **"Create database"**
-3. Escolha um nome (ex: `goalert-prod`)
+3. Escolha um nome (ex: `taticad-prod`)
 4. Selecione a região
 5. Clique em **"Create"**
 
@@ -57,7 +57,7 @@ npx prisma migrate deploy
 
 1. Acesse [app.z-api.io](https://app.z-api.io) e faça login
 2. Clique em **"Criar instância"**
-3. Dê um nome (ex: `goalert-prod`)
+3. Dê um nome (ex: `taticad-prod`)
 4. Clique em **"Criar"**
 
 ### Passo 2: Conectar o WhatsApp
@@ -93,7 +93,7 @@ Após configurar, teste via curl:
 ```bash
 curl -X POST "https://api.z-api.io/instances/SEU_INSTANCE_ID/token/SEU_TOKEN/send-text" \
   -H "Content-Type: application/json" \
-  -d '{"phone": "5581999990000", "message": "Teste GoalAlert ⚽"}'
+  -d '{"phone": "5581999990000", "message": "Teste Taticad ⚽"}'
 ```
 
 ### Troubleshooting Z-API
@@ -111,7 +111,7 @@ curl -X POST "https://api.z-api.io/instances/SEU_INSTANCE_ID/token/SEU_TOKEN/sen
 1. Acesse [resend.com](https://resend.com)
 2. Faça login e vá para **"Domains"**
 3. Clique em **"Add Domain"**
-4. Adicione seu domínio (ex: `noreply@goalert.com`)
+4. Adicione seu domínio (ex: `noreply@taticad.com`)
 5. Siga as instruções para configurar os registros DNS
 
 ### Passo 2: Obter API Key
@@ -135,7 +135,7 @@ curl -X POST "https://api.z-api.io/instances/SEU_INSTANCE_ID/token/SEU_TOKEN/sen
 
 #### Passo 2: Configurar Serviço
 
-1. **Name:** `goalert-backend`
+1. **Name:** `taticad-backend`
 2. **Environment:** `Node`
 3. **Build Command:** `cd backend && npm install && npm run build`
 4. **Start Command:** `cd backend && npm run start:prod`
@@ -152,6 +152,7 @@ RESEND_API_KEY=re_...
 RESEND_FROM_EMAIL=noreply@yourdomain.com
 JWT_SECRET=seu-secret-aleatorio-muito-seguro
 FOOTBALL_DATA_API_KEY=sua-chave-api
+API_FOOTBALL_KEY=sua-chave-api-sports
 CORS_ORIGINS=https://seu-frontend.vercel.app
 NODE_ENV=production
 ```

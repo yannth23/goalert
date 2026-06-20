@@ -25,6 +25,12 @@ interface TacticalAnalysis {
   dominanceDescription: string;
   gameDominanceProb: number;
   heatmapData: { x: number; y: number; value: number }[];
+  expectedGoals?: number;
+  advancedStats?: {
+    passesProgressive: number;
+    pressingEfficiency: number;
+    deepCompletions: number;
+  };
 }
 
 interface PredictionResult {
@@ -89,12 +95,15 @@ export class StatisticsPredictorService {
   }
 
   async predictMatch(homeTeam: string, awayTeam: string): Promise<PredictionResult> {
-    const [homeStats, awayStats, homeXG, awayXG] = await Promise.all([
+    const [homeStats, awayStats, homeAdv, awayAdv] = await Promise.all([
       this.getTeamStatistics(homeTeam, 10),
       this.getTeamStatistics(awayTeam, 10),
-      this.scraper.scrapeXG(homeTeam),
-      this.scraper.scrapeXG(awayTeam),
+      this.scraper.scrapeAdvancedStats(homeTeam),
+      this.scraper.scrapeAdvancedStats(awayTeam),
     ]);
+
+    const homeXG = homeAdv.expectedGoals;
+    const awayXG = awayAdv.expectedGoals;
 
     // Lógica de predição melhorada: usa xG como base se não houver histórico de gols
     const baseGoalsHome = homeXG || 1.4;
@@ -123,9 +132,20 @@ export class StatisticsPredictorService {
       this.generateSimulatedTactics(awayTeam),
     ]);
 
-    // Injeta xG nas táticas para exibição e análise
-    (homeTactics as any).expectedGoals = homeXG;
-    (awayTactics as any).expectedGoals = awayXG;
+    // Injeta xG e dados avançados (StatsBomb) nas táticas para exibição e análise
+    homeTactics.expectedGoals = homeXG;
+    homeTactics.advancedStats = {
+      passesProgressive: homeAdv.passesProgressive,
+      pressingEfficiency: homeAdv.pressingEfficiency,
+      deepCompletions: homeAdv.deepCompletions,
+    };
+
+    awayTactics.expectedGoals = awayXG;
+    awayTactics.advancedStats = {
+      passesProgressive: awayAdv.passesProgressive,
+      pressingEfficiency: awayAdv.pressingEfficiency,
+      deepCompletions: awayAdv.deepCompletions,
+    };
 
     const matchAnalysis = await this.generateMatchTacticalAnalysis(homeTeam, awayTeam, homeTactics, awayTactics, homeXG, awayXG);
 
@@ -343,7 +363,7 @@ REGRAS ABSOLUTAS:
           },
           {
             role: 'user',
-            content: `Copa do Mundo 2026: ${homeTeam} (${homeTactics.formation}, destaque: ${homeTactics.keyPlayer}, intensidade ${homeTactics.intensity}/100, xG médio: ${homeXG || 'N/A'}) vs ${awayTeam} (${awayTactics.formation}, destaque: ${awayTactics.keyPlayer}, intensidade ${awayTactics.intensity}/100, xG médio: ${awayXG || 'N/A'}).
+            content: `Copa do Mundo 2026: ${homeTeam} (${homeTactics.formation}, destaque: ${homeTactics.keyPlayer}, intensidade ${homeTactics.intensity}/100, xG médio: ${homeXG || 'N/A'}, passes progressivos: ${homeTactics.advancedStats?.passesProgressive}, eficiência de pressão: ${homeTactics.advancedStats?.pressingEfficiency}%) vs ${awayTeam} (${awayTactics.formation}, destaque: ${awayTactics.keyPlayer}, intensidade ${awayTactics.intensity}/100, xG médio: ${awayXG || 'N/A'}, passes progressivos: ${awayTactics.advancedStats?.passesProgressive}, eficiência de pressão: ${awayTactics.advancedStats?.pressingEfficiency}%).
 
 Responda APENAS este JSON:
 {
