@@ -52,6 +52,12 @@ export class JobsService implements OnApplicationBootstrap {
     }
   }
 
+  // Gera táticas a cada hora pra pegar jogos novos sem análise
+  @Cron('0 * * * *', { name: 'gen-tactics-hourly' })
+  async genTacticsHourly(): Promise<void> {
+    await this.generateTacticsForToday();
+  }
+
   // Sync a cada 2 minutos das 12h às 23h UTC (9h às 20h BRT)
   @Cron('*/2 12-23 * * *', { name: 'sync-live-matches' })
   async syncLiveMatches(): Promise<void> {
