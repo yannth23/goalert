@@ -2,6 +2,7 @@ import { Controller, Get, Post, Query, UseGuards, Param, Headers, UnauthorizedEx
 import { FootballMatchService } from './football-match.service';
 import { FootballApiService } from './football-api.service';
 import { TeamReportService } from './team-report.service';
+import { StatisticsPredictorService } from './statistics-predictor.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('matches')
@@ -10,6 +11,7 @@ export class FootballMatchController {
     private readonly footballMatchService: FootballMatchService,
     private readonly footballApiService:   FootballApiService,
     private readonly teamReportService:    TeamReportService,
+    private readonly predictor:            StatisticsPredictorService,
   ) {}
 
   @Get()
@@ -61,6 +63,26 @@ export class FootballMatchController {
     if (!expected || secret !== expected) throw new UnauthorizedException('Invalid admin secret');
     await this.footballMatchService.deleteAllMatches();
     return this.footballApiService.syncTodayMatches();
+  }
+
+  /** Regenera táticas para todos os jogos sem análise (incluindo encerrados) */
+  @Post('regen-tactics')
+  async regenTactics(@Headers('x-admin-secret') secret: string) {
+    const expected = process.env.ADMIN_SYNC_SECRET ?? process.env.JWT_SECRET;
+    if (!expected || secret !== expected) throw new UnauthorizedException('Invalid admin secret');
+
+    const matches = await this.footballMatchService.getMatchesWithoutTactics();
+    const results = { total: matches.length, success: 0, failed: 0 };
+
+    for (const match of matches) {
+      try {
+        await this.predictor.updateMatchPredictions(match.id);
+        results.success++;
+      } catch {
+        results.failed++;
+      }
+    }
+    return results;
   }
 
   /** Get comprehensive team report with tactics, statistics, and web insights */
