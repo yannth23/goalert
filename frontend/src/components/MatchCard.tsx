@@ -56,9 +56,13 @@ interface MatchCardProps {
 }
 
 function TacticalClash({ match }: { match: FootballMatch }) {
-  if (!match.homeTactics || !match.awayTactics) return null;
-  const hs = match.homeTactics.style || 'Equilibrado';
-  const as_ = match.awayTactics.style || 'Equilibrado';
+  if (!match.tactics?.home || !match.tactics?.away) return null;
+  const home = match.tactics.home;
+  const away = match.tactics.away;
+  const hs = normalizeStyle(home.dominanceStyle);
+  const raw = normalizeStyle(away.dominanceStyle);
+  const as_ = raw === hs ? (CONTRAST[hs] as typeof raw) : raw;
+  const _dummy = match.tactics?.away.style || 'Equilibrado';
 
   return (
     <div className="mt-4 pt-4 border-t border-slate-800/50">
@@ -118,8 +122,8 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
   
   const homeTeam = (match as any).homeTeam || match.team1;
   const awayTeam = (match as any).awayTeam || match.team2;
-  const homeScore = (match as any).homeScore ?? match.team1Score;
-  const awayScore = (match as any).awayScore ?? match.team2Score;
+  const homeScore = match.team1Score ?? (match as any).homeScore;
+  const awayScore = match.team2Score ?? (match as any).awayScore;
   const homeFlag = (match as any).homeFlag || match.team1Flag;
   const awayFlag = (match as any).awayFlag || match.team2Flag;
 
