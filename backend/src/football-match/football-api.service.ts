@@ -109,7 +109,7 @@ export class FootballApiService {
           matchesToProcess = scrapedMatches.map((m) => ({
             externalId: `scraped_${m.homeTeam}_${m.awayTeam}_${todayBrazil}`,
             date: m.startTime,
-            championship: 'Copa do Mundo', // Scraper foca em Copa do Mundo
+            championship: 'FIFA World Cup', // Nome padrão para garantir exibição na seção principal
             homeTeam: m.homeTeam,
             awayTeam: m.awayTeam,
             homeFlag: null, // Scraper pode não ter logo

@@ -26,11 +26,10 @@ export function getTodayBrazil(): string {
  */
 export function getTodayRange(): DayRange {
   const dateStr = getTodayBrazil(); // ex: "2026-06-19"
-  // Começa às 05:00 de hoje (BRT) - Início do ciclo de transmissão
-  const start = new Date(`${dateStr}T05:00:00-03:00`);
-  // Termina às 08:00 do dia seguinte (BRT) - 27 horas depois
-  // Isso cobre todos os jogos do dia e as partidas da madrugada que encerram o ciclo.
-  const end = new Date(start.getTime() + 27 * 60 * 60 * 1000); 
+  // Começa à meia-noite de hoje (BRT)
+  const start = new Date(`${dateStr}T00:00:00-03:00`);
+  // Termina à meia-noite do dia seguinte (BRT)
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000); 
   return { start, end };
 }
 
