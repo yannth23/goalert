@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Query, UseGuards, Param } from '@nestjs/common';
+import { Controller, Get, Post, Query, UseGuards, Param, Headers, UnauthorizedException } from '@nestjs/common';
 import { FootballMatchService } from './football-match.service';
 import { FootballApiService } from './football-api.service';
 import { TeamReportService } from './team-report.service';
@@ -45,6 +45,14 @@ export class FootballMatchController {
   @Post('sync')
   @UseGuards(JwtAuthGuard)
   syncMatches() { return this.footballApiService.syncTodayMatches(); }
+
+  /** Force sync via secret header — sem JWT, para uso administrativo direto. */
+  @Post('force-sync')
+  forceSyncMatches(@Headers('x-admin-secret') secret: string) {
+    const expected = process.env.ADMIN_SYNC_SECRET ?? process.env.JWT_SECRET;
+    if (!expected || secret !== expected) throw new UnauthorizedException('Invalid admin secret');
+    return this.footballApiService.syncTodayMatches();
+  }
 
   /** Get comprehensive team report with tactics, statistics, and web insights */
   @Get('team/:teamName/report')
