@@ -183,7 +183,7 @@ export class FootballApiService {
     });
 
     await this.cacheDel(`matches:${todayBrazil}`);
-    this.logger.log(`Synced ${matchesToProcess.length} matches for ${todayBrazil} from ${source}`);
+    this.logger.log(`Synced ${matchesToProcess.length} matches for ${todayBrazil} from ${source}. Matches: ${JSON.stringify(matchesToProcess.map(m => `${m.homeTeam} vs ${m.awayTeam}`))}`);
     
     // Verificação final no banco para depuração
     const finalCount = await this.prisma.footballMatch.count({
