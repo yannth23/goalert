@@ -45,10 +45,12 @@ export class FootballMatchService {
     // Cache deletion removed to allow normal cache behavior and avoid hitting API limits unnecessarily
     // The sync job handles cache invalidation when new data is fetched.
 
+    this.logger.log(`Fetching matches from DB in range: ${start.toISOString()} - ${end.toISOString()}`);
     const matches = await this.prisma.footballMatch.findMany({
       where: { date: { gte: start, lte: end } },
       orderBy: { date: 'asc' },
     });
+    this.logger.log(`Found ${matches.length} matches in DB`);
     const sanitised = matches.map(m => {
       const matchTime = new Date(m.date).getTime();
       const elapsedMs = now.getTime() - matchTime;
