@@ -45,6 +45,30 @@ interface PredictionResult {
   // attentionPoint: string;
 }
 
+// ── Cadeia de modelos Groq gratuitos (cada um tem rate-limit independente) ──
+// Ordem: mais capaz → mais rápido → fallback leve
+const GROQ_TACTICS_MODELS = [
+  { model: 'llama-3.3-70b-versatile',  name: 'Llama 3.3 70B'  },
+  { model: 'llama-3.1-70b-versatile',  name: 'Llama 3.1 70B'  },
+  { model: 'qwen/qwen3-32b',           name: 'Qwen 3 32B'     },
+  { model: 'llama-3.1-8b-instant',     name: 'Llama 3.1 8B'   },
+  { model: 'gemma2-9b-it',             name: 'Gemma 2 9B'     },
+  { model: 'mixtral-8x7b-32768',       name: 'Mixtral 8x7B'   },
+];
+
+const GROQ_ANALYSIS_MODELS = [
+  { model: 'llama-3.3-70b-versatile',  name: 'Llama 3.3 70B'  },
+  { model: 'qwen/qwen3-32b',           name: 'Qwen 3 32B'     },
+  { model: 'llama-3.1-70b-versatile',  name: 'Llama 3.1 70B'  },
+  { model: 'gemma2-9b-it',             name: 'Gemma 2 9B'     },
+  { model: 'mixtral-8x7b-32768',       name: 'Mixtral 8x7B'   },
+  { model: 'llama-3.1-8b-instant',     name: 'Llama 3.1 8B'   },
+];
+
+function isRateLimitError(err: any): boolean {
+  return err?.status === 429 || err?.message?.includes('rate') || err?.message?.includes('429');
+}
+
 @Injectable()
 export class StatisticsPredictorService {
   private readonly logger = new Logger(StatisticsPredictorService.name);
@@ -58,6 +82,32 @@ export class StatisticsPredictorService {
       apiKey: process.env.GROQ_API_KEY,
       baseURL: 'https://api.groq.com/openai/v1',
     });
+  }
+
+  /** Tenta uma chamada em todos os modelos da cadeia até obter resposta válida */
+  private async tryModels<T>(
+    chain: typeof GROQ_TACTICS_MODELS,
+    buildRequest: (model: string) => Parameters<typeof this.openai.chat.completions.create>[0],
+    parse: (content: string) => T | null,
+    label: string,
+  ): Promise<T | null> {
+    for (const { model, name } of chain) {
+      try {
+        this.logger.log(`[AI] tentando ${name} para ${label}...`);
+        const res = await this.openai.chat.completions.create(buildRequest(model) as any);
+        const content = res.choices[0]?.message?.content ?? '';
+        const parsed = parse(content);
+        if (parsed !== null) {
+          this.logger.log(`[AI] ✅ ${name} respondeu para ${label}`);
+          return parsed;
+        }
+        this.logger.warn(`[AI] ${name} retornou JSON inválido — próximo modelo`);
+      } catch (err: any) {
+        const reason = isRateLimitError(err) ? 'rate-limit' : err.message;
+        this.logger.warn(`[AI] ${name} falhou (${reason}) — próximo modelo`);
+      }
+    }
+    return null;
   }
 
   async getTeamStatistics(teamName: string, limit = 10): Promise<TeamStatistics> {
@@ -191,19 +241,8 @@ export class StatisticsPredictorService {
 
     const hasRealLineup = scrapedLineup.length >= 11;
 
-    const models = [
-      { model: 'llama-3.3-70b-versatile', name: 'Groq Llama 3.3' },
-      { model: 'llama-3.1-8b-instant',    name: 'Groq Llama 3.1 8B' },
-      { model: 'qwen/qwen3-32b',           name: 'Groq Qwen 32B' },
-    ];
-
-    for (const { model, name } of models) {
-      try {
-        this.logger.log(`Gerando táticas para ${teamName} com ${name}...`);
-
-        const prompt = hasRealLineup
-          ? // ── Modo com escalação real ─────────────────────────────────────
-            `A seleção ${teamName} disputou seu último jogo na Copa do Mundo 2026 com ESTA escalação real (obtida via scraping — use EXATAMENTE esses nomes, sem inventar outros):
+    const prompt = hasRealLineup
+      ? `A seleção ${teamName} disputou seu último jogo na Copa do Mundo 2026 com ESTA escalação real (obtida via scraping — use EXATAMENTE esses nomes, sem inventar outros):
 ${scrapedLineup.slice(0, 11).join(', ')}
 
 Com base nessa escalação, determine:
@@ -224,8 +263,7 @@ Responda APENAS o JSON (coloque os 11 jogadores na ordem do campo, começando pe
   "dominanceStyle": "possession|counter|pressing|defensive",
   "dominanceDescription": "string"
 }`
-          : // ── Modo sem escalação real — IA gera tudo ──────────────────────
-            `Analise a seleção ${teamName} nos jogos mais recentes da Copa do Mundo 2026 (junho de 2026).
+      : `Analise a seleção ${teamName} nos jogos mais recentes da Copa do Mundo 2026 (junho de 2026).
 
 Forneça:
 1. Formação tática REAL utilizada no último jogo.
@@ -247,45 +285,50 @@ Responda APENAS o JSON:
   "dominanceDescription": "string"
 }`;
 
-        const response = await this.openai.chat.completions.create({
-          model,
-          messages: [
-            {
-              role: 'system',
-              content: 'Você é um analista tático de futebol de elite especializado na Copa do Mundo 2026. ' +
-                (hasRealLineup
-                  ? 'A escalação já foi fornecida via scraping — use EXATAMENTE esses nomes, apenas analise táticas e estilo.'
-                  : 'Forneça análises REAIS baseadas nos jogos mais recentes. Evite repetir formações padrão sem embasamento.'),
-            },
-            { role: 'user', content: prompt },
-          ],
-          response_format: { type: 'json_object' },
-        } as any);
+    const systemMsg = 'Você é um analista tático de futebol de elite especializado na Copa do Mundo 2026. ' +
+      (hasRealLineup
+        ? 'A escalação já foi fornecida via scraping — use EXATAMENTE esses nomes, apenas analise táticas e estilo.'
+        : 'Forneça análises REAIS baseadas nos jogos mais recentes. Evite repetir formações padrão sem embasamento.');
 
-        const data = JSON.parse(response.choices[0].message.content || '{}');
+    const data = await this.tryModels(
+      GROQ_TACTICS_MODELS,
+      (model) => ({
+        model,
+        messages: [
+          { role: 'system' as const, content: systemMsg },
+          { role: 'user'   as const, content: prompt },
+        ],
+        response_format: { type: 'json_object' as const },
+      }),
+      (content) => {
+        try {
+          const parsed = JSON.parse(content || '{}');
+          if (!parsed.formation) return null;
+          return parsed;
+        } catch { return null; }
+      },
+      `táticas-${teamName}`,
+    );
 
-        // Se temos escalação real do scraping, garante que ela seja usada
-        const finalLineup = hasRealLineup
-          ? scrapedLineup.slice(0, 11)
-          : (data.lineup?.length >= 11 ? data.lineup : Array.from({ length: 11 }, (_, i) => `Jogador ${i + 1}`));
+    const finalLineup = hasRealLineup
+      ? scrapedLineup.slice(0, 11)
+      : (data?.lineup?.length >= 11 ? data.lineup : Array.from({ length: 11 }, (_, i) => `Jogador ${i + 1}`));
 
-        return {
-          formation: data.formation || '4-3-3',
-          lineup: finalLineup,
-          keyPlayer: data.keyPlayer || finalLineup[0] || 'Destaque',
-          intensity: data.intensity || 70,
-          focus: data.focus || 'balanced',
-          dominanceStyle: data.dominanceStyle || 'pressing',
-          dominanceDescription: data.dominanceDescription || 'Estilo agressivo e determinado',
-          gameDominanceProb: 50,
-          heatmapData: this.generateHeatmap(data.focus || 'counter'),
-        };
-      } catch (error: any) {
-        this.logger.error(`Falha ao usar ${name} para ${teamName}: ${error.message}`);
-      }
+    if (data) {
+      return {
+        formation: data.formation || '4-3-3',
+        lineup: finalLineup,
+        keyPlayer: data.keyPlayer || finalLineup[0] || 'Destaque',
+        intensity: data.intensity || 70,
+        focus: data.focus || 'balanced',
+        dominanceStyle: data.dominanceStyle || 'pressing',
+        dominanceDescription: data.dominanceDescription || 'Estilo agressivo e determinado',
+        gameDominanceProb: 50,
+        heatmapData: this.generateHeatmap(data.focus || 'counter'),
+      };
     }
 
-    // Fallback total
+    // Fallback total — nenhum modelo respondeu
     const fallbackLineup = hasRealLineup
       ? scrapedLineup.slice(0, 11)
       : Array.from({ length: 11 }, (_, i) => `Titular ${i + 1}`);
@@ -354,23 +397,15 @@ Responda APENAS o JSON:
       };
     };
 
-    try {
-      const response = await this.openai.chat.completions.create({
-        model: 'llama-3.3-70b-versatile',
-        messages: [
-          {
-            role: 'system',
-            content: `Você é um analista tático de futebol de elite cobrindo a Copa do Mundo 2026.
+    const analysisSystemMsg = `Você é um analista tático de futebol de elite cobrindo a Copa do Mundo 2026.
 REGRAS ABSOLUTAS:
 1. "homeDominanceProb": NUNCA use 50. Diferença mínima de 8 pontos. Base: ranking FIFA, histórico, Copa 2026.
 2. "homeStyle" e "awayStyle": OBRIGATORIAMENTE diferentes entre si. PROIBIDO usar "balanced". Estilos válidos APENAS: "possession", "counter", "pressing", "defensive".
 3. "homeDesc" e "awayDesc": descrição em português de até 60 caracteres, específica para ESTE confronto.
 4. "analysis": resumo tático rico, específico, NÃO GENÉRICO — mencione os jogadores-chave, como as formações se encaixam e o ponto crítico do jogo. Mínimo 300 caracteres, máximo 600 caracteres.
-5. "goalScenarios": array com exatamente 4 formas ESPECÍFICAS e DISTINTAS de gol poderem sair neste jogo — baseadas nas características reais dos times. Varie entre: cabeçada em cruzamento, chute de fora da área, lateral, jogada individual, falta/escanteio, contra-ataque, pênalti. Cada item deve ser uma frase descritiva (20-80 chars), não apenas um rótulo.`,
-          },
-          {
-            role: 'user',
-            content: `Copa do Mundo 2026: ${homeTeam} (${homeTactics.formation}, destaque: ${homeTactics.keyPlayer}, xG médio: ${homeXG || 'N/A'}) vs ${awayTeam} (${awayTactics.formation}, destaque: ${awayTactics.keyPlayer}, xG médio: ${awayXG || 'N/A'}).
+5. "goalScenarios": array com exatamente 4 formas ESPECÍFICAS e DISTINTAS de gol poderem sair neste jogo. Varie entre: cabeçada em cruzamento, chute de fora da área, lateral, jogada individual, falta/escanteio, contra-ataque, pênalti. Cada item deve ser uma frase descritiva (20-80 chars), não apenas um rótulo.`;
+
+    const analysisUserMsg = `Copa do Mundo 2026: ${homeTeam} (${homeTactics.formation}, destaque: ${homeTactics.keyPlayer}, xG médio: ${homeXG || 'N/A'}) vs ${awayTeam} (${awayTactics.formation}, destaque: ${awayTactics.keyPlayer}, xG médio: ${awayXG || 'N/A'}).
 
 Analise o confronto tático real deste jogo. Descreva como os estilos se chocam com base nas formações e características conhecidas de cada seleção. O texto deve ser direto, preciso e revelar algo que não é óbvio — como um duelo específico de corredor, uma zona de pressão crítica, ou uma vulnerabilidade defensiva que pode ser explorada.
 
@@ -383,13 +418,32 @@ Responda APENAS este JSON:
   "awayDesc": "string (até 60 chars)",
   "analysis": "string (300-600 chars) — resumo tático específico, rico, NÃO genérico",
   "goalScenarios": ["string", "string", "string", "string"]
-}`,
-          },
-        ],
-        response_format: { type: 'json_object' },
-      } as any);
+}`;
 
-      const data = JSON.parse(response.choices[0].message.content || '{}');
+    const rawData = await this.tryModels(
+      GROQ_ANALYSIS_MODELS,
+      (model) => ({
+        model,
+        messages: [
+          { role: 'system' as const, content: analysisSystemMsg },
+          { role: 'user'   as const, content: analysisUserMsg },
+        ],
+        response_format: { type: 'json_object' as const },
+      }),
+      (content) => {
+        try {
+          const parsed = JSON.parse(content || '{}');
+          if (typeof parsed.homeDominanceProb !== 'number') return null;
+          return parsed;
+        } catch { return null; }
+      },
+      `análise-${homeTeam}-vs-${awayTeam}`,
+    );
+
+    if (!rawData) return fallbackPair();
+
+    try {
+      const data = rawData;
 
       const validStyles = new Set(['possession', 'counter', 'pressing', 'defensive']);
       let homeStyle = validStyles.has(data.homeStyle) ? data.homeStyle : null;
