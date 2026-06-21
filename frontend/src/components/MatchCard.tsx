@@ -212,8 +212,15 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
   const isFinished = match.status === 'FT';
   const hasScore = match.team1Score !== undefined && match.team2Score !== undefined;
 
-  const flag1 = match.team1Flag || FLAGS[match.team1] || '';
-  const flag2 = match.team2Flag || FLAGS[match.team2] || '';
+  const homeTeam = (match as any).homeTeam || match.team1;
+  const awayTeam = (match as any).awayTeam || match.team2;
+  const homeScore = (match as any).homeScore ?? match.team1Score;
+  const awayScore = (match as any).awayScore ?? match.team2Score;
+  const homeFlag = (match as any).homeFlag || match.team1Flag;
+  const awayFlag = (match as any).awayFlag || match.team2Flag;
+
+  const flag1 = homeFlag || FLAGS[homeTeam] || '';
+  const flag2 = awayFlag || FLAGS[awayTeam] || '';
 
   return (
     <div className={`bg-slate-900 border rounded-2xl p-4 sm:p-5 transition-all ${
@@ -237,25 +244,25 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
         <div className="flex-1 flex flex-col items-end gap-0.5 min-w-0">
           {flag1 && (
             flag1.startsWith('http')
-              ? <img src={flag1} alt={match.team1} className="w-6 h-4 object-contain" />
+              ? <img src={flag1} alt={homeTeam} className="w-6 h-4 object-contain" />
               : <span className="text-xl leading-none">{flag1}</span>
           )}
           <Link
-            href={`/selecoes/${encodeURIComponent(match.team1)}`}
+            href={`/selecoes/${encodeURIComponent(homeTeam)}`}
             className="font-bold text-white text-sm text-right leading-tight truncate max-w-full hover:text-yellow-400 transition-colors"
           >
-            {traduzirTime(match.team1)}
+            {traduzirTime(homeTeam)}
           </Link>
         </div>
 
         <div className="flex flex-col items-center px-2 shrink-0">
-          {(isLive || isFinished) && hasScore ? (
+          {(isLive || isFinished) && (homeScore !== undefined && awayScore !== undefined) ? (
             <span className={`font-black text-xl sm:text-2xl px-3 py-1 rounded-xl whitespace-nowrap ${
               isLive
                 ? 'bg-yellow-950/70 text-yellow-400'
                 : 'bg-slate-800 text-slate-300'
             }`}>
-              {match.team1Score} – {match.team2Score}
+              {homeScore} – {awayScore}
             </span>
           ) : (
             <>
@@ -268,14 +275,14 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
         <div className="flex-1 flex flex-col items-start gap-0.5 min-w-0">
           {flag2 && (
             flag2.startsWith('http')
-              ? <img src={flag2} alt={match.team2} className="w-6 h-4 object-contain" />
+              ? <img src={flag2} alt={awayTeam} className="w-6 h-4 object-contain" />
               : <span className="text-xl leading-none">{flag2}</span>
           )}
           <Link
-            href={`/selecoes/${encodeURIComponent(match.team2)}`}
+            href={`/selecoes/${encodeURIComponent(awayTeam)}`}
             className="font-bold text-white text-sm leading-tight truncate max-w-full hover:text-yellow-400 transition-colors"
           >
-            {traduzirTime(match.team2)}
+            {traduzirTime(awayTeam)}
           </Link>
         </div>
       </div>
