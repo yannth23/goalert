@@ -59,6 +59,15 @@ export class FootballMatchController {
     return this.footballApiService.syncTodayMatches();
   }
 
+  /** Reset completo do banco + resync — apaga todos os jogos e repopula */
+  @Post('reset-and-sync')
+  async resetAndSync(@Headers('x-admin-secret') secret: string) {
+    const expected = process.env.ADMIN_SYNC_SECRET ?? process.env.JWT_SECRET;
+    if (!expected || secret !== expected) throw new UnauthorizedException('Invalid admin secret');
+    await this.footballMatchService.deleteAllMatches();
+    return this.footballApiService.syncTodayMatches();
+  }
+
   /** Get comprehensive team report with tactics, statistics, and web insights */
   @Get('team/:teamName/report')
   getTeamReport(@Param('teamName') teamName: string) {
