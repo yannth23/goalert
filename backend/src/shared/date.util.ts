@@ -26,11 +26,11 @@ export function getTodayBrazil(): string {
  */
 export function getTodayRange(): DayRange {
   const dateStr = getTodayBrazil(); // ex: "2026-06-19"
-  // Começa à meia-noite de ontem (BRT) para cobrir jogos que podem estar em datas diferentes no servidor
-  const baseDate = new Date(`${dateStr}T00:00:00-03:00`);
-  const start = new Date(baseDate.getTime() - 24 * 60 * 60 * 1000);
-  // Termina 48 horas depois
-  const end = new Date(start.getTime() + 48 * 60 * 60 * 1000); 
+  // Começa estritamente à meia-noite de hoje no horário de Brasília (BRT)
+  // BRT é UTC-3, então 00:00 BRT é 03:00 UTC.
+  const start = new Date(`${dateStr}T00:00:00-03:00`);
+  // Termina às 23:59:59 do mesmo dia em Brasília
+  const end = new Date(`${dateStr}T23:59:59-03:00`);
   return { start, end };
 }
 

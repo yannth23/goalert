@@ -131,7 +131,10 @@ export class FootballApiService {
         const predictions = await this.statisticsPredictor.predictMatch(match.homeTeam, match.awayTeam);
         
         // Se não houver externalId, usamos um identificador composto para evitar nulos no @unique
-        const lookupId = match.externalId || `scraped_${match.homeTeam}_${match.awayTeam}_${match.date.toISOString().split('T')[0]}`;
+        // Usamos apenas times e data (sem o prefixo da fonte) para que SofaScore e ESPN não criem jogos duplicados
+        const lookupId = match.externalId?.startsWith('scraped_') 
+          ? `match_${match.homeTeam}_${match.awayTeam}_${match.date.toISOString().split('T')[0]}`
+          : match.externalId;
 
         await this.prisma.footballMatch.upsert({
           where:  { externalId: lookupId },

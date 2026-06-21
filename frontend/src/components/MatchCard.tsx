@@ -197,13 +197,14 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
   const [showTactics, setShowTactics] = useState(false);
 
   // Converte a data UTC do backend para o objeto Date local
+  // Forçamos o fuso horário de Brasília (America/Sao_Paulo) para exibição consistente
   const matchDate = new Date(match.date);
   const now = new Date();
   
-  // Formata o horário garantindo que seja exibido no fuso local (BRT se o usuário estiver no Brasil)
   const time = matchDate.toLocaleTimeString('pt-BR', {
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'America/Sao_Paulo',
   });
 
   // Lógica para detectar se o jogo deveria estar "Ao Vivo" mesmo se o status do backend estiver NS
