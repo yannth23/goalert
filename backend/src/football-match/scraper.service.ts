@@ -153,8 +153,8 @@ export class ScraperService {
       event.tournament?.uniqueTournament?.name ??
       ''
     ).toLowerCase();
-    // Match FIFA World Cup but avoid Copa América, Libertadores, etc.
-    return name.includes('world cup') || name.includes('mundial');
+    // Match FIFA World Cup and Qualifiers but avoid Copa América, Libertadores, etc.
+    return name.includes('world cup') || name.includes('mundial') || name.includes('qualif');
   }
 
   private mapSofaStatus(status: any): string {
@@ -261,7 +261,7 @@ export class ScraperService {
       .filter((e: any) => {
         const league = (e.strLeague ?? '').toLowerCase();
         return league.includes('world cup') || league.includes('mundial') ||
-               league.includes('copa do mundo');
+               league.includes('copa do mundo') || league.includes('qualif');
       })
       .map((e: any) => ({
         homeTeam:  normalizeName(e.strHomeTeam ?? ''),
