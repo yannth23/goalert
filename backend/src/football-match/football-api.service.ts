@@ -4,17 +4,27 @@ import { Prisma } from '@prisma/client';
 import axios from 'axios';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
-// Telegram removido
 import { StatisticsPredictorService } from './statistics-predictor.service';
+import { ScraperService, ScrapedMatch } from './scraper.service';
 import { translateTeam } from './translation.util';
 
-const BASE_URL = 'https://api.football-data.org/v4';
-const API_FOOTBALL_BASE_URL = 'https://v3.football.api-sports.io'; // Nova URL para API-Football
-const COMPETITION_WC = 1; // FIFA World Cup ID in API-Football v3
-const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY;
+const FOOTBALL_DATA_BASE_URL = 'https://api.football-data.org/v4';
+const WC_CODE = 'WC'; // FIFA World Cup code in football-data.org
 
 const STATUS_MAP: Record<string, string> = {
-  // API-Football v3 Statuses
+  // Football-Data.org Statuses
+  'SCHEDULED': 'NS',
+  'TIMED': 'NS',
+  'IN_PLAY': '1H',
+  'PAUSED': 'HT',
+  'EXTRA_TIME': 'ET',
+  'PENALTY_SHOOTOUT': 'PEN',
+  'FINISHED': 'FT',
+  'POSTPONED': 'PST',
+  'CANCELLED': 'PST',
+  'SUSPENDED': 'PST',
+  
+  // API-Football v3 Statuses (fallback)
   'TBD': 'NS',  'NS': 'NS',
   '1H':  '1H',  'HT': 'HT',  '2H': '2H',
   'ET':  'ET',  'BT': 'ET',  'P':  'PEN',
@@ -22,20 +32,7 @@ const STATUS_MAP: Record<string, string> = {
   'SUSP':'PST', 'PST':'PST', 'CANC':'PST', 'ABD':'PST',
   'AWD': 'FT',  'WO': 'FT',
   'LIVE':'1H',
-
-  // Legacy mappings (just in case)
-  SCHEDULED:        'NS',
-  TIMED:            'NS',
-  IN_PLAY:          '1H',
-  PAUSED:           'HT',
-  EXTRA_TIME:       'ET',
-  PENALTY_SHOOTOUT: 'PEN',
-  FINISHED:         'FT',
 };
-
-
-
-
 
 @Injectable()
 export class FootballApiService {
@@ -45,9 +42,10 @@ export class FootballApiService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly statisticsPredictor: StatisticsPredictorService,
+    private readonly scraper: ScraperService,
   ) {}
 
-  private get headers() {
+  private get footballDataHeaders() {
     return { 'X-Auth-Token': process.env.FOOTBALL_DATA_API_KEY };
   }
 
@@ -68,113 +66,118 @@ export class FootballApiService {
     const todayBrazil = getTodayBrazil();
 
     this.logger.log(`Syncing matches for BRT: ${todayBrazil} (range: ${start.toISOString()} - ${end.toISOString()})`);
-    this.logger.log(`Using API Key: ${API_FOOTBALL_KEY ? (API_FOOTBALL_KEY.substring(0, 5) + '...') : 'MISSING'}`);
 
-    const response = await axios.get(`${API_FOOTBALL_BASE_URL}/fixtures`, {
-      headers: { 'x-apisports-key': API_FOOTBALL_KEY },
-      params: {
-        date: todayBrazil, // A API-Football v3 usa a data no formato YYYY-MM-DD
-        timezone: 'America/Sao_Paulo',
-      },
-    }).catch(err => {
-      this.logger.error(`API-Football request failed: ${err.message}`);
-      if (err.response) {
-        this.logger.error(`Status: ${err.response.status}`);
-        this.logger.error(`Data: ${JSON.stringify(err.response.data)}`);
+    let matchesToProcess: any[] = [];
+    let source = 'none';
+
+    // 1. Tenta Football-Data.org
+    try {
+      if (process.env.FOOTBALL_DATA_API_KEY) {
+        this.logger.log('Trying Football-Data.org...');
+        const response = await axios.get(`${FOOTBALL_DATA_BASE_URL}/matches`, {
+          headers: this.footballDataHeaders,
+          params: { dateFrom: todayBrazil, dateTo: todayBrazil },
+        });
+        
+        if (response.data?.matches?.length > 0) {
+          matchesToProcess = response.data.matches.map((m: any) => ({
+            externalId: m.id.toString(),
+            date: new Date(m.utcDate),
+            championship: m.competition.name,
+            homeTeam: translateTeam(m.homeTeam.name),
+            awayTeam: translateTeam(m.awayTeam.name),
+            homeFlag: m.homeTeam.crest,
+            awayFlag: m.awayTeam.crest,
+            status: STATUS_MAP[m.status] ?? 'NS',
+            homeScore: m.score.fullTime.home,
+            awayScore: m.score.fullTime.away,
+          }));
+          source = 'football-data.org';
+        }
       }
-      throw err;
-    });
+    } catch (err: any) {
+      this.logger.warn(`Football-Data.org failed: ${err.message}`);
+    }
 
-    const matches = response.data.response.filter((match: any) => {
-      const matchDate = new Date(match.fixture.date);
-      return matchDate >= start && matchDate <= end;
-    });
+    // 2. Fallback para Scraper (SofaScore/ESPN) se Football-Data falhar ou não retornar nada
+    if (matchesToProcess.length === 0) {
+      try {
+        this.logger.log('Trying Web Scrapers (SofaScore/ESPN)...');
+        const scrapedMatches: ScrapedMatch[] = await this.scraper.scrapeTodayMatches();
+        
+        if (scrapedMatches.length > 0) {
+          matchesToProcess = scrapedMatches.map((m) => ({
+            externalId: `scraped_${m.homeTeam}_${m.awayTeam}_${todayBrazil}`,
+            date: m.startTime,
+            championship: 'Copa do Mundo', // Scraper foca em Copa do Mundo
+            homeTeam: m.homeTeam,
+            awayTeam: m.awayTeam,
+            homeFlag: null, // Scraper pode não ter logo
+            awayFlag: null,
+            status: m.status,
+            homeScore: m.homeScore,
+            awayScore: m.awayScore,
+          }));
+          source = 'web-scraper';
+        }
+      } catch (err: any) {
+        this.logger.error(`Scraper failed: ${err.message}`);
+      }
+    }
 
-    for (const match of matches) {
+    for (const match of matchesToProcess) {
       // Gera predições baseadas em histórico
-      const predictions = await this.statisticsPredictor.predictMatch(
-        translateTeam(match.teams.home.name), translateTeam(match.teams.away.name));
-      const mappedStatus = STATUS_MAP[match.fixture.status.short] ?? match.fixture.status.short;
-      const homeScore = match.goals.home;
-      const awayScore = match.goals.away;
-      const homeTeam = translateTeam(match.teams.home.name);
-      const awayTeam = translateTeam(match.teams.away.name);
-
-      const existing = await this.prisma.footballMatch.findUnique({
-        where: { externalId: match.fixture.id.toString() },
-      });
-
-      const saved = await this.prisma.footballMatch.upsert({
-        where:  { externalId: match.fixture.id.toString() },
+      const predictions = await this.statisticsPredictor.predictMatch(match.homeTeam, match.awayTeam);
+      
+      await this.prisma.footballMatch.upsert({
+        where:  { externalId: match.externalId },
         update: { 
-          status: mappedStatus, 
-          homeScore, 
-          awayScore,
-          homeFlag: match.teams.home.logo,
-          awayFlag: match.teams.away.logo,
+          status: match.status, 
+          homeScore: match.homeScore, 
+          awayScore: match.awayScore,
+          homeFlag: match.homeFlag,
+          awayFlag: match.awayFlag,
           predictedGoalsHome: predictions.predictedGoalsHome,
           predictedGoalsAway: predictions.predictedGoalsAway,
           predictedCards:     predictions.predictedCards,
           predictedFouls:     predictions.predictedFouls,
-          homeTactics:        predictions.homeTactics as unknown as Prisma.InputJsonValue,
-          awayTactics:        predictions.awayTactics as unknown as Prisma.InputJsonValue,
+          homeTactics:        predictions.homeTactics as any,
+          awayTactics:        predictions.awayTactics as any,
           aiAnalysis:         predictions.aiAnalysis,
-          shortInsight:       (predictions as any).shortInsight,
-          attentionPoint:     (predictions as any).attentionPoint,
+          shortInsight:       predictions.shortInsight,
+          attentionPoint:     predictions.attentionPoint,
         },
         create: {
-          externalId:   match.fixture.id.toString(),
-          date:         new Date(match.fixture.date),
-          championship: match.league.name,
-          homeTeam,
-          awayTeam,
-          homeFlag:     match.teams.home.logo,
-          awayFlag:     match.teams.away.logo,
-          status:       mappedStatus,
-          homeScore,
-          awayScore,
+          externalId:   match.externalId,
+          date:         match.date,
+          championship: match.championship,
+          homeTeam:     match.homeTeam,
+          awayTeam:     match.awayTeam,
+          homeFlag:     match.homeFlag,
+          awayFlag:     match.awayFlag,
+          status:       match.status,
+          homeScore:    match.homeScore,
+          awayScore:    match.awayScore,
           predictedGoalsHome: predictions.predictedGoalsHome,
           predictedGoalsAway: predictions.predictedGoalsAway,
           predictedCards:     predictions.predictedCards,
           predictedFouls:     predictions.predictedFouls,
-          homeTactics:        predictions.homeTactics as unknown as Prisma.InputJsonValue,
-          awayTactics:        predictions.awayTactics as unknown as Prisma.InputJsonValue,
+          homeTactics:        predictions.homeTactics as any,
+          awayTactics:        predictions.awayTactics as any,
           aiAnalysis:         predictions.aiAnalysis,
-          shortInsight:       (predictions as any).shortInsight,
-          attentionPoint:     (predictions as any).attentionPoint,
+          shortInsight:       predictions.shortInsight,
+          attentionPoint:     predictions.attentionPoint,
         },
       });
-
-      await this.detectAndNotify(existing, saved, homeTeam, awayTeam);
     }
 
     const liveCount = await this.prisma.footballMatch.count({
       where: { status: { in: ['1H', 'HT', '2H', 'ET', 'PEN'] } },
     });
 
-    // Força a limpeza do cache deletando a chave específica e qualquer variação
     await this.cacheDel(`matches:${todayBrazil}`);
-    await this.cacheDel(`matches:${todayBrazil}:v2`); // Chave de segurança para forçar refresh
-    this.logger.log(`Synced ${matches.length} matches for ${todayBrazil}`);
-    return { synced: matches.length, live: liveCount, errors: 0, source: 'football-data.org' };
-  }
-
-  private async detectAndNotify(prev: any, curr: any, homeTeam: string, awayTeam: string) {
-    // Notificações removidas (Telegram)
-  }
-
-  async getTodayMatchesFromDb() {
-    // Busca jogos do dia de hoje no horário do Brasil
-      const { start, end } = getTodayRange();
-    
-    // Forçamos a limpeza do cache de hoje para garantir que dados novos (posse de bola corrigida) apareçam
-    const todayBrazil = getTodayBrazil();
-    await this.cacheDel(`matches:${todayBrazil}`);
-
-    return this.prisma.footballMatch.findMany({
-      where: { date: { gte: start, lte: end } },
-      orderBy: { date: 'asc' },
-    });
+    this.logger.log(`Synced ${matchesToProcess.length} matches for ${todayBrazil} from ${source}`);
+    return { synced: matchesToProcess.length, live: liveCount, errors: 0, source };
   }
 
   async getStandings() {
@@ -182,32 +185,39 @@ export class FootballApiService {
     const cached   = await this.cacheGet(cacheKey);
     if (cached) return cached;
 
-    const response = await axios.get(`${API_FOOTBALL_BASE_URL}/standings`, {
-      headers: { 'x-apisports-key': API_FOOTBALL_KEY },
-      params: { league: COMPETITION_WC }, // Assumindo que COMPETITION_WC é o ID da liga na API-Football v3
-    });
+    // Tenta Football-Data.org para classificação
+    try {
+      if (process.env.FOOTBALL_DATA_API_KEY) {
+        const response = await axios.get(`${FOOTBALL_DATA_BASE_URL}/competitions/${WC_CODE}/standings`, {
+          headers: this.footballDataHeaders,
+        });
 
-    const standingsData = response.data.response?.[0]?.league?.standings || [];
-    const standings = standingsData.map((group: any) => ({
-      group: Array.isArray(group) ? (group[0]?.group ?? 'Group') : (group.group ?? group.stage),
-      table: (Array.isArray(group) ? group : group.table).map((entry: any) => ({
-        position:       entry.rank,
-        teamId:         entry.team.id,
-        teamName:       translateTeam(entry.team.name),
-        crest:          entry.team.logo,
-        points:         entry.points,
-        played:         entry.all.played,
-        wins:           entry.all.win,
-        draws:          entry.all.draw,
-        losses:         entry.all.lose,
-        goalsFor:       entry.all.goals.for,
-        goalsAgainst:   entry.all.goals.against,
-        goalDifference: entry.goalsDiff,
-      })),
-    }));
+        const standings = response.data.standings.map((group: any) => ({
+          group: group.group,
+          table: group.table.map((entry: any) => ({
+            position:       entry.position,
+            teamId:         entry.team.id,
+            teamName:       translateTeam(entry.team.name),
+            crest:          entry.team.crest,
+            points:         entry.points,
+            played:         entry.playedGames,
+            wins:           entry.won,
+            draws:          entry.draw,
+            losses:         entry.lost,
+            goalsFor:       entry.goalsFor,
+            goalsAgainst:   entry.goalsAgainst,
+            goalDifference: entry.goalDifference,
+          })),
+        }));
 
-    await this.cacheSet(cacheKey, standings, 300);
-    return standings;
+        await this.cacheSet(cacheKey, standings, 3600);
+        return standings;
+      }
+    } catch (err: any) {
+      this.logger.warn(`Standings from Football-Data.org failed: ${err.message}`);
+    }
+
+    return [];
   }
 
   async getTopScorers() {
@@ -215,20 +225,28 @@ export class FootballApiService {
     const cached   = await this.cacheGet(cacheKey);
     if (cached) return cached;
 
-    const response = await axios.get(`${API_FOOTBALL_BASE_URL}/topscorers`, {
-      headers: { 'x-apisports-key': API_FOOTBALL_KEY },
-      params: { league: COMPETITION_WC, season: new Date().getFullYear() }, // Assumindo que COMPETITION_WC é o ID da liga na API-Football v3
-    });
+    // Tenta Football-Data.org para artilheiros
+    try {
+      if (process.env.FOOTBALL_DATA_API_KEY) {
+        const response = await axios.get(`${FOOTBALL_DATA_BASE_URL}/competitions/${WC_CODE}/scorers`, {
+          headers: this.footballDataHeaders,
+        });
 
-    const scorers = (response.data.response as any[] || []).map((entry) => ({
-      playerId:   entry.player.id,
-      playerName: entry.player.name,
-      teamName:   entry.statistics?.[0]?.team?.name ? translateTeam(entry.statistics[0].team.name) : '—',
-      goals:      entry.statistics?.[0]?.goals?.total ?? 0,
-      assists:    entry.statistics?.[0]?.goals?.assists ?? 0,
-    }));
+        const scorers = response.data.scorers.map((entry: any) => ({
+          playerId:   entry.player.id,
+          playerName: entry.player.name,
+          teamName:   translateTeam(entry.team.name),
+          goals:      entry.goals ?? 0,
+          assists:    entry.assists ?? 0,
+        }));
 
-    await this.cacheSet(cacheKey, scorers, 300);
-    return scorers;
+        await this.cacheSet(cacheKey, scorers, 3600);
+        return scorers;
+      }
+    } catch (err: any) {
+      this.logger.warn(`Scorers from Football-Data.org failed: ${err.message}`);
+    }
+
+    return [];
   }
 }
