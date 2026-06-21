@@ -68,6 +68,7 @@ export class FootballApiService {
     const todayBrazil = getTodayBrazil();
 
     this.logger.log(`Syncing matches for BRT: ${todayBrazil} (range: ${start.toISOString()} - ${end.toISOString()})`);
+    this.logger.log(`Using API Key: ${API_FOOTBALL_KEY ? (API_FOOTBALL_KEY.substring(0, 5) + '...') : 'MISSING'}`);
 
     const response = await axios.get(`${API_FOOTBALL_BASE_URL}/fixtures`, {
       headers: { 'x-apisports-key': API_FOOTBALL_KEY },
@@ -75,6 +76,13 @@ export class FootballApiService {
         date: todayBrazil, // A API-Football v3 usa a data no formato YYYY-MM-DD
         timezone: 'America/Sao_Paulo',
       },
+    }).catch(err => {
+      this.logger.error(`API-Football request failed: ${err.message}`);
+      if (err.response) {
+        this.logger.error(`Status: ${err.response.status}`);
+        this.logger.error(`Data: ${JSON.stringify(err.response.data)}`);
+      }
+      throw err;
     });
 
     const matches = response.data.response.filter((match: any) => {
