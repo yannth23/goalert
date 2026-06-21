@@ -126,49 +126,56 @@ export class FootballApiService {
     }
 
     for (const match of matchesToProcess) {
-      // Gera predições baseadas em histórico
-      const predictions = await this.statisticsPredictor.predictMatch(match.homeTeam, match.awayTeam);
-      
-      await this.prisma.footballMatch.upsert({
-        where:  { externalId: match.externalId },
-        update: { 
-          status: match.status, 
-          homeScore: match.homeScore, 
-          awayScore: match.awayScore,
-          homeFlag: match.homeFlag,
-          awayFlag: match.awayFlag,
-          predictedGoalsHome: predictions.predictedGoalsHome,
-          predictedGoalsAway: predictions.predictedGoalsAway,
-          predictedCards:     predictions.predictedCards,
-          predictedFouls:     predictions.predictedFouls,
-          homeTactics:        predictions.homeTactics as any,
-          awayTactics:        predictions.awayTactics as any,
-          aiAnalysis:         predictions.aiAnalysis,
-          shortInsight:       predictions.shortInsight,
-          attentionPoint:     predictions.attentionPoint,
-        },
-        create: {
-          externalId:   match.externalId,
-          date:         match.date,
-          championship: match.championship,
-          homeTeam:     match.homeTeam,
-          awayTeam:     match.awayTeam,
-          homeFlag:     match.homeFlag,
-          awayFlag:     match.awayFlag,
-          status:       match.status,
-          homeScore:    match.homeScore,
-          awayScore:    match.awayScore,
-          predictedGoalsHome: predictions.predictedGoalsHome,
-          predictedGoalsAway: predictions.predictedGoalsAway,
-          predictedCards:     predictions.predictedCards,
-          predictedFouls:     predictions.predictedFouls,
-          homeTactics:        predictions.homeTactics as any,
-          awayTactics:        predictions.awayTactics as any,
-          aiAnalysis:         predictions.aiAnalysis,
-          shortInsight:       predictions.shortInsight,
-          attentionPoint:     predictions.attentionPoint,
-        },
-      });
+      try {
+        // Gera predições baseadas em histórico
+        const predictions = await this.statisticsPredictor.predictMatch(match.homeTeam, match.awayTeam);
+        
+        // Se não houver externalId, usamos um identificador composto para evitar nulos no @unique
+        const lookupId = match.externalId || `scraped_${match.homeTeam}_${match.awayTeam}_${match.date.toISOString().split('T')[0]}`;
+
+        await this.prisma.footballMatch.upsert({
+          where:  { externalId: lookupId },
+          update: { 
+            status: match.status, 
+            homeScore: match.homeScore, 
+            awayScore: match.awayScore,
+            homeFlag: match.homeFlag,
+            awayFlag: match.awayFlag,
+            predictedGoalsHome: predictions.predictedGoalsHome,
+            predictedGoalsAway: predictions.predictedGoalsAway,
+            predictedCards:     predictions.predictedCards,
+            predictedFouls:     predictions.predictedFouls,
+            homeTactics:        predictions.homeTactics as any,
+            awayTactics:        predictions.awayTactics as any,
+            aiAnalysis:         predictions.aiAnalysis,
+            shortInsight:       predictions.shortInsight,
+            attentionPoint:     predictions.attentionPoint,
+          },
+          create: {
+            externalId:   lookupId,
+            date:         match.date,
+            championship: match.championship,
+            homeTeam:     match.homeTeam,
+            awayTeam:     match.awayTeam,
+            homeFlag:     match.homeFlag,
+            awayFlag:     match.awayFlag,
+            status:       match.status,
+            homeScore:    match.homeScore,
+            awayScore:    match.awayScore,
+            predictedGoalsHome: predictions.predictedGoalsHome,
+            predictedGoalsAway: predictions.predictedGoalsAway,
+            predictedCards:     predictions.predictedCards,
+            predictedFouls:     predictions.predictedFouls,
+            homeTactics:        predictions.homeTactics as any,
+            awayTactics:        predictions.awayTactics as any,
+            aiAnalysis:         predictions.aiAnalysis,
+            shortInsight:       predictions.shortInsight,
+            attentionPoint:     predictions.attentionPoint,
+          },
+        });
+      } catch (err: any) {
+        this.logger.error(`Failed to upsert match ${match.homeTeam} vs ${match.awayTeam}: ${err.message}`);
+      }
     }
 
     const liveCount = await this.prisma.footballMatch.count({
