@@ -53,7 +53,10 @@ export class JobsService implements OnApplicationBootstrap {
     try {
       const { start, end } = getTodayRange();
       const matches = await this.prisma.footballMatch.findMany({
-        where: { date: { gte: start, lte: end }, homeTactics: null },
+        where: { 
+          date: { gte: start, lte: end }, 
+          homeTactics: { equals: null } // Prisma exige equals: null para campos JSON
+        },
         select: { id: true, homeTeam: true, awayTeam: true },
       });
 
