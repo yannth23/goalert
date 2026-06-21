@@ -88,7 +88,7 @@ export class FootballApiService {
         if (response.data?.matches?.length > 0) {
           matchesToProcess = response.data.matches.map((m: any) => ({
             externalId: m.id.toString(),
-            date: utcToBrt(m.utcDate),
+            date: new Date(m.utcDate),
             championship: m.competition.name,
             homeTeam: translateTeam(m.homeTeam.name),
             awayTeam: translateTeam(m.awayTeam.name),
@@ -145,6 +145,7 @@ export class FootballApiService {
         await this.prisma.footballMatch.upsert({
           where:  { externalId: lookupId },
           update: { 
+            date: match.date,
             status: match.status, 
             homeScore: match.homeScore, 
             awayScore: match.awayScore,
