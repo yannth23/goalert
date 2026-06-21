@@ -10,8 +10,16 @@ async function bootstrap() {
   prisma.enableShutdownHooks(app);
 
   const corsOrigins = process.env.CORS_ORIGINS;
+  const origins = corsOrigins 
+    ? corsOrigins.split(',').map((o) => o.trim()) 
+    : [
+        'http://localhost:3000', 
+        'https://goalert-nine.vercel.app',
+        /\.vercel\.app$/ // Aceita qualquer subdomínio da Vercel (incluindo o novo tactiqsense)
+      ];
+
   app.enableCors({
-    origin: corsOrigins ? corsOrigins.split(',').map((o) => o.trim()) : false,
+    origin: origins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
