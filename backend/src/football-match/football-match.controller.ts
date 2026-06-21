@@ -13,7 +13,11 @@ export class FootballMatchController {
   ) {}
 
   @Get()
-  getTodayMatches() { return this.footballMatchService.getTodayMatches(); }
+  async getTodayMatches() { 
+    const matches = await this.footballMatchService.getTodayMatches();
+    console.log(`[FootballMatchController] Returning ${matches.length} matches to frontend`);
+    return matches;
+  }
 
   @Get('calendar')
   getCalendar(@Query('month') month?: string) { return this.footballMatchService.getCalendarData(month); }
