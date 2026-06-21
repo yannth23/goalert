@@ -207,6 +207,21 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
     timeZone: 'America/Sao_Paulo',
   });
 
+  // Abreviações para nomes longos
+  const ABBR: Record<string, string> = {
+    'Arábia Saudita': 'Ar. Saudita',
+    'Estados Unidos': 'EUA',
+    'Coreia do Sul': 'Coreia Sul',
+    'República Tcheca': 'Tchéquia',
+    'Bósnia e Herzegovina': 'Bósnia',
+    'Macedônia do Norte': 'Macedônia',
+    'Costa do Marfim': 'Costa Marfim',
+    'Trinidad e Tobago': 'Trinidad',
+    'Papua Nova Guiné': 'Papua NG',
+  };
+  const team1Display = ABBR[match.team1] ?? match.team1;
+  const team2Display = ABBR[match.team2] ?? match.team2;
+
   // Lógica para detectar se o jogo deveria estar "Ao Vivo" mesmo se o status do backend estiver NS
   // Se o jogo começou há menos de 120 minutos e ainda está como NS, tratamos como Ao Vivo no fuso local
   const diffMinutes = (now.getTime() - matchDate.getTime()) / (1000 * 60);
@@ -324,7 +339,7 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
             <div className="flex items-center gap-2 mb-1">
               <span className="text-[9px] bg-indigo-500 text-white px-1.5 py-0.5 rounded font-black uppercase tracking-tighter">AI Insight</span>
               <span className="text-[10px] text-indigo-300 font-bold italic">
-                {match.shortInsight || "Analisando padroes taticos..."}
+                {match.shortInsight || "Analisando padrões táticos..."}
               </span>
             </div>
             {match.attentionPoint && (
