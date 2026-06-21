@@ -163,6 +163,9 @@ export class StatisticsPredictorService {
     awayTactics.dominanceDescription = matchAnalysis.awayDesc;
     awayTactics.heatmapData = this.generateHeatmap(matchAnalysis.awayStyle);
 
+    // goalScenarios é match-level: armazenado em homeTactics como campo extra no JSON
+    (homeTactics as any).goalScenarios = matchAnalysis.goalScenarios;
+
     return {
       predictedGoalsHome: parseFloat(predictedGoalsHome.toFixed(1)),
       predictedGoalsAway: parseFloat(predictedGoalsAway.toFixed(1)),
@@ -171,8 +174,6 @@ export class StatisticsPredictorService {
       homeTactics,
       awayTactics,
       aiAnalysis: matchAnalysis.analysis,
-      // shortInsight: matchAnalysis.shortInsight,
-      // attentionPoint: matchAnalysis.shortInsight ?? 'Fique de olho nesse confronto',
     } as any;
   }
 
@@ -316,6 +317,7 @@ Responda APENAS o JSON:
     awayStyle: TacticalAnalysis['dominanceStyle'];
     awayDesc: string;
     analysis: string;
+    goalScenarios: string[];
   }> {
     // Pares de estilos contrastantes válidos — nunca iguais, nunca ambos "balanced"
     const CONTRAST_PAIRS: Array<[TacticalAnalysis['dominanceStyle'], TacticalAnalysis['dominanceStyle']]> = [
@@ -344,6 +346,11 @@ Responda APENAS o JSON:
         homeStyle: hs, homeDesc: descMap[hs],
         awayStyle: as, awayDesc: descMap[as],
         analysis: `${homeTeam} x ${awayTeam}: duelo tático equilibrado na Copa 2026.`,
+        goalScenarios: [
+          `Cruzamentos pela lateral explorando os espaços deixados pelo adversário`,
+          `Bolas paradas e escanteios disputados na área`,
+          `Transição rápida com finalização antes da defesa se reorganizar`,
+        ],
       };
     };
 
@@ -356,16 +363,16 @@ Responda APENAS o JSON:
             content: `Você é um analista tático de futebol de elite cobrindo a Copa do Mundo 2026.
 REGRAS ABSOLUTAS:
 1. "homeDominanceProb": NUNCA use 50. Diferença mínima de 8 pontos. Base: ranking FIFA, histórico, Copa 2026.
-2. "homeStyle" e "awayStyle": OBRIGATORIAMENTE diferentes entre si. PROIBIDO usar "balanced" em qualquer um dos dois. Escolha estilos que reflitam o confronto real — ex: um time joga posse, o outro contra-ataque; um pressiona, o outro se fecha.
-3. Estilos válidos APENAS: "possession", "counter", "pressing", "defensive". NUNCA "balanced".
-4. "homeDesc" e "awayDesc": descrição em português de até 60 caracteres explicando o estilo daquele time NESTE confronto específico.
-5. "analysis": insight de até 350 caracteres mencionando times, formações e como os estilos se opõem.`,
+2. "homeStyle" e "awayStyle": OBRIGATORIAMENTE diferentes entre si. PROIBIDO usar "balanced". Estilos válidos APENAS: "possession", "counter", "pressing", "defensive".
+3. "homeDesc" e "awayDesc": descrição em português de até 60 caracteres, específica para ESTE confronto.
+4. "analysis": resumo tático rico, específico, NÃO GENÉRICO — mencione os jogadores-chave, como as formações se encaixam e o ponto crítico do jogo. Mínimo 300 caracteres, máximo 600 caracteres.
+5. "goalScenarios": array com exatamente 4 formas ESPECÍFICAS e DISTINTAS de gol poderem sair neste jogo — baseadas nas características reais dos times. Varie entre: cabeçada em cruzamento, chute de fora da área, lateral, jogada individual, falta/escanteio, contra-ataque, pênalti. Cada item deve ser uma frase descritiva (20-80 chars), não apenas um rótulo.`,
           },
           {
             role: 'user',
-            content: `Copa do Mundo 2026: ${homeTeam} (${homeTactics.formation}, destaque: ${homeTactics.keyPlayer}, intensidade ${homeTactics.intensity}/100, xG médio: ${homeXG || 'N/A'}, passes progressivos: ${homeTactics.advancedStats?.passesProgressive}, eficiência de pressão: ${homeTactics.advancedStats?.pressingEfficiency}%, deep completions: ${homeTactics.advancedStats?.deepCompletions}) vs ${awayTeam} (${awayTactics.formation}, destaque: ${awayTactics.keyPlayer}, intensidade ${awayTactics.intensity}/100, xG médio: ${awayXG || 'N/A'}, passes progressivos: ${awayTactics.advancedStats?.passesProgressive}, eficiência de pressão: ${awayTactics.advancedStats?.pressingEfficiency}%, deep completions: ${awayTactics.advancedStats?.deepCompletions}).
+            content: `Copa do Mundo 2026: ${homeTeam} (${homeTactics.formation}, destaque: ${homeTactics.keyPlayer}, xG médio: ${homeXG || 'N/A'}) vs ${awayTeam} (${awayTactics.formation}, destaque: ${awayTactics.keyPlayer}, xG médio: ${awayXG || 'N/A'}).
 
-Analise o confronto tático, considerando os estilos de jogo, formações, jogadores-chave e as métricas avançadas (xG, passes progressivos, eficiência de pressão, deep completions). Descreva como os estilos se chocam e quais times podem ter vantagem. Inclua um "Ponto de Atenção" que destaque um duelo individual ou uma área crítica do campo. A análise deve ser detalhada, com no mínimo 200 caracteres e no máximo 500 caracteres.
+Analise o confronto tático real deste jogo. Descreva como os estilos se chocam com base nas formações e características conhecidas de cada seleção. O texto deve ser direto, preciso e revelar algo que não é óbvio — como um duelo específico de corredor, uma zona de pressão crítica, ou uma vulnerabilidade defensiva que pode ser explorada.
 
 Responda APENAS este JSON:
 {
@@ -374,7 +381,8 @@ Responda APENAS este JSON:
   "homeDesc": "string (até 60 chars)",
   "awayStyle": "possession|counter|pressing|defensive",
   "awayDesc": "string (até 60 chars)",
-  "analysis": "string (200-500 chars) - Análise tática detalhada, citando métricas avançadas e como os estilos se chocam."
+  "analysis": "string (300-600 chars) — resumo tático específico, rico, NÃO genérico",
+  "goalScenarios": ["string", "string", "string", "string"]
 }`,
           },
         ],
@@ -398,6 +406,17 @@ Responda APENAS este JSON:
       let hProb = Math.min(92, Math.max(8, Math.round(data.homeDominanceProb ?? 50)));
       if (Math.abs(hProb - 50) < 5) hProb = homeTactics.intensity >= awayTactics.intensity ? 57 : 43;
 
+      // Valida goalScenarios — garante array de strings
+      const rawScenarios = Array.isArray(data.goalScenarios) ? data.goalScenarios : [];
+      const goalScenarios: string[] = rawScenarios
+        .filter((s: any) => typeof s === 'string' && s.trim().length > 0)
+        .slice(0, 5);
+
+      // Se a IA não gerou, usa fallback baseado nos estilos
+      if (goalScenarios.length === 0) {
+        goalScenarios.push(...this.fallbackGoalScenarios(homeTeam, awayTeam, homeStyle, awayStyle));
+      }
+
       return {
         homeDominanceProb: hProb,
         homeStyle: homeStyle as TacticalAnalysis['dominanceStyle'],
@@ -405,10 +424,43 @@ Responda APENAS este JSON:
         awayStyle: awayStyle as TacticalAnalysis['dominanceStyle'],
         awayDesc: data.awayDesc || this.defaultDesc(awayStyle),
         analysis: data.analysis || `${homeTeam} vs ${awayTeam}: estilos contrastantes na Copa 2026.`,
+        goalScenarios,
       };
     } catch {
       return fallbackPair();
     }
+  }
+
+  private fallbackGoalScenarios(
+    homeTeam: string,
+    awayTeam: string,
+    homeStyle: string,
+    awayStyle: string,
+  ): string[] {
+    const scenarios: Record<string, string[]> = {
+      possession: [
+        `${homeTeam} troca passes até abrir espaço e finaliza de dentro da área`,
+        `Cruzamento pela esquerda e cabeçada do centroavante`,
+      ],
+      counter: [
+        `${awayTeam} rouba a bola no meio e avança em velocidade para o gol`,
+        `Passe em profundidade nas costas da defesa alta`,
+      ],
+      pressing: [
+        `Pressing alto força erro do goleiro ou defensor no campo adversário`,
+        `Segunda bola após pressão vira finalização de fora da área`,
+      ],
+      defensive: [
+        `Bola parada — escanteio ou falta lateral batida na área`,
+        `Contra-ataque rápido com dois toques após roubo de bola`,
+      ],
+    };
+
+    return [
+      ...(scenarios[homeStyle] ?? []),
+      ...(scenarios[awayStyle] ?? []),
+      `Chute de fora da área surpreende o goleiro desposicionado`,
+    ].slice(0, 4);
   }
 
   /**
