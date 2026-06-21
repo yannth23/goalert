@@ -64,34 +64,6 @@ const CONTRAST: Record<string, string> = {
   defensive:  'pressing',
 };
 
-const STYLE_ICON: Record<string, string> = {
-  pressing:   '🔥',
-  counter:    '⚡',
-  possession: '🔵',
-  defensive:  '🛡️',
-};
-
-const STYLE_LABEL_MAP: Record<string, string> = {
-  pressing:   'Pressão',
-  counter:    'Contra',
-  possession: 'Posse',
-  defensive:  'Defensivo',
-};
-
-const STYLE_BG: Record<string, string> = {
-  pressing:   'bg-red-950/60 border-red-900/50',
-  counter:    'bg-yellow-950/60 border-yellow-900/50',
-  possession: 'bg-blue-950/60 border-blue-900/50',
-  defensive:  'bg-slate-800/60 border-slate-700/50',
-};
-
-const STYLE_COLOR: Record<string, string> = {
-  pressing:   'text-red-400',
-  counter:    'text-yellow-400',
-  possession: 'text-blue-400',
-  defensive:  'text-slate-400',
-};
-
 function normalizeStyle(style: string | undefined): 'pressing' | 'counter' | 'possession' | 'defensive' {
   if (!style || !VALID_STYLES.has(style)) return 'pressing';
   return style as 'pressing' | 'counter' | 'possession' | 'defensive';
