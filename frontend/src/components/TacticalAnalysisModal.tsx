@@ -18,6 +18,133 @@ const DOMINANCE_CONFIG: Record<string, {
   defensive:  { label: 'Bloco Defensivo',     icon: '🛡️', color: 'text-slate-400',  bg: 'bg-slate-800/40',  border: 'border-slate-700/50'  },
 };
 
+const GOAL_TYPE_ICON: Record<string, string> = {
+  cabeça:     '↗️',
+  cabeçada:   '↗️',
+  lateral:    '↩️',
+  cruzamento: '↩️',
+  fora:       '💥',
+  falta:      '🎯',
+  pênalti:    '🎯',
+  contra:     '🔄',
+  individual: '⭐',
+  escanteio:  '🚩',
+  pressão:    '🔥',
+  pressing:   '🔥',
+  default:    '⚽',
+};
+
+function getGoalIcon(scenario: string): string {
+  const lower = scenario.toLowerCase();
+  for (const [key, icon] of Object.entries(GOAL_TYPE_ICON)) {
+    if (key !== 'default' && lower.includes(key)) return icon;
+  }
+  return GOAL_TYPE_ICON.default;
+}
+
+// ── Campo unificado com zonas de ambos os times ───────────────────────────────
+function ContrastField({
+  homeData,
+  awayData,
+  homeName,
+  awayName,
+}: {
+  homeData: { x: number; y: number; value: number }[];
+  awayData: { x: number; y: number; value: number }[];
+  homeName: string;
+  awayName: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-700/50 overflow-hidden">
+      {/* Legenda */}
+      <div className="flex items-center justify-between px-4 py-2 bg-slate-800/60 border-b border-slate-700/40">
+        <span className="flex items-center gap-1.5 text-[11px] font-bold text-amber-400">
+          <span className="w-3 h-3 rounded-full bg-amber-400/80 shrink-0" />
+          {homeName}
+        </span>
+        <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Zonas de Ação</span>
+        <span className="flex items-center gap-1.5 text-[11px] font-bold text-indigo-400">
+          {awayName}
+          <span className="w-3 h-3 rounded-full bg-indigo-400/80 shrink-0" />
+        </span>
+      </div>
+
+      {/* Campo */}
+      <div className="relative bg-[#0a1a0f]" style={{ paddingBottom: '62%' }}>
+        <div className="absolute inset-0">
+
+          {/* Linhas do campo */}
+          <div className="absolute inset-0 m-3 border-2 border-white/20 rounded-sm pointer-events-none">
+            {/* Linha do meio */}
+            <div className="absolute left-1/2 top-0 bottom-0 w-[1px] bg-white/15" />
+            {/* Círculo central */}
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[18%] h-[32%] rounded-full border border-white/15" />
+            {/* Área grande esquerda */}
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[16%] h-[55%] border-r-2 border-y-2 border-white/20" />
+            {/* Área pequena esquerda */}
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[6%] h-[28%] border-r border-y border-white/15" />
+            {/* Área grande direita */}
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[16%] h-[55%] border-l-2 border-y-2 border-white/20" />
+            {/* Área pequena direita */}
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[6%] h-[28%] border-l border-y border-white/15" />
+          </div>
+
+          {/* Zonas do time da casa — AMARELO/ÂMBAR */}
+          {homeData.map((point, i) => (
+            <div
+              key={`home-${i}`}
+              className="absolute rounded-full blur-lg"
+              style={{
+                left: `${point.x}%`,
+                top: `${point.y}%`,
+                width: '72px',
+                height: '72px',
+                transform: 'translate(-50%, -50%)',
+                background: `radial-gradient(circle, rgba(251,191,36,${Math.min(0.85, point.value * 1.1)}) 0%, rgba(251,191,36,0) 70%)`,
+              }}
+            />
+          ))}
+
+          {/* Zonas do time visitante — AZUL/ÍNDIGO */}
+          {awayData.map((point, i) => (
+            <div
+              key={`away-${i}`}
+              className="absolute rounded-full blur-lg"
+              style={{
+                left: `${point.x}%`,
+                top: `${point.y}%`,
+                width: '72px',
+                height: '72px',
+                transform: 'translate(-50%, -50%)',
+                background: `radial-gradient(circle, rgba(99,102,241,${Math.min(0.85, point.value * 1.1)}) 0%, rgba(99,102,241,0) 70%)`,
+              }}
+            />
+          ))}
+
+          {/* Rótulos de gol nas traves */}
+          <div className="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] font-black text-white/30 rotate-90 tracking-widest">GOL</div>
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-black text-white/30 -rotate-90 tracking-widest">GOL</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Card de Sugestão ──────────────────────────────────────────────────────────
+function SuggestionCard({ index, text }: { index: number; text: string }) {
+  const icon = getGoalIcon(text);
+  return (
+    <div className="flex items-start gap-3 bg-slate-800/40 border border-slate-700/40 rounded-xl px-4 py-3 hover:border-emerald-800/60 transition-colors">
+      <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-900/50 border border-emerald-800/60 shrink-0 mt-0.5">
+        <span className="text-sm leading-none">{icon}</span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <span className="text-[10px] text-emerald-600 font-black uppercase tracking-widest block mb-0.5">Cena #{index + 1}</span>
+        <p className="text-slate-300 text-sm leading-snug">{text}</p>
+      </div>
+    </div>
+  );
+}
 
 export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalProps) {
   const [h2h, setH2h] = useState<H2HData | null>(null);
@@ -40,7 +167,11 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
       dominanceStyle: 'pressing' as const,
       dominanceDescription: 'Pressão alta e transições rápidas',
       gameDominanceProb: 72,
-      heatmapData: [{ x: 50, y: 30, value: 0.8 }],
+      heatmapData: [
+        { x: 70, y: 30, value: 0.9 }, { x: 80, y: 50, value: 0.7 },
+        { x: 60, y: 70, value: 0.6 }, { x: 85, y: 20, value: 0.8 },
+        { x: 55, y: 45, value: 0.5 },
+      ],
     },
     away: {
       formation: '4-5-1',
@@ -50,12 +181,24 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
       dominanceStyle: 'defensive' as const,
       dominanceDescription: 'Bloco defensivo profundo buscando espaços',
       gameDominanceProb: 28,
-      heatmapData: [{ x: 30, y: 70, value: 0.5 }],
+      heatmapData: [
+        { x: 30, y: 50, value: 0.8 }, { x: 20, y: 30, value: 0.6 },
+        { x: 40, y: 70, value: 0.5 }, { x: 15, y: 60, value: 0.7 },
+        { x: 50, y: 40, value: 0.4 },
+      ],
     },
   };
 
+  const homeDomProb = tactics.home.gameDominanceProb ?? 50;
+  const awayDomProb = tactics.away.gameDominanceProb ?? 50;
+  const dominantTeam = homeDomProb >= awayDomProb ? match.team1 : match.team2;
+  const dominantStyle = homeDomProb >= awayDomProb ? tactics.home.dominanceStyle : tactics.away.dominanceStyle;
+  const dominantCfg = DOMINANCE_CONFIG[dominantStyle] ?? DOMINANCE_CONFIG['pressing'];
+
+  const goalScenarios: string[] = (tactics.home as any).goalScenarios ?? [];
+
   const renderDominanceBadge = (data: TacticalAnalysis) => {
-    const cfg = DOMINANCE_CONFIG[data.dominanceStyle] ?? DOMINANCE_CONFIG['balanced'];
+    const cfg = DOMINANCE_CONFIG[data.dominanceStyle] ?? DOMINANCE_CONFIG['pressing'];
     return (
       <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${cfg.bg} ${cfg.border}`}>
         <span className="text-base leading-none">{cfg.icon}</span>
@@ -67,38 +210,24 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
     );
   };
 
-  const renderTactics = (team: string, data: TacticalAnalysis) => (
-    <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700/50">
-      <div className="flex justify-between items-center mb-5">
-        <h4 className="text-xl font-black text-white">{team}</h4>
+  const renderLineup = (team: string, data: TacticalAnalysis) => (
+    <div className="bg-slate-800/50 rounded-2xl p-5 border border-slate-700/50">
+      <div className="flex justify-between items-center mb-4">
+        <h4 className="text-base font-black text-white">{team}</h4>
         <span className="bg-indigo-600 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-tighter">
           {data.formation}
         </span>
       </div>
 
-      {/* Estilo de Jogo */}
-      <div className="mb-5">
+      {/* Estilo */}
+      <div className="mb-4">
         <span className="block text-[10px] uppercase text-slate-500 font-bold mb-2 tracking-widest">Estilo de Jogo</span>
         {renderDominanceBadge(data)}
       </div>
 
-      {/* Intensidade */}
-      <div className="mb-5">
-        <div className="flex justify-between items-center mb-1.5">
-          <span className="text-[10px] uppercase text-slate-500 font-bold tracking-widest">Intensidade</span>
-          <span className="text-sm font-black text-orange-400">{data.intensity.toFixed(0)}%</span>
-        </div>
-        <div className="h-2 bg-slate-900 rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-orange-600 to-orange-400 transition-all duration-700"
-            style={{ width: `${data.intensity}%` }}
-          />
-        </div>
-      </div>
-
       {/* Escalação */}
-      <div className="mb-5">
-        <h5 className="text-[10px] uppercase text-slate-500 font-bold mb-3 tracking-widest">Provável Escalação — Copa do Mundo 2026</h5>
+      <div>
+        <h5 className="text-[10px] uppercase text-slate-500 font-bold mb-2 tracking-widest">Provável Escalação</h5>
         <div className="space-y-1">
           {data.lineup.map((player, i) => (
             <div key={i} className="flex items-center gap-3 bg-slate-900/30 p-2 rounded-lg border border-slate-800/50">
@@ -112,40 +241,13 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
           ))}
         </div>
       </div>
-
-      {/* Mapa de Calor */}
-      <div>
-        <h5 className="text-[10px] uppercase text-slate-500 font-bold mb-3 tracking-widest">Zonas de Ação</h5>
-        <div className="relative aspect-[3/2] bg-[#0a1a0f] rounded-xl border-2 border-emerald-700/60 overflow-hidden shadow-inner">
-          <div className="absolute inset-0 border-2 border-white/20 m-2 pointer-events-none">
-            <div className="absolute left-1/2 top-0 bottom-0 w-[1px] bg-white/10" />
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full border border-white/20" />
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-16 h-32 border-r border-y border-white/20" />
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-6 h-16 border-r border-y border-white/20" />
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-16 h-32 border-l border-y border-white/20" />
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-16 border-l border-y border-white/20" />
-          </div>
-          {data.heatmapData.map((point, i) => (
-            <div
-              key={i}
-              className="absolute rounded-full blur-md opacity-95"
-              style={{
-                left: `${point.x}%`, top: `${point.y}%`,
-                width: '60px', height: '60px',
-                transform: 'translate(-50%, -50%)',
-                background: `radial-gradient(circle, rgba(251,191,36,${point.value}) 0%, rgba(251,191,36,0) 70%)`,
-              }}
-            />
-          ))}
-        </div>
-      </div>
     </div>
   );
 
   const renderH2H = () => {
     if (h2hLoading) {
       return (
-        <div className="mt-8 bg-slate-800/30 border border-slate-700/40 rounded-2xl p-6 text-center">
+        <div className="bg-slate-800/30 border border-slate-700/40 rounded-2xl p-6 text-center">
           <div className="flex items-center justify-center gap-2 text-slate-500">
             <div className="w-4 h-4 border-2 border-slate-600 border-t-indigo-500 rounded-full animate-spin" />
             <span className="text-sm">Buscando confronto histórico...</span>
@@ -155,19 +257,14 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
     }
     if (!h2h || h2h.totalMatches === 0) {
       return (
-        <div className="mt-8 bg-slate-800/30 border border-slate-700/40 rounded-2xl p-5 text-center">
+        <div className="bg-slate-800/30 border border-slate-700/40 rounded-2xl p-5 text-center">
           <p className="text-slate-500 text-sm">Nenhum confronto direto encontrado no histórico.</p>
         </div>
       );
     }
 
-    const total = h2h.homeWins + h2h.draws + h2h.awayWins;
-    const homeWinPct = total > 0 ? Math.round((h2h.homeWins / total) * 100) : 0;
-    const drawPct    = total > 0 ? Math.round((h2h.draws    / total) * 100) : 0;
-    const awayWinPct = 100 - homeWinPct - drawPct;
-
     return (
-      <div className="mt-8 bg-slate-800/30 border border-slate-700/40 rounded-2xl p-6">
+      <div className="bg-slate-800/30 border border-slate-700/40 rounded-2xl p-6">
         <h4 className="text-[10px] uppercase text-slate-500 font-bold tracking-widest mb-5 text-center">
           Confronto Histórico — {h2h.totalMatches} {h2h.totalMatches === 1 ? 'jogo' : 'jogos'}
         </h4>
@@ -187,14 +284,9 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
             <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">Vitórias</p>
           </div>
         </div>
-        <div className="flex rounded-full overflow-hidden h-2.5 mb-3">
-          {homeWinPct > 0 && <div className="bg-green-500" style={{ width: `${homeWinPct}%` }} />}
-          {drawPct    > 0 && <div className="bg-slate-500" style={{ width: `${drawPct}%`    }} />}
-          {awayWinPct > 0 && <div className="bg-blue-500"  style={{ width: `${awayWinPct}%` }} />}
-        </div>
-        <div className="flex justify-between text-xs text-slate-500 mb-5">
-          <span>{h2h.totalGoalsHome} gols</span>
-          <span>{h2h.totalGoalsAway} gols</span>
+        <div className="flex justify-between text-xs text-slate-500 mb-4">
+          <span>{h2h.totalGoalsHome} gols marcados</span>
+          <span>{h2h.totalGoalsAway} gols marcados</span>
         </div>
         {h2h.recentMatches.length > 0 && (
           <div>
@@ -243,53 +335,80 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
 
         <div className="p-4 sm:p-8 space-y-5 sm:space-y-6">
 
-          {/* 1. Provável dominante */}
-          {(() => {
-            const p1 = tactics.home.gameDominanceProb ?? 50;
-            const p2 = tactics.away.gameDominanceProb ?? 50;
-            const dominant = p1 >= p2 ? match.team1 : match.team2;
-            const style = p1 >= p2 ? tactics.home.dominanceStyle : tactics.away.dominanceStyle;
-            const cfg = DOMINANCE_CONFIG[style] ?? DOMINANCE_CONFIG['balanced'];
-            return (
-              <div className="flex items-center gap-2 bg-slate-800/30 border border-slate-700/40 rounded-xl px-4 py-3">
-                <span className="text-[10px] uppercase text-slate-500 font-bold tracking-widest shrink-0">Provável dominante:</span>
-                <span className="text-base leading-none">{cfg.icon}</span>
-                <span className="text-sm font-black text-white">{dominant}</span>
-              </div>
-            );
-          })()}
+          {/* 1. Provável dominante da posse */}
+          <div className={`flex items-center gap-3 rounded-2xl border px-5 py-4 ${dominantCfg.bg} ${dominantCfg.border}`}>
+            <span className="text-2xl">{dominantCfg.icon}</span>
+            <div>
+              <p className="text-[10px] uppercase text-slate-500 font-bold tracking-widest">Provável dominante da posse</p>
+              <p className={`text-lg font-black ${dominantCfg.color}`}>{dominantTeam}</p>
+            </div>
+          </div>
 
           {/* 2. Estilos lado a lado */}
           <div className="bg-slate-800/20 border border-slate-700/30 rounded-2xl p-4">
             <p className="text-[10px] uppercase text-slate-500 font-bold tracking-widest mb-3 text-center">Como cada time vai jogar</p>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <p className="text-white font-black text-xs mb-2 text-center">{match.team1}</p>
+                <p className="text-amber-400 font-black text-xs mb-2 text-center">{match.team1}</p>
                 {renderDominanceBadge(tactics.home)}
               </div>
               <div>
-                <p className="text-white font-black text-xs mb-2 text-center">{match.team2}</p>
+                <p className="text-indigo-400 font-black text-xs mb-2 text-center">{match.team2}</p>
                 {renderDominanceBadge(tactics.away)}
               </div>
             </div>
           </div>
 
-          {/* 3. Insight da IA — específico para este jogo */}
+          {/* 3. Campo unificado contrastado */}
+          <div>
+            <p className="text-[10px] uppercase text-slate-500 font-bold tracking-widest mb-3">🗺️ Zonas de Ação — Campo Contrastado</p>
+            <ContrastField
+              homeData={tactics.home.heatmapData}
+              awayData={tactics.away.heatmapData}
+              homeName={match.team1}
+              awayName={match.team2}
+            />
+          </div>
+
+          {/* 4. Resumo tático */}
           <div className="bg-indigo-950/30 border border-indigo-900/50 rounded-2xl p-5">
-            <p className="text-[10px] uppercase text-indigo-400 font-bold tracking-widest mb-2">Insight Tático da IA — {match.team1} vs {match.team2}</p>
-            <p className="text-slate-300 text-sm leading-relaxed italic">
-              {match.aiAnalysis || `O confronto entre ${match.team1} (${tactics.home.formation}) e ${match.team2} (${tactics.away.formation}) será definido pelo duelo entre os estilos opostos de jogo de cada seleção na Copa do Mundo 2026.`}
+            <p className="text-[10px] uppercase text-indigo-400 font-bold tracking-widest mb-2">
+              🧠 Resumo Tático — {match.team1} vs {match.team2}
+            </p>
+            <p className="text-slate-300 text-sm leading-relaxed">
+              {match.aiAnalysis || `O confronto entre ${match.team1} (${tactics.home.formation}) e ${match.team2} (${tactics.away.formation}) será decidido pelo choque de estilos opostos na Copa do Mundo 2026.`}
             </p>
           </div>
 
-          {/* 4. Táticas individuais */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {renderTactics(match.team1, tactics.home)}
-            {renderTactics(match.team2, tactics.away)}
+          {/* 5. Sugestões — como os gols podem sair */}
+          {goalScenarios.length > 0 && (
+            <div>
+              <p className="text-[10px] uppercase text-slate-500 font-bold tracking-widest mb-3">
+                💡 Sugestões — Possíveis Cenas de Gol
+              </p>
+              <div className="space-y-2">
+                {goalScenarios.map((scenario, i) => (
+                  <SuggestionCard key={i} index={i} text={scenario} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 6. Escalações individuais */}
+          <div>
+            <p className="text-[10px] uppercase text-slate-500 font-bold tracking-widest mb-3">👥 Escalações Prováveis</p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              {renderLineup(match.team1, tactics.home)}
+              {renderLineup(match.team2, tactics.away)}
+            </div>
           </div>
 
-          {/* 5. Confronto Histórico */}
-          {renderH2H()}
+          {/* 7. Confronto Histórico */}
+          <div>
+            <p className="text-[10px] uppercase text-slate-500 font-bold tracking-widest mb-3">📊 Histórico de Confrontos</p>
+            {renderH2H()}
+          </div>
+
         </div>
       </div>
     </div>
