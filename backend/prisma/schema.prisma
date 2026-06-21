@@ -64,8 +64,6 @@ model FootballMatch {
   homeTactics        Json?
   awayTactics        Json?
   aiAnalysis         String?
-  shortInsight       String?
-  attentionPoint     String?
 
   @@index([date])
   @@index([championship])
