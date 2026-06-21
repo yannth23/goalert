@@ -27,27 +27,25 @@ const FLAGS: Record<string, string> = {
 };
 
 const STYLE_ICON: Record<string, string> = {
-  'Vertical': '📐', 'Posicional': '♟️', 'Contra-ataque': '⚡', 'Retranca': '🛡️', 'Equilibrado': '⚖️'
+  pressing: '🔥', counter: '⚡', possession: '🔵', defensive: '🛡️'
 };
 
 const STYLE_LABEL: Record<string, string> = {
-  'Vertical': 'Vertical', 'Posicional': 'Posicional', 'Contra-ataque': 'Transição', 'Retranca': 'Defensivo', 'Equilibrado': 'Equilibrado'
+  pressing: 'Pressão', counter: 'Contra-ataque', possession: 'Posse', defensive: 'Defensivo'
 };
 
 const STYLE_BG: Record<string, string> = {
-  'Vertical': 'bg-blue-950/20 border-blue-900/30',
-  'Posicional': 'bg-emerald-950/20 border-emerald-900/30',
-  'Contra-ataque': 'bg-yellow-950/20 border-yellow-900/30',
-  'Retranca': 'bg-slate-950/20 border-slate-900/30',
-  'Equilibrado': 'bg-indigo-950/20 border-indigo-900/30'
+  pressing: 'bg-orange-950/30 border-orange-900/40',
+  counter: 'bg-yellow-950/30 border-yellow-900/40',
+  possession: 'bg-blue-950/30 border-blue-900/40',
+  defensive: 'bg-slate-800/40 border-slate-700/50'
 };
 
 const STYLE_COLOR: Record<string, string> = {
-  'Vertical': 'text-blue-400',
-  'Posicional': 'text-emerald-400',
-  'Contra-ataque': 'text-yellow-400',
-  'Retranca': 'text-slate-400',
-  'Equilibrado': 'text-indigo-400'
+  pressing: 'text-orange-400',
+  counter: 'text-yellow-400',
+  possession: 'text-blue-400',
+  defensive: 'text-slate-300'
 };
 
 interface MatchCardProps {
