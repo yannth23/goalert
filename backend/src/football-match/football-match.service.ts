@@ -194,4 +194,59 @@ export class FootballMatchService {
 
   async getStandings() { return this.footballApiService.getStandings(); }
   async getTopScorers() { return this.footballApiService.getTopScorers(); }
+
+  async getTeamReport(teamName: string) {
+    // 1. Verifica se já existe um relatório recente (menos de 6 horas)
+    const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
+    const existing = await this.prisma.teamReport.findUnique({
+      where: { teamName },
+    });
+
+    if (existing && existing.updatedAt > sixHoursAgo) {
+      return existing;
+    }
+
+    // 2. Se não existe ou está velho, gera um novo usando a IA para pesquisar (simulado via prompt rico)
+    // Em um cenário real com API de busca, aqui faríamos a chamada ao Google/Bing
+    const openai = new (require('openai'))({
+      apiKey: process.env.GROQ_API_KEY,
+      baseURL: 'https://api.groq.com/openai/v1',
+    });
+
+    const prompt = `
+      Você é um analista de inteligência esportiva. Gere um relatório detalhado sobre a seleção de futebol do(a) ${teamName} para a Copa do Mundo 2026.
+      Pesquise e considere (simule conhecimento atualizado):
+      1. Notícias recentes de blogs e portais (lesões, convocações, clima no vestiário).
+      2. Análise tática da imprensa local e internacional.
+      3. Jogadores em destaque no momento.
+      4. Estilo de jogo e variações táticas recentes.
+
+      Responda em formato JSON:
+      {
+        "report": "Texto longo em markdown com a análise completa (mínimo 300 palavras)",
+        "news": [
+          {"title": "Título da notícia", "source": "Nome do site", "summary": "Resumo curto"}
+        ]
+      }
+    `;
+
+    try {
+      const response = await openai.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: prompt }],
+        response_format: { type: 'json_object' },
+      });
+
+      const data = JSON.parse(response.choices[0].message.content);
+      
+      return this.prisma.teamReport.upsert({
+        where: { teamName },
+        update: { report: data.report, news: data.news },
+        create: { teamName, report: data.report, news: data.news },
+      });
+    } catch (err) {
+      this.logger.error(`Failed to generate team report for ${teamName}: ${err.message}`);
+      return existing || { teamName, report: 'Relatório temporariamente indisponível.', news: [] };
+    }
+  }
 }

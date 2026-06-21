@@ -75,6 +75,8 @@ export const api = {
 
   getSystemStatus: () => request<SystemStatus>('/matches/system-status'),
 
+  getTeamReport: (name: string) => request<{ teamName: string; report: string; news: any[] }>(`/matches/team-report?name=${encodeURIComponent(name)}`),
+
   forceSync: () => request<{ synced: number; live: number; errors: number; source: string }>('/matches/sync', { method: 'POST' }),
 
   getFavoriteTeams: (userId: string) => request<{ id: string; teamName: string }[]>(`/users/${userId}/teams`),

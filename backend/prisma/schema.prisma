@@ -36,6 +36,14 @@ model FavoriteTeam {
   user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model TeamReport {
+  id        String   @id @default(cuid())
+  teamName  String   @unique
+  report    String
+  news      Json?
+  updatedAt DateTime @updatedAt
+}
+
 model UserPreference {
   id                           String   @id @default(cuid())
   userId                       String   @unique

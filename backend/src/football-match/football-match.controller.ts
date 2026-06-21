@@ -36,6 +36,11 @@ export class FootballMatchController {
     return this.footballMatchService.getHeadToHead(team1, team2);
   }
 
+  @Get('team-report')
+  getTeamReport(@Query('name') name: string) {
+    return this.footballMatchService.getTeamReport(name);
+  }
+
   /** Admin-only: system health dashboard data. Requires JWT. */
   @Get('system-status')
   @UseGuards(JwtAuthGuard)

@@ -1,220 +1,129 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
-import { api } from '@/lib/api';
-import { TeamReport } from '@/types';
+import { useEffect, useState, use } from 'react';
 import Link from 'next/link';
+import ReactMarkdown from 'react-markdown';
+import { api } from '@/lib/api';
+import { GoalAlertLogo } from '@/components/GoalAlertLogo';
+import { Loading } from '@/components/Loading';
+import { EmptyState } from '@/components/EmptyState';
+import { MatchCard } from '@/components/MatchCard';
+import type { FootballMatch } from '@/types';
 
 interface PageProps {
   params: Promise<{ name: string }>;
 }
 
-export default function SelectionReportPage({ params }: PageProps) {
-  const { name } = use(params);
-  const [report, setReport] = useState<TeamReport | null>(null);
+export default function SelecaoPage({ params }: PageProps) {
+  const { name: rawName } = use(params);
+  const name = decodeURIComponent(rawName);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [matches, setMatches] = useState<FootballMatch[]>([]);
+  const [report, setReport] = useState<any>(null);
 
   useEffect(() => {
-    const fetchReport = async () => {
+    async function loadData() {
       try {
-        setLoading(true);
-        setError(null);
-        const decodedName = decodeURIComponent(name);
-        const data = await api.getTeamReport(decodedName);
-        setReport(data);
-      } catch (err: any) {
-        setError(err.message || 'Erro ao carregar relatório');
+        const [matchData, reportData] = await Promise.all([
+          api.getTodayMatches(),
+          api.getTeamReport(name)
+        ]);
+        
+        setMatches(matchData.filter(m => m.team1 === name || m.team2 === name));
+        setReport(reportData);
+      } catch (err) {
+        console.error(err);
       } finally {
         setLoading(false);
       }
-    };
-
-    fetchReport();
+    }
+    loadData();
   }, [name]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-white text-lg">Carregando relatório de {decodeURIComponent(name)}...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !report) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800">
-        <div className="max-w-6xl mx-auto px-4 py-12">
-          <Link href="/" className="text-blue-400 hover:text-blue-300 mb-8 inline-block">
-            ← Voltar
-          </Link>
-          <div className="bg-red-900/30 border border-red-700 rounded-lg p-6 text-red-100">
-            <h2 className="text-2xl font-bold mb-2">Erro ao Carregar Relatório</h2>
-            <p>{error || 'Não foi possível carregar os dados da seleção'}</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const { profile, statistics, recentMatches, webInsights, aiAnalysis } = report;
+  if (loading) return <main className="min-h-screen bg-slate-950 flex items-center justify-center"><Loading /></main>;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800">
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <Link href="/" className="text-blue-400 hover:text-blue-300 mb-4 inline-block">
-            ← Voltar
+    <main className="min-h-screen bg-slate-950 text-white pb-12">
+      {/* Navbar */}
+      <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
+        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+          <Link href="/dashboard" className="flex items-center gap-2 group">
+            <GoalAlertLogo size={30} />
+            <span className="text-yellow-400 font-black text-xl tracking-tight">GOALALERT</span>
           </Link>
-          <h1 className="text-5xl font-bold text-white mb-2">{report.teamName}</h1>
-          <p className="text-slate-400">
-            Última atualização: {new Date(report.lastUpdated).toLocaleString('pt-BR')}
-          </p>
+          <Link href="/dashboard" className="text-sm text-slate-400 hover:text-white transition">Voltar ao Início</Link>
         </div>
+      </header>
 
-        {/* Perfil Tático */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-6">
-            <h2 className="text-2xl font-bold text-white mb-4">Perfil Tático</h2>
-            <div className="space-y-3">
-              <div>
-                <p className="text-slate-400 text-sm">Formação</p>
-                <p className="text-white text-xl font-semibold">{profile.formation}</p>
-              </div>
-              <div>
-                <p className="text-slate-400 text-sm">Jogador Estrela</p>
-                <p className="text-white text-lg">{profile.keyPlayer}</p>
-              </div>
-              <div>
-                <p className="text-slate-400 text-sm">Intensidade</p>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 bg-slate-700 rounded-full h-2">
-                    <div
-                      className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full"
-                      style={{ width: `${profile.intensity}%` }}
-                    ></div>
-                  </div>
-                  <p className="text-white font-semibold">{profile.intensity}/100</p>
-                </div>
-              </div>
-              <div>
-                <p className="text-slate-400 text-sm">Estilo de Domínio</p>
-                <div className="flex gap-2 mt-2">
-                  <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-semibold capitalize">
-                    {profile.dominanceStyle}
-                  </span>
-                </div>
-              </div>
-              <div>
-                <p className="text-slate-400 text-sm">Descrição</p>
-                <p className="text-white italic">{profile.description}</p>
-              </div>
+      <div className="max-w-5xl mx-auto px-4 py-8">
+        {/* Header da Seleção */}
+        <div className="bg-gradient-to-br from-indigo-900/40 to-slate-900 border border-indigo-500/20 rounded-3xl p-8 mb-8">
+          <div className="flex flex-col md:flex-row items-center gap-6">
+            <div className="w-24 h-24 bg-slate-800 rounded-full flex items-center justify-center text-5xl shadow-2xl border-4 border-slate-700">
+              ⚽
             </div>
-          </div>
-
-          {/* Estatísticas */}
-          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-6">
-            <h2 className="text-2xl font-bold text-white mb-4">Estatísticas</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-slate-700/50 rounded p-3">
-                <p className="text-slate-400 text-xs">Jogos</p>
-                <p className="text-white text-2xl font-bold">{statistics.matchesPlayed}</p>
-              </div>
-              <div className="bg-slate-700/50 rounded p-3">
-                <p className="text-slate-400 text-xs">Vitórias</p>
-                <p className="text-green-400 text-2xl font-bold">{statistics.wins}</p>
-              </div>
-              <div className="bg-slate-700/50 rounded p-3">
-                <p className="text-slate-400 text-xs">Gols Marcados</p>
-                <p className="text-blue-400 text-2xl font-bold">{statistics.goalsFor}</p>
-              </div>
-              <div className="bg-slate-700/50 rounded p-3">
-                <p className="text-slate-400 text-xs">Gols Sofridos</p>
-                <p className="text-red-400 text-2xl font-bold">{statistics.goalsAgainst}</p>
-              </div>
-              <div className="bg-slate-700/50 rounded p-3">
-                <p className="text-slate-400 text-xs">Saldo</p>
-                <p className={`text-2xl font-bold ${statistics.goalDifference >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {statistics.goalDifference > 0 ? '+' : ''}{statistics.goalDifference}
-                </p>
-              </div>
-              <div className="bg-slate-700/50 rounded p-3">
-                <p className="text-slate-400 text-xs">Média de Gols</p>
-                <p className="text-white text-2xl font-bold">{statistics.averageGoalsPerMatch.toFixed(1)}</p>
-              </div>
+            <div className="text-center md:text-left">
+              <h1 className="text-4xl md:text-5xl font-black tracking-tighter mb-2">{name.toUpperCase()}</h1>
+              <p className="text-indigo-400 font-bold uppercase tracking-widest text-sm">Relatório de Inteligência Copa 2026</p>
             </div>
           </div>
         </div>
 
-        {/* Análise de IA */}
-        <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-6 mb-8">
-          <h2 className="text-2xl font-bold text-white mb-4">Análise Tática Profunda</h2>
-          <p className="text-slate-300 leading-relaxed">{aiAnalysis}</p>
-        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Relatório Principal (Web + IA) */}
+          <div className="lg:col-span-2 space-y-8">
+            <section className="bg-slate-900 border border-slate-800 rounded-2xl p-8">
+              <h2 className="text-xl font-black mb-6 flex items-center gap-2">
+                <span className="text-indigo-500">📊</span> Dossiê Tático & Notícias da Web
+              </h2>
+              <div className="prose prose-invert prose-indigo max-w-none">
+                <ReactMarkdown>{report?.report || "Nenhuma análise disponível no momento."}</ReactMarkdown>
+              </div>
+            </section>
 
-        {/* Partidas Recentes */}
-        <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-6 mb-8">
-          <h2 className="text-2xl font-bold text-white mb-4">Últimos Jogos</h2>
-          <div className="space-y-3">
-            {recentMatches.length > 0 ? (
-              recentMatches.map((match, idx) => (
-                <div key={idx} className="bg-slate-700/50 rounded p-4 flex justify-between items-center">
-                  <div className="flex-1">
-                    <p className="text-white font-semibold">
-                      {report.teamName} {match.score} {match.opponent}
-                    </p>
-                    <p className="text-slate-400 text-sm">{match.date}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                      match.result === 'Vitória' ? 'bg-green-600 text-white' :
-                      match.result === 'Derrota' ? 'bg-red-600 text-white' :
-                      'bg-yellow-600 text-white'
-                    }`}>
-                      {match.result}
-                    </span>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-slate-400">Nenhuma partida registrada</p>
-            )}
-          </div>
-        </div>
-
-        {/* Insights Web */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-6">
-            <h2 className="text-2xl font-bold text-white mb-4">Notícias Recentes</h2>
-            <ul className="space-y-2">
-              {webInsights.recentNews.map((news, idx) => (
-                <li key={idx} className="text-slate-300 flex gap-2">
-                  <span className="text-blue-400">•</span>
-                  <span>{news}</span>
-                </li>
-              ))}
-            </ul>
+            <section>
+              <h2 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-4 px-2">Partidas Recentes / Próximas</h2>
+              <div className="space-y-4">
+                {matches.length > 0 ? (
+                  matches.map(m => <MatchCard key={m.id} match={m} />)
+                ) : (
+                  <EmptyState message="Nenhuma partida encontrada para esta seleção hoje." />
+                )}
+              </div>
+            </section>
           </div>
 
-          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-6">
-            <h2 className="text-2xl font-bold text-white mb-4">Análise da Imprensa</h2>
-            <p className="text-slate-300 mb-4">{webInsights.pressAnalysis}</p>
-            <div className="bg-slate-700/50 rounded p-3">
-              <p className="text-slate-400 text-sm">Sentimento da Torcida</p>
-              <p className="text-white text-lg font-semibold">{webInsights.teamSentiment}</p>
-            </div>
-          </div>
-        </div>
+          {/* Sidebar: Notícias de Blogs/Portais */}
+          <div className="space-y-6">
+            <section className="bg-indigo-950/20 border border-indigo-500/30 rounded-2xl p-6">
+              <h2 className="text-xs font-black text-indigo-400 uppercase tracking-widest mb-6">Radar da Imprensa & Blogs</h2>
+              <div className="space-y-6">
+                {report?.news && report.news.length > 0 ? (
+                  report.news.map((n: any, i: number) => (
+                    <div key={i} className="group cursor-default">
+                      <p className="text-[10px] text-indigo-500 font-black uppercase mb-1">{n.source}</p>
+                      <h3 className="font-bold text-sm text-white group-hover:text-indigo-300 transition mb-2">{n.title}</h3>
+                      <p className="text-xs text-slate-400 leading-relaxed">{n.summary}</p>
+                      {i < report.news.length - 1 && <div className="h-px bg-indigo-500/10 mt-6" />}
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-slate-500 italic">Buscando notícias recentes em blogs e portais...</p>
+                )}
+              </div>
+            </section>
 
-        {/* Footer */}
-        <div className="text-center text-slate-400 text-sm py-8 border-t border-slate-700">
-          <p>Dados atualizados em tempo real • Análise tática com IA • Copa do Mundo 2026</p>
+            <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+              <h2 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-4">Status da Inteligência</h2>
+              <div className="flex items-center gap-2 text-xs text-slate-400">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                Sincronizado com Blogs e Notícias
+              </div>
+              <p className="text-[10px] text-slate-600 mt-2">Última atualização: {report?.updatedAt ? new Date(report.updatedAt).toLocaleString('pt-BR') : 'Agora'}</p>
+            </section>
+          </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
