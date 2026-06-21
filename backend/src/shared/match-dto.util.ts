@@ -24,7 +24,7 @@ export interface MatchDto {
     away: any;
   };
   aiAnalysis?: string;
-  shortInsight?: string;
+  // shortInsight?: string;
 }
 
 interface PrismaMatch {
@@ -46,7 +46,7 @@ interface PrismaMatch {
   homeTactics: any;
   awayTactics: any;
   aiAnalysis: string | null;
-  shortInsight: string | null;
+  // shortInsight: string | null;
 }
 
 /** Maps a Prisma FootballMatch row to the frontend DTO. */
@@ -74,6 +74,6 @@ export function mapMatchToDto(m: PrismaMatch): MatchDto {
       away: m.awayTactics,
     } : undefined,
     aiAnalysis: m.aiAnalysis ?? undefined,
-    shortInsight: m.shortInsight ?? undefined,
-  };
+    // shortInsight: m.shortInsight ?? undefined,
+  } as any;
 }

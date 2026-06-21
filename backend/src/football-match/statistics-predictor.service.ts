@@ -41,8 +41,8 @@ interface PredictionResult {
   homeTactics?: TacticalAnalysis;
   awayTactics?: TacticalAnalysis;
   aiAnalysis: string;
-  shortInsight: string;
-  attentionPoint: string;
+  // shortInsight: string;
+  // attentionPoint: string;
 }
 
 @Injectable()
@@ -171,9 +171,9 @@ export class StatisticsPredictorService {
       homeTactics,
       awayTactics,
       aiAnalysis: matchAnalysis.analysis,
-      shortInsight: matchAnalysis.shortInsight,
-      attentionPoint: matchAnalysis.shortInsight ?? 'Fique de olho nesse confronto',
-    };
+      // shortInsight: matchAnalysis.shortInsight,
+      // attentionPoint: matchAnalysis.shortInsight ?? 'Fique de olho nesse confronto',
+    } as any;
   }
 
   private async generateSimulatedTactics(teamName: string): Promise<TacticalAnalysis> {
@@ -316,7 +316,6 @@ Responda APENAS o JSON:
     awayStyle: TacticalAnalysis['dominanceStyle'];
     awayDesc: string;
     analysis: string;
-    shortInsight: string;
   }> {
     // Pares de estilos contrastantes válidos — nunca iguais, nunca ambos "balanced"
     const CONTRAST_PAIRS: Array<[TacticalAnalysis['dominanceStyle'], TacticalAnalysis['dominanceStyle']]> = [
@@ -345,7 +344,6 @@ Responda APENAS o JSON:
         homeStyle: hs, homeDesc: descMap[hs],
         awayStyle: as, awayDesc: descMap[as],
         analysis: `${homeTeam} x ${awayTeam}: duelo tático equilibrado na Copa 2026.`,
-        shortInsight: 'Equilíbrio tático esperado.',
       };
     };
 
@@ -376,9 +374,7 @@ Responda APENAS este JSON:
   "homeDesc": "string (até 60 chars)",
   "awayStyle": "possession|counter|pressing|defensive",
   "awayDesc": "string (até 60 chars)",
-  "analysis": "string (200-500 chars) - Análise tática detalhada, citando métricas avançadas e como os estilos se chocam.",
-  "shortInsight": "string (até 120 chars) - Uma frase curta e impactante sobre o que esperar do jogo (ex: 'Duelo de xG alto: ataque contra defesa organizada').",
-  "attentionPoint": "string (até 150 chars) - Destaque um duelo individual ou uma área crítica do campo (ex: 'Meio-campo: Bruno Guimarães vs Rodri')."
+  "analysis": "string (200-500 chars) - Análise tática detalhada, citando métricas avançadas e como os estilos se chocam."
 }`,
           },
         ],
@@ -409,7 +405,6 @@ Responda APENAS este JSON:
         awayStyle: awayStyle as TacticalAnalysis['dominanceStyle'],
         awayDesc: data.awayDesc || this.defaultDesc(awayStyle),
         analysis: data.analysis || `${homeTeam} vs ${awayTeam}: estilos contrastantes na Copa 2026.`,
-        shortInsight: data.shortInsight || 'Análise tática em tempo real.',
       };
     } catch {
       return fallbackPair();
