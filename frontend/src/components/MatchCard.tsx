@@ -196,19 +196,32 @@ function TacticalClash({ match }: { match: FootballMatch }) {
 export function MatchCard({ match, highlighted }: MatchCardProps) {
   const [showTactics, setShowTactics] = useState(false);
 
-  const time = new Date(match.date).toLocaleTimeString('pt-BR', {
+  // Converte a data UTC do backend para o objeto Date local
+  const matchDate = new Date(match.date);
+  const now = new Date();
+  
+  // Formata o horário garantindo que seja exibido no fuso local (BRT se o usuário estiver no Brasil)
+  const time = matchDate.toLocaleTimeString('pt-BR', {
     hour: '2-digit',
     minute: '2-digit',
   });
+
+  // Lógica para detectar se o jogo deveria estar "Ao Vivo" mesmo se o status do backend estiver NS
+  // Se o jogo começou há menos de 120 minutos e ainda está como NS, tratamos como Ao Vivo no fuso local
+  const diffMinutes = (now.getTime() - matchDate.getTime()) / (1000 * 60);
+  const shouldBeLive = match.status === 'NS' && diffMinutes >= 0 && diffMinutes < 120;
 
   const status = STATUS_MAP[match.status] ?? {
     label: match.status,
     bg: 'bg-slate-800',
     text: 'text-slate-400',
-    live: false,
+    live: shouldBeLive,
   };
 
-  const isLive = LIVE_STATUSES.has(match.status);
+  const isLive = LIVE_STATUSES.has(match.status) || shouldBeLive;
+  const displayStatusLabel = shouldBeLive ? 'Ao Vivo' : status.label;
+  const displayStatusBg = shouldBeLive ? 'bg-green-950' : status.bg;
+  const displayStatusText = shouldBeLive ? 'text-green-400' : status.text;
   const isFinished = match.status === 'FT';
   const hasScore = match.team1Score !== undefined && match.team2Score !== undefined;
 
@@ -232,11 +245,11 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
         <span className="text-xs text-slate-500 font-medium truncate max-w-[55%]">
           {traduzirCompeticao(match.championship)}
         </span>
-        <span className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full shrink-0 ${status.bg} ${status.text}`}>
-          {status.live && (
+        <span className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full shrink-0 ${displayStatusBg} ${displayStatusText}`}>
+          {isLive && (
             <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
           )}
-          {status.label}
+          {displayStatusLabel}
         </span>
       </div>
 
