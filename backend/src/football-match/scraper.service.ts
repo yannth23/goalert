@@ -275,12 +275,14 @@ export class ScraperService {
       .filter((m: ScrapedMatch) => m.homeTeam && m.awayTeam);
   }
 
-  private mapTheSportsDBStatus(status: string, homeScore: any, awayScore: any): string {
+  private mapTheSportsDBStatus(status: string, _homeScore: any, _awayScore: any): string {
     const s = status.toLowerCase();
     if (s === 'match finished' || s === 'ft') return 'FT';
     if (s === 'not started' || s === '') return 'NS';
     if (s.includes('postponed') || s.includes('cancelled')) return 'PST';
-    if (homeScore !== null && awayScore !== null) return '1H';
+    // Nunca inferir ao-vivo apenas pelo placar: 0-0 pode ser jogo não iniciado.
+    // Só marca como live se o status textual indicar explicitamente.
+    if (s.includes('progress') || s.includes('live') || s === '1h' || s === '2h' || s === 'ht') return '1H';
     return 'NS';
   }
 
