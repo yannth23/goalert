@@ -65,16 +65,32 @@ const CONTRAST: Record<string, string> = {
 };
 
 function normalizeStyle(style: string | undefined): 'pressing' | 'counter' | 'possession' | 'defensive' {
-  if (!style || !VALID_STYLES.has(style)) return 'pressing';
-  return style as 'pressing' | 'counter' | 'possession' | 'defensive';
+  if (!style) return 'pressing';
+  const s = style.toLowerCase().trim();
+  if (s.includes('press')) return 'pressing';
+  if (s.includes('counter') || s.includes('contra')) return 'counter';
+  if (s.includes('possess') || s.includes('posse')) return 'possession';
+  if (s.includes('defens')) return 'defensive';
+  if (VALID_STYLES.has(s)) return s as 'pressing' | 'counter' | 'possession' | 'defensive';
+  return 'pressing';
+}
+
+function getTacticsStyle(tactics: any): 'pressing' | 'counter' | 'possession' | 'defensive' {
+  // Tenta vários campos possíveis que a IA pode ter usado
+  const raw = tactics?.dominanceStyle 
+    ?? tactics?.dominance_style 
+    ?? tactics?.style 
+    ?? tactics?.focus
+    ?? tactics?.playStyle;
+  return normalizeStyle(raw);
 }
 
 function TacticalClash({ match }: { match: FootballMatch }) {
   if (!match.tactics?.home || !match.tactics?.away) return null;
   const home = match.tactics.home;
   const away = match.tactics.away;
-  const hs = normalizeStyle(home.dominanceStyle);
-  const raw = normalizeStyle(away.dominanceStyle);
+  const hs = getTacticsStyle(home);
+  const raw = getTacticsStyle(away);
   const as_ = raw === hs ? (CONTRAST[hs] as typeof raw) : raw;
   return (
     <div className="mt-4 pt-4 border-t border-slate-800/50">
