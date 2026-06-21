@@ -55,6 +55,48 @@ interface MatchCardProps {
   highlighted?: boolean;
 }
 
+const VALID_STYLES = new Set(['pressing', 'counter', 'possession', 'defensive']);
+
+const CONTRAST: Record<string, string> = {
+  pressing:   'counter',
+  counter:    'possession',
+  possession: 'defensive',
+  defensive:  'pressing',
+};
+
+const STYLE_ICON: Record<string, string> = {
+  pressing:   '🔥',
+  counter:    '⚡',
+  possession: '🔵',
+  defensive:  '🛡️',
+};
+
+const STYLE_LABEL_MAP: Record<string, string> = {
+  pressing:   'Pressão',
+  counter:    'Contra',
+  possession: 'Posse',
+  defensive:  'Defensivo',
+};
+
+const STYLE_BG: Record<string, string> = {
+  pressing:   'bg-red-950/60 border-red-900/50',
+  counter:    'bg-yellow-950/60 border-yellow-900/50',
+  possession: 'bg-blue-950/60 border-blue-900/50',
+  defensive:  'bg-slate-800/60 border-slate-700/50',
+};
+
+const STYLE_COLOR: Record<string, string> = {
+  pressing:   'text-red-400',
+  counter:    'text-yellow-400',
+  possession: 'text-blue-400',
+  defensive:  'text-slate-400',
+};
+
+function normalizeStyle(style: string | undefined): 'pressing' | 'counter' | 'possession' | 'defensive' {
+  if (!style || !VALID_STYLES.has(style)) return 'pressing';
+  return style as 'pressing' | 'counter' | 'possession' | 'defensive';
+}
+
 function TacticalClash({ match }: { match: FootballMatch }) {
   if (!match.tactics?.home || !match.tactics?.away) return null;
   const home = match.tactics.home;
@@ -62,8 +104,6 @@ function TacticalClash({ match }: { match: FootballMatch }) {
   const hs = normalizeStyle(home.dominanceStyle);
   const raw = normalizeStyle(away.dominanceStyle);
   const as_ = raw === hs ? (CONTRAST[hs] as typeof raw) : raw;
-  const _dummy = match.tactics?.away.style || 'Equilibrado';
-
   return (
     <div className="mt-4 pt-4 border-t border-slate-800/50">
       <div className="flex items-center justify-center gap-1.5 mb-3">
