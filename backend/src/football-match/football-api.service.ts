@@ -11,6 +11,12 @@ import { translateTeam } from './translation.util';
 const FOOTBALL_DATA_BASE_URL = 'https://api.football-data.org/v4';
 const WC_CODE = 'WC'; // FIFA World Cup code in football-data.org
 
+/** Converte data UTC para BRT (UTC-3). Garante que jogos às 00:30 UTC ficam no dia correto brasileiro. */
+function utcToBrt(utcDate: string): Date {
+  const utc = new Date(utcDate);
+  return new Date(utc.getTime() - 3 * 60 * 60 * 1000);
+}
+
 const STATUS_MAP: Record<string, string> = {
   // Football-Data.org Statuses
   'SCHEDULED': 'NS',
@@ -82,7 +88,7 @@ export class FootballApiService {
         if (response.data?.matches?.length > 0) {
           matchesToProcess = response.data.matches.map((m: any) => ({
             externalId: m.id.toString(),
-            date: new Date(m.utcDate),
+            date: utcToBrt(m.utcDate),
             championship: m.competition.name,
             homeTeam: translateTeam(m.homeTeam.name),
             awayTeam: translateTeam(m.awayTeam.name),
