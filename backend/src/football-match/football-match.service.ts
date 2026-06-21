@@ -249,4 +249,8 @@ export class FootballMatchService {
       return existing || { teamName, report: 'Relatório temporariamente indisponível.', news: [] };
     }
   }
+  async deleteAllMatches(): Promise<{ deleted: number }> {
+    const result = await this.prisma.footballMatch.deleteMany({});
+    return { deleted: result.count };
+  }
 }
