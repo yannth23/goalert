@@ -105,7 +105,38 @@ export class FootballApiService {
       this.logger.warn(`Football-Data.org failed: ${err.message}`);
     }
 
-    // 2. Fallback para Scraper (SofaScore/ESPN) se Football-Data falhar ou não retornar nada
+    // 2. Corrige horários com Google/ESPN Brasil — fonte mais confiável para BRT correto
+    if (matchesToProcess.length > 0) {
+      try {
+        this.logger.log('[sync] Buscando horários via Google/ESPN Brasil...');
+        const googleTimes = await this.scraper.fetchGoogleMatchTimes(todayBrazil);
+        if (googleTimes.length > 0) {
+          let corrected = 0;
+          matchesToProcess = matchesToProcess.map(m => {
+            const normalize = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            const mHome = normalize(m.homeTeam);
+            const mAway = normalize(m.awayTeam);
+            const found = googleTimes.find(g => {
+              const gHome = normalize(g.homeTeam);
+              const gAway = normalize(g.awayTeam);
+              return (mHome.includes(gHome) || gHome.includes(mHome)) &&
+                     (mAway.includes(gAway) || gAway.includes(mAway));
+            });
+            if (found) {
+              corrected++;
+              this.logger.log(`[sync] Horário corrigido: ${m.homeTeam} → ${found.kickoffUtc.toISOString()}`);
+              return { ...m, date: found.kickoffUtc };
+            }
+            return m;
+          });
+          this.logger.log(`[sync] ${corrected}/${matchesToProcess.length} horários corrigidos via Google/ESPN`);
+        }
+      } catch (err: any) {
+        this.logger.warn(`[sync] Correção de horário falhou: ${err.message}`);
+      }
+    }
+
+    // 3. Fallback para Scraper (SofaScore/ESPN) se Football-Data falhar ou não retornar nada
     if (matchesToProcess.length === 0) {
       try {
         this.logger.log('Trying Web Scrapers (SofaScore/ESPN)...');
