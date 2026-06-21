@@ -184,6 +184,13 @@ export class FootballApiService {
 
     await this.cacheDel(`matches:${todayBrazil}`);
     this.logger.log(`Synced ${matchesToProcess.length} matches for ${todayBrazil} from ${source}`);
+    
+    // Verificação final no banco para depuração
+    const finalCount = await this.prisma.footballMatch.count({
+      where: { date: { gte: start, lte: end } }
+    });
+    this.logger.log(`DB check: ${finalCount} matches now exist in range ${start.toISOString()} - ${end.toISOString()}`);
+
     return { synced: matchesToProcess.length, live: liveCount, errors: 0, source };
   }
 
