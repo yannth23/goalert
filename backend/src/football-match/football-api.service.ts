@@ -189,8 +189,8 @@ export class FootballApiService {
             homeTactics:        (predictions.homeTactics || Prisma.DbNull) as any,
             awayTactics:        (predictions.awayTactics || Prisma.DbNull) as any,
             aiAnalysis:         predictions.aiAnalysis,
-            // shortInsight:       predictions.shortInsight,
-            // attentionPoint:     predictions.attentionPoint,
+            // shortInsight:       predictions.shortInsight, // Removido: coluna inexistente no banco
+            // attentionPoint:     predictions.attentionPoint, // Removido: coluna inexistente no banco
           },
           create: {
             externalId:   lookupId,
