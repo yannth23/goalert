@@ -253,4 +253,11 @@ export class FootballMatchService {
     const result = await this.prisma.footballMatch.deleteMany({});
     return { deleted: result.count };
   }
+
+  async getMatchesWithoutTactics(): Promise<{ id: string; homeTeam: string; awayTeam: string }[]> {
+    return this.prisma.footballMatch.findMany({
+      where: { homeTactics: { equals: null } },
+      select: { id: true, homeTeam: true, awayTeam: true },
+    });
+  }
 }
