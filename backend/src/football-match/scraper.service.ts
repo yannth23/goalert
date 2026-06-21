@@ -6,6 +6,14 @@ import { translateTeam } from './translation.util';
 const SCRAPER_TIMEOUT_MS = 7_000;
 const CACHE_TTL_SECONDS  = 90;
 
+export interface MatchTime {
+  homeTeam: string;
+  awayTeam: string;
+  kickoffUtc: Date;
+  score: { home: number | null; away: number | null };
+  status: string;
+}
+
 export interface ScrapedH2HMatch {
   date: string;
   homeTeam: string;
@@ -113,6 +121,115 @@ export class ScraperService {
     }
 
     this.logger.warn('[scraper] all sources exhausted — 0 matches');
+    return [];
+  }
+
+  // ── Google match times (tenta Google → fallback ESPN Brasil) ──────────────
+  /**
+   * Busca horários dos jogos pesquisando "jogos copa do mundo 2026" no Google.
+   * O Google bloqueia bots com JS ofuscado, então cai no ESPN Brasil automaticamente.
+   * O ESPN Brasil usa a mesma base de dados do widget de futebol do Google.
+   * Retorna horários em UTC — o frontend converte para BRT via America/Sao_Paulo.
+   */
+  async fetchGoogleMatchTimes(date: string): Promise<MatchTime[]> {
+    const cacheKey = `google_times:${date}`;
+    try {
+      const cached = await this.redis.getJson<any[]>(cacheKey);
+      if (cached?.length > 0) {
+        this.logger.log(`[google-times] cache hit: ${cached.length} horários`);
+        return cached.map(m => ({ ...m, kickoffUtc: new Date(m.kickoffUtc) }));
+      }
+    } catch {}
+
+    // 1. Tenta Google ("jogos copa do mundo 2026")
+    try {
+      const times = await this.parseGoogleFootballWidget();
+      if (times.length > 0) {
+        await this.redis.setJson(cacheKey, times, 300).catch(() => {});
+        this.logger.log(`[google-times] Google: ${times.length} horários extraídos`);
+        return times;
+      }
+    } catch (err: any) {
+      this.logger.warn(`[google-times] Google bloqueou ou sem dados: ${err.message}`);
+    }
+
+    // 2. Fallback: ESPN Brasil API — mesma fonte que alimenta o Google Sports widget
+    try {
+      const dateFormatted = date.replace(/-/g, '');
+      const res = await axios.get(
+        `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?lang=pt&region=br&dates=${dateFormatted}`,
+        { timeout: SCRAPER_TIMEOUT_MS, headers: { Accept: 'application/json' } },
+      );
+      const events: any[] = res.data?.events ?? [];
+
+      const times: MatchTime[] = events.map((e: any) => {
+        const comp   = e.competitions?.[0];
+        const home   = comp?.competitors?.find((c: any) => c.homeAway === 'home');
+        const away   = comp?.competitors?.find((c: any) => c.homeAway === 'away');
+        if (!home || !away) return null;
+
+        const statusRaw = comp?.status?.type?.name ?? '';
+        const homeScore = home.score != null ? parseInt(home.score, 10) : null;
+        const awayScore = away.score != null ? parseInt(away.score, 10) : null;
+
+        return {
+          homeTeam:   normalizeName(home.team?.displayName ?? ''),
+          awayTeam:   normalizeName(away.team?.displayName ?? ''),
+          kickoffUtc: new Date(e.date),
+          score:      { home: homeScore, away: awayScore },
+          status:     this.mapESPNStatus(statusRaw),
+        };
+      }).filter(Boolean) as MatchTime[];
+
+      if (times.length > 0) {
+        await this.redis.setJson(cacheKey, times, 300).catch(() => {});
+        this.logger.log(`[google-times] ESPN Brasil: ${times.length} horários (UTC corretos)`);
+        return times;
+      }
+    } catch (err: any) {
+      this.logger.warn(`[google-times] ESPN Brasil falhou: ${err.message}`);
+    }
+
+    this.logger.warn('[google-times] nenhuma fonte retornou horários');
+    return [];
+  }
+
+  /** Tenta extrair horários do widget de futebol do Google via HTML scraping. */
+  private async parseGoogleFootballWidget(): Promise<MatchTime[]> {
+    const res = await axios.get(
+      'https://www.google.com/search?q=jogos+copa+do+mundo+2026&hl=pt-BR&gl=BR',
+      {
+        timeout: 8_000,
+        headers: {
+          'User-Agent':      'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36',
+          'Accept-Language': 'pt-BR,pt;q=0.9',
+          'Accept':          'text/html,application/xhtml+xml',
+        },
+      },
+    );
+
+    const html: string = res.data as string;
+
+    // Procura timestamps ISO-8601 embutidos no HTML do widget esportivo do Google
+    const isoRe  = /(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:\d{2}))/g;
+    const stamps  = [...html.matchAll(isoRe)].map(m => new Date(m[1])).filter(d => !isNaN(d.getTime()));
+
+    // Se Google não bloqueou e temos timestamps, tenta extrair times adjacentes
+    // (o Google frequentemente esconde nomes em atributos aria-label ou data-*)
+    const teamRe  = /aria-label="([^"]{3,30})\s+(?:x|vs\.?|×)\s+([^"]{3,30})"/gi;
+    const teamMatches = [...html.matchAll(teamRe)];
+
+    if (stamps.length > 0 && teamMatches.length > 0) {
+      return stamps.slice(0, teamMatches.length).map((kickoffUtc, i) => ({
+        homeTeam:   normalizeName(teamMatches[i][1].trim()),
+        awayTeam:   normalizeName(teamMatches[i][2].trim()),
+        kickoffUtc,
+        score:      { home: null, away: null },
+        status:     'NS',
+      }));
+    }
+
+    // Nenhum dado útil extraído
     return [];
   }
 
