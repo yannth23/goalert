@@ -20,7 +20,7 @@ export class JobsService implements OnApplicationBootstrap {
     try {
       const r = await this.footballApiService.syncTodayMatches();
       this.logger.log(`Bootstrap sync done — ${r.synced} matches`);
-      await this.generateTacticsForToday();
+      await this.generateTacticsForAll();
     } catch (err) {
       this.logger.error('Bootstrap sync failed', err);
     }
@@ -104,6 +104,35 @@ export class JobsService implements OnApplicationBootstrap {
       }
     } catch (err: any) {
       this.logger.error('generateTacticsForToday failed', err.message);
+    }
+  }
+
+  /** Gera táticas para TODOS os jogos sem análise (sem filtro de data) */
+  private async generateTacticsForAll(): Promise<void> {
+    try {
+      const matches = await this.prisma.footballMatch.findMany({
+        where: { homeTactics: { equals: null } },
+        select: { id: true, homeTeam: true, awayTeam: true },
+        orderBy: { date: 'desc' },
+      });
+
+      if (!matches.length) {
+        this.logger.log('All matches already have tactics');
+        return;
+      }
+
+      this.logger.log(`Generating tactics for ALL ${matches.length} matches without analysis...`);
+      for (const match of matches) {
+        try {
+          await this.predictor.updateMatchPredictions(match.id);
+          this.logger.log(`Tactics OK: ${match.homeTeam} x ${match.awayTeam}`);
+        } catch (err: any) {
+          this.logger.error(`Tactics failed: ${match.homeTeam} x ${match.awayTeam}: ${err.message}`);
+        }
+      }
+      this.logger.log('All tactics generation complete');
+    } catch (err: any) {
+      this.logger.error('generateTacticsForAll failed', err.message);
     }
   }
 }
