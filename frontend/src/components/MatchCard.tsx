@@ -198,6 +198,10 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
             }`}>
               {homeScore} – {awayScore}
             </span>
+          ) : isFinished ? (
+            <span className="font-black text-xl sm:text-2xl px-3 py-1 rounded-xl whitespace-nowrap bg-slate-800 text-slate-500">
+              – : –
+            </span>
           ) : (
             <>
               <span className="text-sm text-slate-400 font-semibold whitespace-nowrap">{time}</span>

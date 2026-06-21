@@ -56,11 +56,22 @@ export class FootballMatchService {
       const elapsedMs = now.getTime() - matchTime;
       
       // Lógica de segurança para evitar status "preso":
-      // 1. Se o jogo está em status LIVE mas já se passaram mais de 3 horas do início -> Força FT
-      // 2. Se o jogo está NS mas já se passaram mais de 3 horas e meia do início planejado -> Força FT
-      if ((LIVE_STATUSES.has(m.status) && elapsedMs > MAX_MATCH_DURATION) || 
-          (m.status === 'NS' && elapsedMs > MAX_MATCH_DURATION + (30 * 60 * 1000))) {
-        return { ...m, status: 'FT' };
+      // 1. Se o jogo está em status LIVE mas já se passaram mais de 3 horas do início
+      // 2. Se o jogo está NS mas já se passaram mais de 3 horas e meia do início planejado
+      // Só forçamos "FT" quando há placar registrado; sem placar, marcar como
+      // encerrado é enganoso (mostra "Encerrado" sem resultado), então mantemos
+      // o status real até a sincronização confirmar o resultado.
+      const stale =
+        (LIVE_STATUSES.has(m.status) && elapsedMs > MAX_MATCH_DURATION) ||
+        (m.status === 'NS' && elapsedMs > MAX_MATCH_DURATION + 30 * 60 * 1000);
+      if (stale) {
+        const hasScore = m.homeScore !== null && m.awayScore !== null;
+        if (hasScore) {
+          return { ...m, status: 'FT' };
+        }
+        this.logger.warn(
+          `Match ${m.id} (${m.homeTeam} x ${m.awayTeam}) está obsoleto (status=${m.status}) sem placar; mantendo status real.`,
+        );
       }
       return m;
     });
