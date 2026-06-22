@@ -1,7 +1,15 @@
--- Reset completo: recria todas as tabelas do zero
--- Roda quando o banco foi zerado manualmente
+-- Reset completo: dropa e recria todas as tabelas com schema atual
 
-CREATE TABLE IF NOT EXISTS "User" (
+-- Drop tudo na ordem certa (FK primeiro)
+DROP TABLE IF EXISTS "FootballMatch" CASCADE;
+DROP TABLE IF EXISTS "FavoriteTeam" CASCADE;
+DROP TABLE IF EXISTS "RefreshToken" CASCADE;
+DROP TABLE IF EXISTS "UserPreference" CASCADE;
+DROP TABLE IF EXISTS "TeamReport" CASCADE;
+DROP TABLE IF EXISTS "User" CASCADE;
+
+-- User
+CREATE TABLE "User" (
     "id"        TEXT NOT NULL,
     "email"     TEXT NOT NULL,
     "password"  TEXT NOT NULL,
@@ -11,9 +19,10 @@ CREATE TABLE IF NOT EXISTS "User" (
     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
-CREATE UNIQUE INDEX IF NOT EXISTS "User_email_key" ON "User"("email");
+CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
-CREATE TABLE IF NOT EXISTS "RefreshToken" (
+-- RefreshToken
+CREATE TABLE "RefreshToken" (
     "id"        TEXT NOT NULL,
     "userId"    TEXT NOT NULL,
     "token"     TEXT NOT NULL,
@@ -21,16 +30,22 @@ CREATE TABLE IF NOT EXISTS "RefreshToken" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "RefreshToken_pkey" PRIMARY KEY ("id")
 );
-CREATE UNIQUE INDEX IF NOT EXISTS "RefreshToken_token_key" ON "RefreshToken"("token");
+CREATE UNIQUE INDEX "RefreshToken_token_key" ON "RefreshToken"("token");
+ALTER TABLE "RefreshToken" ADD CONSTRAINT "RefreshToken_userId_fkey"
+    FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
-CREATE TABLE IF NOT EXISTS "FavoriteTeam" (
+-- FavoriteTeam
+CREATE TABLE "FavoriteTeam" (
     "id"       TEXT NOT NULL,
     "userId"   TEXT NOT NULL,
     "teamName" TEXT NOT NULL,
     CONSTRAINT "FavoriteTeam_pkey" PRIMARY KEY ("id")
 );
+ALTER TABLE "FavoriteTeam" ADD CONSTRAINT "FavoriteTeam_userId_fkey"
+    FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
-CREATE TABLE IF NOT EXISTS "UserPreference" (
+-- UserPreference
+CREATE TABLE "UserPreference" (
     "id"                        TEXT NOT NULL,
     "userId"                    TEXT NOT NULL,
     "receiveDailyNotifications" BOOLEAN NOT NULL DEFAULT true,
@@ -38,9 +53,12 @@ CREATE TABLE IF NOT EXISTS "UserPreference" (
     "updatedAt"                 TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "UserPreference_pkey" PRIMARY KEY ("id")
 );
-CREATE UNIQUE INDEX IF NOT EXISTS "UserPreference_userId_key" ON "UserPreference"("userId");
+CREATE UNIQUE INDEX "UserPreference_userId_key" ON "UserPreference"("userId");
+ALTER TABLE "UserPreference" ADD CONSTRAINT "UserPreference_userId_fkey"
+    FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
-CREATE TABLE IF NOT EXISTS "TeamReport" (
+-- TeamReport
+CREATE TABLE "TeamReport" (
     "id"        TEXT NOT NULL,
     "teamName"  TEXT NOT NULL,
     "report"    TEXT NOT NULL,
@@ -48,9 +66,10 @@ CREATE TABLE IF NOT EXISTS "TeamReport" (
     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "TeamReport_pkey" PRIMARY KEY ("id")
 );
-CREATE UNIQUE INDEX IF NOT EXISTS "TeamReport_teamName_key" ON "TeamReport"("teamName");
+CREATE UNIQUE INDEX "TeamReport_teamName_key" ON "TeamReport"("teamName");
 
-CREATE TABLE IF NOT EXISTS "FootballMatch" (
+-- FootballMatch (schema completo)
+CREATE TABLE "FootballMatch" (
     "id"                 TEXT NOT NULL,
     "date"               TIMESTAMP(3) NOT NULL,
     "championship"       TEXT NOT NULL,
@@ -72,19 +91,6 @@ CREATE TABLE IF NOT EXISTS "FootballMatch" (
     "shortInsight"       TEXT,
     CONSTRAINT "FootballMatch_pkey" PRIMARY KEY ("id")
 );
-CREATE UNIQUE INDEX IF NOT EXISTS "FootballMatch_externalId_key" ON "FootballMatch"("externalId");
-CREATE INDEX IF NOT EXISTS "FootballMatch_date_idx" ON "FootballMatch"("date");
-CREATE INDEX IF NOT EXISTS "FootballMatch_championship_idx" ON "FootballMatch"("championship");
-
--- Foreign keys
-ALTER TABLE "RefreshToken" DROP CONSTRAINT IF EXISTS "RefreshToken_userId_fkey";
-ALTER TABLE "RefreshToken" ADD CONSTRAINT "RefreshToken_userId_fkey"
-    FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
-ALTER TABLE "FavoriteTeam" DROP CONSTRAINT IF EXISTS "FavoriteTeam_userId_fkey";
-ALTER TABLE "FavoriteTeam" ADD CONSTRAINT "FavoriteTeam_userId_fkey"
-    FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
-ALTER TABLE "UserPreference" DROP CONSTRAINT IF EXISTS "UserPreference_userId_fkey";
-ALTER TABLE "UserPreference" ADD CONSTRAINT "UserPreference_userId_fkey"
-    FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+CREATE UNIQUE INDEX "FootballMatch_externalId_key" ON "FootballMatch"("externalId");
+CREATE INDEX "FootballMatch_date_idx" ON "FootballMatch"("date");
+CREATE INDEX "FootballMatch_championship_idx" ON "FootballMatch"("championship");
