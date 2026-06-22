@@ -16,11 +16,19 @@ export class JobsService implements OnApplicationBootstrap {
   ) {}
 
   async onApplicationBootstrap() {
+    // Roda async sem bloquear o bootstrap — evita timeout do Render
+    setTimeout(() => this.runBootstrapTasks(), 5000);
+  }
+
+  private async runBootstrapTasks() {
     this.logger.log('Bootstrap sync...');
     try {
       const r = await this.footballApiService.syncTodayMatches();
       this.logger.log(`Bootstrap sync done — ${r.synced} matches`);
-      await this.generateTacticsForAll();
+      // Gera táticas em background sem bloquear
+      this.generateTacticsForAll().catch(err =>
+        this.logger.error('Background tactics generation failed', err)
+      );
     } catch (err) {
       this.logger.error('Bootstrap sync failed', err);
     }
