@@ -192,7 +192,7 @@ export class FootballApiService {
             homeTactics:        (predictions.homeTactics || Prisma.DbNull) as any,
             awayTactics:        (predictions.awayTactics || Prisma.DbNull) as any,
             aiAnalysis:         predictions.aiAnalysis,
-            shortInsight:       predictions.shortInsight,
+            // shortInsight: não disponível no PredictionResult atual
 
           },
           create: {
