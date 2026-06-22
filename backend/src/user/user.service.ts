@@ -25,6 +25,7 @@ export class UserService {
         name: true,
         createdAt: true,
         favoriteTeams: true,
+        preferences: true,
       },
     });
     if (!user) throw new NotFoundException('User not found');
@@ -45,5 +46,15 @@ export class UserService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
     return this.prisma.favoriteTeam.deleteMany({ where: { userId, teamName } });
+  }
+
+  async updatePreferences(userId: string, receiveDailyNotifications?: boolean) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+    return this.prisma.userPreference.upsert({
+      where: { userId },
+      create: { userId, receiveDailyNotifications: receiveDailyNotifications ?? true },
+      update: { receiveDailyNotifications: receiveDailyNotifications ?? undefined },
+    });
   }
 }

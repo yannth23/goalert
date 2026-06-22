@@ -45,4 +45,15 @@ export class UserController {
     if (req.user.id !== id) throw new ForbiddenException();
     return this.userService.removeFavoriteTeam(id, teamName);
   }
+
+  @Patch(':id/preferences')
+  @UseGuards(JwtAuthGuard)
+  updatePreferences(
+    @Param('id') id: string,
+    @Body() body: { receiveDailyNotifications?: boolean },
+    @Request() req: { user: { id: string } },
+  ) {
+    if (req.user.id !== id) throw new ForbiddenException();
+    return this.userService.updatePreferences(id, body.receiveDailyNotifications);
+  }
 }

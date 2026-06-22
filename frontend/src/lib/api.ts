@@ -75,7 +75,7 @@ export const api = {
 
   getSystemStatus: () => request<SystemStatus>('/matches/system-status'),
 
-  getTeamReport: (name: string) => request<{ teamName: string; report: string; news: any[] }>(`/matches/team-report?name=${encodeURIComponent(name)}`),
+  getTeamReport: (name: string) => request<{ teamName: string; report: string; news: any[] }>(`/matches/team/${encodeURIComponent(name)}/report`),
 
   forceSync: () => request<{ synced: number; live: number; errors: number; source: string }>('/matches/sync', { method: 'POST' }),
 
@@ -90,12 +90,6 @@ export const api = {
   updatePreferences: (userId: string, receiveDailyNotifications: boolean) =>
     request<{ receiveDailyNotifications: boolean }>(`/users/${userId}/preferences`, { method: 'PATCH', body: JSON.stringify({ receiveDailyNotifications }) }),
 
-  updateWhatsapp: (userId: string, whatsappNumber: string | null, receiveWhatsappNotifications: boolean) =>
-    request<{ whatsappNumber: string | null; receiveWhatsappNotifications: boolean }>(`/users/${userId}/whatsapp`, { method: 'PATCH', body: JSON.stringify({ whatsappNumber, receiveWhatsappNotifications }) }),
-
-  updateTelegram: (userId: string, telegramChatId: string | null, receiveTelegramNotifications: boolean) =>
-    request<{ telegramChatId: string | null; receiveTelegramNotifications: boolean }>(`/users/${userId}/telegram`, { method: 'PATCH', body: JSON.stringify({ telegramChatId, receiveTelegramNotifications }) }),
-
   getUser: (userId: string) =>
-    request<{ id: string; email: string; name?: string; favoriteTeams: { id: string; teamName: string }[]; preferences: { receiveDailyNotifications: boolean; receiveWhatsappNotifications: boolean; whatsappNumber: string | null; receiveTelegramNotifications: boolean; telegramChatId: string | null } | null }>(`/users/${userId}`),
+    request<{ id: string; email: string; name?: string; favoriteTeams: { id: string; teamName: string }[]; preferences: { receiveDailyNotifications: boolean } | null }>(`/users/${userId}`),
 };
