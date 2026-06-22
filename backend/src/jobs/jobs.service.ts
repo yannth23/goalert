@@ -66,8 +66,8 @@ export class JobsService implements OnApplicationBootstrap {
     await this.generateTacticsForToday();
   }
 
-  // Sync a cada 2 minutos das 12h às 23h UTC (9h às 20h BRT)
-  @Cron('*/2 12-23 * * *', { name: 'sync-live-matches' })
+  // Sync a cada 2 minutos das 9h às 23h UTC (6h às 20h BRT) — cobre todos os jogos do dia
+  @Cron('*/2 9-23 * * *', { name: 'sync-live-matches' })
   async syncLiveMatches(): Promise<void> {
     try {
       const r = await this.footballApiService.syncTodayMatches();
@@ -77,8 +77,8 @@ export class JobsService implements OnApplicationBootstrap {
     }
   }
 
-  // Sync a cada 2 minutos das 00h às 03h UTC (21h às 00h BRT) — cobre jogos noturnos
-  @Cron('*/2 0-3 * * *', { name: 'sync-late-night' })
+  // Sync a cada 2 minutos das 00h às 04h UTC (21h às 01h BRT) — cobre jogos noturnos e virada
+  @Cron('*/2 0-4 * * *', { name: 'sync-late-night' })
   async syncLateNight(): Promise<void> {
     try {
       const r = await this.footballApiService.syncTodayMatches();
