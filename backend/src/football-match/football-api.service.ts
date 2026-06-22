@@ -169,8 +169,11 @@ export class FootballApiService {
         
         // Se não houver externalId, usamos um identificador composto para evitar nulos no @unique
         // Usamos apenas times e data (sem o prefixo da fonte) para que SofaScore e ESPN não criem jogos duplicados
-        const lookupId = match.externalId?.startsWith('scraped_') 
-          ? `match_${match.homeTeam}_${match.awayTeam}_${match.date.toISOString().split('T')[0]}`
+        // Garante sempre um lookupId válido e não-nulo
+        const dateStr = match.date.toISOString().split('T')[0];
+        const fallbackId = `match_${match.homeTeam}_${match.awayTeam}_${dateStr}`;
+        const lookupId = !match.externalId || match.externalId.startsWith('scraped_')
+          ? fallbackId
           : match.externalId;
 
         await this.prisma.footballMatch.upsert({
@@ -189,8 +192,8 @@ export class FootballApiService {
             homeTactics:        (predictions.homeTactics || Prisma.DbNull) as any,
             awayTactics:        (predictions.awayTactics || Prisma.DbNull) as any,
             aiAnalysis:         predictions.aiAnalysis,
-            // shortInsight:       predictions.shortInsight, // Removido: coluna inexistente no banco
-            // attentionPoint:     predictions.attentionPoint, // Removido: coluna inexistente no banco
+            shortInsight:       predictions.shortInsight,
+
           },
           create: {
             externalId:   lookupId,
