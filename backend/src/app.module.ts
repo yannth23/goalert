@@ -6,7 +6,6 @@ import { UserModule } from './user/user.module';
 import { JobsModule } from './jobs/jobs.module';
 import { FootballMatchModule } from './football-match/football-match.module';
 import { AuthModule } from './auth/auth.module';
-import { RedisModule } from './redis/redis.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -14,7 +13,6 @@ import { AppController } from './app.controller';
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
     PrismaModule,
-    RedisModule,
     UserModule,
     JobsModule,
     FootballMatchModule,
