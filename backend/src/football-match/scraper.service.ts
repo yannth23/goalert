@@ -1,10 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
-import { RedisService } from '../redis/redis.service';
 import { translateTeam } from './translation.util';
 
 const SCRAPER_TIMEOUT_MS = 7_000;
-const CACHE_TTL_SECONDS  = 90;
 
 export interface MatchTime {
   homeTeam: string;
@@ -66,7 +64,7 @@ export interface ScrapedMatch {
 export class ScraperService {
   private readonly logger = new Logger(ScraperService.name);
 
-  constructor(private readonly redis: RedisService) {}
+  constructor() {}
 
   /** Public entry-point: returns today's matches from the best available scraper.
    *  Tenta em paralelo SofaScore + ESPN (múltiplas ligas) e mescla os resultados.
@@ -74,10 +72,8 @@ export class ScraperService {
    */
   async scrapeTodayMatches(): Promise<ScrapedMatch[]> {
     const today    = new Date().toISOString().split('T')[0];
-    const cacheKey = `scraper:today:${today}`;
 
     try {
-      const cached = await this.redis.getJson<ScrapedMatch[]>(cacheKey);
       if (cached && cached.length > 0) {
         this.logger.log(`[scraper] cache hit — ${cached.length} matches`);
         return cached;
@@ -88,7 +84,6 @@ export class ScraperService {
     try {
       const matches = await this.fetchSofaScore(today);
       if (matches.length > 0) {
-        await this.redis.setJson(cacheKey, matches, CACHE_TTL_SECONDS).catch(() => {});
         this.logger.log(`[scraper] SofaScore — ${matches.length} matches`);
         return matches;
       }
@@ -100,7 +95,6 @@ export class ScraperService {
     try {
       const matches = await this.fetchESPNMultiLeague(today);
       if (matches.length > 0) {
-        await this.redis.setJson(cacheKey, matches, CACHE_TTL_SECONDS).catch(() => {});
         this.logger.log(`[scraper] ESPN multi-league — ${matches.length} matches`);
         return matches;
       }
@@ -112,7 +106,6 @@ export class ScraperService {
     try {
       const matches = await this.fetchTheSportsDB(today);
       if (matches.length > 0) {
-        await this.redis.setJson(cacheKey, matches, CACHE_TTL_SECONDS).catch(() => {});
         this.logger.log(`[scraper] TheSportsDB — ${matches.length} matches`);
         return matches;
       }
@@ -132,9 +125,7 @@ export class ScraperService {
    * Retorna horários em UTC — o frontend converte para BRT via America/Sao_Paulo.
    */
   async fetchGoogleMatchTimes(date: string): Promise<MatchTime[]> {
-    const cacheKey = `google_times:${date}`;
     try {
-      const cached = await this.redis.getJson<any[]>(cacheKey);
       if (cached?.length > 0) {
         this.logger.log(`[google-times] cache hit: ${cached.length} horários`);
         return cached.map(m => ({ ...m, kickoffUtc: new Date(m.kickoffUtc) }));
@@ -145,7 +136,6 @@ export class ScraperService {
     try {
       const times = await this.parseGoogleFootballWidget();
       if (times.length > 0) {
-        await this.redis.setJson(cacheKey, times, 300).catch(() => {});
         this.logger.log(`[google-times] Google: ${times.length} horários extraídos`);
         return times;
       }
@@ -182,7 +172,6 @@ export class ScraperService {
       }).filter(Boolean) as MatchTime[];
 
       if (times.length > 0) {
-        await this.redis.setJson(cacheKey, times, 300).catch(() => {});
         this.logger.log(`[google-times] ESPN Brasil: ${times.length} horários (UTC corretos)`);
         return times;
       }
@@ -424,9 +413,7 @@ export class ScraperService {
    * Retorna lista com os 11 titulares ou [] se todas falharem.
    */
   async scrapeLineup(teamName: string): Promise<string[]> {
-    const cacheKey = `lineup:${teamName.toLowerCase().replace(/\s+/g, '-')}`;
     try {
-      const cached = await this.redis.getJson<string[]>(cacheKey);
       if (cached && cached.length >= 11) {
         this.logger.log(`[scraper] lineup cache hit: ${teamName}`);
         return cached;
@@ -444,7 +431,6 @@ export class ScraperService {
       try {
         const players = await source();
         if (players.length >= 11) {
-          await this.redis.setJson(cacheKey, players, 6 * 60 * 60).catch(() => {});
           this.logger.log(`[scraper] escalação obtida para ${teamName}: ${players.slice(0, 3).join(', ')}...`);
           return players;
         }
@@ -647,9 +633,7 @@ export class ScraperService {
    * Em produção, isso consumiria os datasets abertos da StatsBomb.
    */
   async scrapeAdvancedStats(teamName: string) {
-    const cacheKey = `advanced_stats:${teamName.toLowerCase().replace(/\s+/g, '-')}`;
     try {
-      const cached = await this.redis.getJson<any>(cacheKey);
       if (cached) return cached;
     } catch {}
 
@@ -660,8 +644,6 @@ export class ScraperService {
       pressingEfficiency: Math.floor(40 + Math.random() * 30),
       deepCompletions: Math.floor(8 + Math.random() * 12),
     };
-
-    await this.redis.setJson(cacheKey, stats, 24 * 60 * 60).catch(() => {});
     return stats;
   }
 
@@ -671,9 +653,7 @@ export class ScraperService {
   }
 
   async scrapeH2H(team1Name: string, team2Name: string): Promise<ScrapedH2H | null> {
-    const cacheKey = `h2h:${[team1Name, team2Name].map(t => t.toLowerCase().replace(/\s+/g, '-')).sort().join('_vs_')}`;
     try {
-      const cached = await this.redis.getJson<ScrapedH2H>(cacheKey);
       if (cached) {
         this.logger.log(`[scraper] h2h cache hit: ${team1Name} vs ${team2Name}`);
         return cached;
@@ -766,7 +746,6 @@ export class ScraperService {
       };
 
       // Cache por 12h — histórico não muda com frequência
-      await this.redis.setJson(cacheKey, result, 12 * 60 * 60).catch(() => {});
       this.logger.log(`[scraper] h2h obtido: ${team1Name} vs ${team2Name} — ${h2hEvents.length} jogos`);
 
       return result;
