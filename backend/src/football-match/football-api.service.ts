@@ -3,7 +3,6 @@ import { getTodayRange, getTodayBrazil } from '../shared/date.util';
 import { Prisma } from '@prisma/client';
 import axios from 'axios';
 import { PrismaService } from '../prisma/prisma.service';
-import { RedisService } from '../redis/redis.service';
 import { StatisticsPredictorService } from './statistics-predictor.service';
 import { ScraperService, ScrapedMatch } from './scraper.service';
 import { translateTeam } from './translation.util';
@@ -46,7 +45,6 @@ export class FootballApiService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly redis: RedisService,
     private readonly statisticsPredictor: StatisticsPredictorService,
     private readonly scraper: ScraperService,
   ) {}
@@ -55,17 +53,10 @@ export class FootballApiService {
     return { 'X-Auth-Token': process.env.FOOTBALL_DATA_API_KEY };
   }
 
-  private async cacheGet<T>(key: string): Promise<T | null> {
-    try { return await this.redis.getJson<T>(key); } catch { return null; }
-  }
-
-  private async cacheSet<T>(key: string, value: T, ttl: number): Promise<void> {
-    try { await this.redis.setJson(key, value, ttl); } catch {}
-  }
-
-  private async cacheDel(key: string): Promise<void> {
-    try { await this.redis.del(key); } catch {}
-  }
+  // Cache desativado — Redis removido para simplificar
+  private async cacheGet<T>(_key: string): Promise<T | null> { return null; }
+  private async cacheSet<T>(_key: string, _value: T, _ttl: number): Promise<void> {}
+  private async cacheDel(_key: string): Promise<void> {}
 
   async syncTodayMatches() {
     const { start, end } = getTodayRange();
@@ -88,7 +79,7 @@ export class FootballApiService {
         if (response.data?.matches?.length > 0) {
           matchesToProcess = response.data.matches.map((m: any) => ({
             externalId: m.id.toString(),
-            date: new Date(m.utcDate),
+            date: utcToBrt(m.utcDate),
             championship: m.competition.name,
             homeTeam: translateTeam(m.homeTeam.name),
             awayTeam: translateTeam(m.awayTeam.name),
@@ -308,3 +299,4 @@ export class FootballApiService {
     return [];
   }
 }
+
