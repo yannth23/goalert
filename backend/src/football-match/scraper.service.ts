@@ -77,6 +77,11 @@ export class ScraperService {
     this.memCache.set(key, { data, expiresAt: Date.now() + ttlMs });
   }
 
+  invalidateCache(key?: string): void {
+    if (key) this.memCache.delete(key);
+    else this.memCache.clear();
+  }
+
   /** Public entry-point: returns today's matches from the best available scraper.
    *  Tenta em paralelo SofaScore + ESPN (múltiplas ligas) e mescla os resultados.
    *  Fontes: SofaScore → ESPN World Cup → ESPN All Soccer → TheSportsDB
