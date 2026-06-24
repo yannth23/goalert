@@ -47,22 +47,22 @@ interface PredictionResult {
 
 // ── Cadeia de modelos Groq gratuitos (cada um tem rate-limit independente) ──
 // Ordem: mais capaz → mais rápido → fallback leve
+// Models verified active on Groq as of June 2026
+// Removed decommissioned: llama-3.1-70b-versatile, gemma2-9b-it, mixtral-8x7b-32768
 const GROQ_TACTICS_MODELS = [
-  { model: 'llama-3.3-70b-versatile',  name: 'Llama 3.3 70B'  },
-  { model: 'llama-3.1-70b-versatile',  name: 'Llama 3.1 70B'  },
-  { model: 'qwen/qwen3-32b',           name: 'Qwen 3 32B'     },
-  { model: 'llama-3.1-8b-instant',     name: 'Llama 3.1 8B'   },
-  { model: 'gemma2-9b-it',             name: 'Gemma 2 9B'     },
-  { model: 'mixtral-8x7b-32768',       name: 'Mixtral 8x7B'   },
+  { model: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B'  },
+  { model: 'qwen/qwen3-32b',          name: 'Qwen 3 32B'     },
+  { model: 'llama-3.1-8b-instant',    name: 'Llama 3.1 8B'   },
+  { model: 'llama3-70b-8192',          name: 'Llama 3 70B'    },
+  { model: 'llama3-8b-8192',           name: 'Llama 3 8B'     },
 ];
 
 const GROQ_ANALYSIS_MODELS = [
-  { model: 'llama-3.3-70b-versatile',  name: 'Llama 3.3 70B'  },
-  { model: 'qwen/qwen3-32b',           name: 'Qwen 3 32B'     },
-  { model: 'llama-3.1-70b-versatile',  name: 'Llama 3.1 70B'  },
-  { model: 'gemma2-9b-it',             name: 'Gemma 2 9B'     },
-  { model: 'mixtral-8x7b-32768',       name: 'Mixtral 8x7B'   },
-  { model: 'llama-3.1-8b-instant',     name: 'Llama 3.1 8B'   },
+  { model: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B'  },
+  { model: 'qwen/qwen3-32b',          name: 'Qwen 3 32B'     },
+  { model: 'llama3-70b-8192',          name: 'Llama 3 70B'    },
+  { model: 'llama-3.1-8b-instant',    name: 'Llama 3.1 8B'   },
+  { model: 'llama3-8b-8192',           name: 'Llama 3 8B'     },
 ];
 
 function isRateLimitError(err: any): boolean {
