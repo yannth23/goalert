@@ -90,7 +90,11 @@ export class FootballMatchService {
       return m;
     });
     const result = sanitised.map(mapMatchToDto);
-    this.setCached('today-matches', result, 60_000);
+    // Só cacheia quando há partidas — resultado vazio não deve ser cacheado
+    // pois o próximo request retentaria o banco (sync pode ainda estar rodando)
+    if (result.length > 0) {
+      this.setCached('today-matches', result, 60_000);
+    }
     return result;
   }
 
