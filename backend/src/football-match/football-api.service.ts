@@ -116,7 +116,8 @@ export class FootballApiService {
             if (found) {
               corrected++;
               this.logger.log(`[sync] Horário corrigido: ${m.homeTeam} → ${found.kickoffUtc.toISOString()}`);
-              return { ...m, date: found.kickoffUtc };
+              // kickoffUtc é UTC puro — converter para BRT antes de salvar
+              return { ...m, date: new Date(found.kickoffUtc.getTime() - 3 * 60 * 60 * 1000) };
             }
             return m;
           });
