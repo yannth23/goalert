@@ -79,7 +79,7 @@ export class FootballApiService {
         if (response.data?.matches?.length > 0) {
           matchesToProcess = response.data.matches.map((m: any) => ({
             externalId: m.id.toString(),
-            date: utcToBrt(m.utcDate),
+            date: new Date(m.utcDate),
             championship: m.competition.name,
             homeTeam: translateTeam(m.homeTeam.name),
             awayTeam: translateTeam(m.awayTeam.name),
@@ -116,8 +116,8 @@ export class FootballApiService {
             if (found) {
               corrected++;
               this.logger.log(`[sync] Horário corrigido: ${m.homeTeam} → ${found.kickoffUtc.toISOString()}`);
-              // kickoffUtc é UTC puro — converter para BRT antes de salvar
-              return { ...m, date: new Date(found.kickoffUtc.getTime() - 3 * 60 * 60 * 1000) };
+              // kickoffUtc é UTC puro — salvar como UTC, frontend converte para BRT
+              return { ...m, date: found.kickoffUtc };
             }
             return m;
           });
