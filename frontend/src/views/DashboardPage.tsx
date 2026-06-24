@@ -48,6 +48,7 @@ export function DashboardPage() {
   const [loadingData, setLoadingData] = useState(true);
   const [filter, setFilter] = useState<'all' | 'favorites'>('all');
   const [styleFilter, setStyleFilter] = useState<StyleFilter>('all');
+  const [syncing, setSyncing] = useState(false);
   const { toast, showToast } = useToast();
 
   useEffect(() => {
@@ -63,6 +64,17 @@ export function DashboardPage() {
     }).finally(() => setLoadingData(false));
   }, [user]);
 
+  // Auto-sync: se o banco estiver vazio após o carregamento, dispara um sync e re-busca
+  useEffect(() => {
+    if (loadingData || !user || matches.length > 0 || syncing) return;
+    setSyncing(true);
+    api.forceSync()
+      .then(() => new Promise<void>(r => setTimeout(r, 3000)))
+      .then(() => api.getTodayMatches())
+      .then(data => { if (data.length > 0) setMatches(data); })
+      .catch(() => {})
+      .finally(() => setSyncing(false));
+  }, [loadingData, matches.length, user]);
 
   // Auto-refresh live match scores every 30 seconds
   useEffect(() => {
@@ -241,13 +253,26 @@ export function DashboardPage() {
             )}
 
             {displayed.length === 0 ? (
-              <EmptyState message={
-                styleFilter !== 'all'
-                  ? `Nenhuma partida com estilo "${STYLE_OPTS.find(o => o.key === styleFilter)?.label}" ${filter === 'favorites' ? 'nos seus times' : 'hoje'}.`
-                  : filter === 'favorites'
-                  ? 'Nenhum time favorito joga hoje. Adicione na aba "Minha conta".'
-                  : 'Nenhuma partida encontrada para hoje.'
-              } />
+              syncing && styleFilter === 'all' && filter === 'all' ? (
+                <div className="flex flex-col items-center gap-4 py-20 text-slate-400">
+                  <svg className="animate-spin h-9 w-9 text-yellow-400" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                  </svg>
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-slate-300">Buscando partidas de hoje...</p>
+                    <p className="text-xs text-slate-500 mt-1">Isso pode levar alguns segundos</p>
+                  </div>
+                </div>
+              ) : (
+                <EmptyState message={
+                  styleFilter !== 'all'
+                    ? `Nenhuma partida com estilo "${STYLE_OPTS.find(o => o.key === styleFilter)?.label}" ${filter === 'favorites' ? 'nos seus times' : 'hoje'}.`
+                    : filter === 'favorites'
+                    ? 'Nenhum time favorito joga hoje. Adicione na aba "Conta".'
+                    : 'Nenhuma partida encontrada para hoje.'
+                } />
+              )
             ) : (
               <div className="space-y-6">
                 {Object.entries(grouped).map(([championship, games]) => (
