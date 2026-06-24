@@ -7,6 +7,10 @@ import { JobsModule } from './jobs/jobs.module';
 import { FootballMatchModule } from './football-match/football-match.module';
 import { AuthModule } from './auth/auth.module';
 import { AppController } from './app.controller';
+import { FootballApiService } from './football-match/football-api.service';
+import { ScraperService } from './football-match/scraper.service';
+import { StatisticsPredictorService } from './football-match/statistics-predictor.service';
+import { TeamReportService } from './football-match/team-report.service';
 
 @Module({
   imports: [
@@ -19,5 +23,6 @@ import { AppController } from './app.controller';
     AuthModule,
   ],
   controllers: [AppController],
+  providers: [FootballApiService, ScraperService, StatisticsPredictorService, TeamReportService],
 })
 export class AppModule {}
