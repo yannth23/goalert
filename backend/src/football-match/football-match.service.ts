@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { RedisService } from '../redis/redis.service';
 import { FootballApiService } from './football-api.service';
 import { ScraperService } from './scraper.service';
 import { getTodayRange, mapMatchToDto } from '../shared';
@@ -33,7 +32,6 @@ export class FootballMatchService {
 
   constructor(
     private readonly prisma:              PrismaService,
-    private readonly redis:               RedisService,
     private readonly footballApiService:  FootballApiService,
     private readonly scraper:             ScraperService,
   ) {}
@@ -185,20 +183,16 @@ export class FootballMatchService {
     const today = new Date().toISOString().split('T')[0];
     const { start, end } = getTodayRange();
 
-    const [lastSync, errorsStr, failuresStr, totalToday, liveNow] = await Promise.all([
-      this.redis.getJson<any>('sync:last_result').catch(() => null),
-      this.redis.get(`sync:errors:${today}`).catch(() => null),
-      this.redis.get('sync:consecutive_failures').catch(() => null),
+    const [totalToday, liveNow] = await Promise.all([
       this.prisma.footballMatch.count({ where: { date: { gte: start, lte: end } } }),
       this.prisma.footballMatch.count({ where: { date: { gte: start, lte: end }, status: { in: ['1H','HT','2H','ET','PEN'] } } }),
     ]);
 
     return {
-      lastSync:            lastSync ?? null,
-      redis:               { connected: this.redis.isConnectedToRedis() },
+      lastSync:            null,
       matches:             { total: totalToday, live: liveNow },
-      errorsToday:         parseInt(errorsStr ?? '0', 10),
-      consecutiveFailures: parseInt(failuresStr ?? '0', 10),
+      errorsToday:         0,
+      consecutiveFailures: 0,
       serverTime:          new Date().toISOString(),
     };
   }
