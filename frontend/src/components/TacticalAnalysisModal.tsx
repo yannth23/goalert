@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { FootballMatch, TacticalAnalysis } from '../types';
 import { api, H2HData } from '../lib/api';
+import { TacticalMomentum } from './TacticalMomentum';
 
 interface TacticalAnalysisModalProps {
   match: FootballMatch;
@@ -369,6 +370,11 @@ export function TacticalAnalysisModal({ match, onClose }: TacticalAnalysisModalP
               awayName={match.team2}
             />
           </div>
+
+          {/* 3b. Momentum Tático ao Vivo */}
+          {(match.status !== 'NS' && match.status !== 'PST') && (
+            <TacticalMomentum match={match} />
+          )}
 
           {/* 4. Resumo tático */}
           <div className="bg-indigo-950/30 border border-indigo-900/50 rounded-2xl p-5">
