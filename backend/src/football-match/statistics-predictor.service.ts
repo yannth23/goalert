@@ -213,8 +213,12 @@ export class StatisticsPredictorService {
     awayTactics.dominanceDescription = matchAnalysis.awayDesc;
     awayTactics.heatmapData = this.generateHeatmap(matchAnalysis.awayStyle);
 
-    // goalScenarios é match-level: armazenado em homeTactics como campo extra no JSON
+    // goalScenarios, probabilidades e duelos são match-level: armazenados em homeTactics como campos extras no JSON
     (homeTactics as any).goalScenarios = matchAnalysis.goalScenarios;
+    (homeTactics as any).winProbHome   = matchAnalysis.winProbHome;
+    (homeTactics as any).drawProb      = matchAnalysis.drawProb;
+    (homeTactics as any).winProbAway   = matchAnalysis.winProbAway;
+    (homeTactics as any).keyDuels      = matchAnalysis.keyDuels;
 
     return {
       predictedGoalsHome: parseFloat(predictedGoalsHome.toFixed(1)),
@@ -361,6 +365,10 @@ Responda APENAS o JSON:
     awayDesc: string;
     analysis: string;
     goalScenarios: string[];
+    winProbHome: number;
+    drawProb: number;
+    winProbAway: number;
+    keyDuels: { homePlayer: string; awayPlayer: string; context: string; advantage: 'home' | 'away' | 'equal' }[];
   }> {
     // Pares de estilos contrastantes válidos — nunca iguais, nunca ambos "balanced"
     const CONTRAST_PAIRS: Array<[TacticalAnalysis['dominanceStyle'], TacticalAnalysis['dominanceStyle']]> = [
@@ -384,8 +392,13 @@ Responda APENAS o JSON:
         possession: 'Controla o jogo com a posse', counter: 'Explora espaços no contra-ataque',
         pressing: 'Pressiona alto e sufoca o adversário', defensive: 'Bloco defensivo organizado',
       };
+      // Probabilidades de resultado baseadas no dominanceProb
+      const wph = hProb === 50 ? 52 : hProb;
+      const winHome = Math.round(wph * 0.85);
+      const winAway = Math.round((100 - wph) * 0.85);
+      const draw = 100 - winHome - winAway;
       return {
-        homeDominanceProb: hProb === 50 ? 52 : hProb,
+        homeDominanceProb: wph,
         homeStyle: hs, homeDesc: descMap[hs],
         awayStyle: as, awayDesc: descMap[as],
         analysis: `${homeTeam} x ${awayTeam}: duelo tático equilibrado na Copa 2026.`,
@@ -393,6 +406,12 @@ Responda APENAS o JSON:
           `Cruzamentos pela lateral explorando os espaços deixados pelo adversário`,
           `Bolas paradas e escanteios disputados na área`,
           `Transição rápida com finalização antes da defesa se reorganizar`,
+        ],
+        winProbHome: winHome,
+        drawProb: draw,
+        winProbAway: winAway,
+        keyDuels: [
+          { homePlayer: homeTactics.keyPlayer, awayPlayer: awayTactics.keyPlayer, context: 'Duelo de estrelas no meio-campo', advantage: wph > 55 ? 'home' : wph < 45 ? 'away' : 'equal' },
         ],
       };
     };
@@ -403,7 +422,9 @@ REGRAS ABSOLUTAS:
 2. "homeStyle" e "awayStyle": OBRIGATORIAMENTE diferentes entre si. PROIBIDO usar "balanced". Estilos válidos APENAS: "possession", "counter", "pressing", "defensive".
 3. "homeDesc" e "awayDesc": descrição em português de até 60 caracteres, específica para ESTE confronto.
 4. "analysis": resumo tático rico, específico, NÃO GENÉRICO — mencione os jogadores-chave, como as formações se encaixam e o ponto crítico do jogo. Mínimo 300 caracteres, máximo 600 caracteres.
-5. "goalScenarios": array com exatamente 4 formas ESPECÍFICAS e DISTINTAS de gol poderem sair neste jogo. Varie entre: cabeçada em cruzamento, chute de fora da área, lateral, jogada individual, falta/escanteio, contra-ataque, pênalti. Cada item deve ser uma frase descritiva (20-80 chars), não apenas um rótulo.`;
+5. "goalScenarios": array com exatamente 4 formas ESPECÍFICAS e DISTINTAS de gol poderem sair neste jogo. Varie entre: cabeçada em cruzamento, chute de fora da área, lateral, jogada individual, falta/escanteio, contra-ataque, pênalti. Cada item deve ser uma frase descritiva (20-80 chars), não apenas um rótulo.
+6. "winProbHome", "drawProb", "winProbAway": probabilidades de resultado em números inteiros que DEVEM somar exatamente 100. Baseie-se no ranking FIFA, forma recente e histórico de confrontos.
+7. "keyDuels": exatamente 3 duelos-chave específicos deste jogo — um por setor (ataque/defesa, meio-campo, corredores). Cada duelo deve ter nomes REAIS dos jogadores, contexto específico e quem tem vantagem ("home", "away" ou "equal").`;
 
     const analysisUserMsg = `Copa do Mundo 2026: ${homeTeam} (${homeTactics.formation}, destaque: ${homeTactics.keyPlayer}, xG médio: ${homeXG || 'N/A'}) vs ${awayTeam} (${awayTactics.formation}, destaque: ${awayTactics.keyPlayer}, xG médio: ${awayXG || 'N/A'}).
 
@@ -417,7 +438,15 @@ Responda APENAS este JSON:
   "awayStyle": "possession|counter|pressing|defensive",
   "awayDesc": "string (até 60 chars)",
   "analysis": "string (300-600 chars) — resumo tático específico, rico, NÃO genérico",
-  "goalScenarios": ["string", "string", "string", "string"]
+  "goalScenarios": ["string", "string", "string", "string"],
+  "winProbHome": number,
+  "drawProb": number,
+  "winProbAway": number,
+  "keyDuels": [
+    {"homePlayer": "string", "awayPlayer": "string", "context": "string (até 80 chars)", "advantage": "home|away|equal"},
+    {"homePlayer": "string", "awayPlayer": "string", "context": "string (até 80 chars)", "advantage": "home|away|equal"},
+    {"homePlayer": "string", "awayPlayer": "string", "context": "string (até 80 chars)", "advantage": "home|away|equal"}
+  ]
 }`;
 
     const rawData = await this.tryModels(
@@ -471,6 +500,41 @@ Responda APENAS este JSON:
         goalScenarios.push(...this.fallbackGoalScenarios(homeTeam, awayTeam, homeStyle, awayStyle));
       }
 
+      // Probabilidades de resultado — garante soma = 100
+      let winHome = typeof data.winProbHome === 'number' ? Math.round(data.winProbHome) : Math.round(hProb * 0.85);
+      let winAway = typeof data.winProbAway === 'number' ? Math.round(data.winProbAway) : Math.round((100 - hProb) * 0.85);
+      let drawP   = typeof data.drawProb    === 'number' ? Math.round(data.drawProb)    : 100 - winHome - winAway;
+      // Ajusta para somar exatamente 100
+      const sumProb = winHome + drawP + winAway;
+      if (sumProb !== 100) { drawP += (100 - sumProb); }
+      drawP = Math.max(3, drawP);
+      winHome = Math.max(5, winHome);
+      winAway = Math.max(5, winAway);
+      const total = winHome + drawP + winAway;
+      if (total !== 100) { winHome = 100 - drawP - winAway; }
+
+      // Duelos-chave — valida estrutura
+      const rawDuels = Array.isArray(data.keyDuels) ? data.keyDuels : [];
+      const keyDuels = rawDuels
+        .filter((d: any) => d?.homePlayer && d?.awayPlayer && d?.context)
+        .slice(0, 4)
+        .map((d: any) => ({
+          homePlayer: String(d.homePlayer),
+          awayPlayer: String(d.awayPlayer),
+          context: String(d.context),
+          advantage: (['home', 'away', 'equal'].includes(d.advantage) ? d.advantage : 'equal') as 'home' | 'away' | 'equal',
+        }));
+
+      // Fallback se a IA não gerou duelos
+      if (keyDuels.length === 0) {
+        keyDuels.push({
+          homePlayer: homeTactics.keyPlayer,
+          awayPlayer: awayTactics.keyPlayer,
+          context: 'Disputa pelos espaços no meio-campo',
+          advantage: hProb > 55 ? 'home' : hProb < 45 ? 'away' : 'equal',
+        });
+      }
+
       return {
         homeDominanceProb: hProb,
         homeStyle: homeStyle as TacticalAnalysis['dominanceStyle'],
@@ -479,6 +543,10 @@ Responda APENAS este JSON:
         awayDesc: data.awayDesc || this.defaultDesc(awayStyle),
         analysis: data.analysis || `${homeTeam} vs ${awayTeam}: estilos contrastantes na Copa 2026.`,
         goalScenarios,
+        winProbHome: winHome,
+        drawProb: drawP,
+        winProbAway: winAway,
+        keyDuels,
       };
     } catch {
       return fallbackPair();
