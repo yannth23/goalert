@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
+import { getTodayBrazil } from '../shared/date.util';
 import { translateTeam } from './translation.util';
 
 const SCRAPER_TIMEOUT_MS = 7_000;
@@ -87,7 +88,7 @@ export class ScraperService {
    *  Fontes: SofaScore → ESPN World Cup → ESPN All Soccer → TheSportsDB
    */
   async scrapeTodayMatches(): Promise<ScrapedMatch[]> {
-    const today    = new Date().toISOString().split('T')[0];
+    const today    = getTodayBrazil(); // YYYY-MM-DD em BRT (America/Sao_Paulo)
     const cached = this.getCached<ScrapedMatch[]>('today-matches');
     if (cached) { this.logger.log('[scraper] cache hit — today-matches'); return cached; }
 
@@ -298,7 +299,7 @@ export class ScraperService {
   }
 
   // ── ESPN multi-league (Copa do Mundo 2026 + qualificatórias) ──────────────
-  private async fetchESPNMultiLeague(_date: string): Promise<ScrapedMatch[]> {
+  private async fetchESPNMultiLeague(date: string): Promise<ScrapedMatch[]> {
     const leagues = [
       'fifa.world',
       'fifa.worldq.conmebol',
@@ -309,7 +310,7 @@ export class ScraperService {
     ];
 
     const results = await Promise.allSettled(
-      leagues.map(l => this.fetchESPNLeague(l)),
+      leagues.map(l => this.fetchESPNLeague(l, date)),
     );
 
     // Mescla e deduplica por par de times
@@ -330,9 +331,12 @@ export class ScraperService {
     return merged;
   }
 
-  private async fetchESPNLeague(league: string): Promise<ScrapedMatch[]> {
+  private async fetchESPNLeague(league: string, date?: string): Promise<ScrapedMatch[]> {
+    // Adiciona ?dates=YYYYMMDD para buscar jogos do dia correto em BRT
+    // Sem este parâmetro, a ESPN retorna o placar "atual" (pode ser de ontem)
+    const dateParam = date ? `?dates=${date.replace(/-/g, '')}` : '';
     const res = await axios.get(
-      `https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/scoreboard`,
+      `https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/scoreboard${dateParam}`,
       {
         timeout: SCRAPER_TIMEOUT_MS,
         headers: { 'Accept': 'application/json' },
