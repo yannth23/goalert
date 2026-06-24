@@ -2,6 +2,7 @@ import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { FootballApiService } from '../football-match/football-api.service';
+import { FootballMatchService } from '../football-match/football-match.service';
 import { StatisticsPredictorService } from '../football-match/statistics-predictor.service';
 import { getTodayRange } from '../shared';
 
@@ -13,6 +14,7 @@ export class JobsService implements OnApplicationBootstrap {
     private readonly prisma: PrismaService,
     private readonly footballApiService: FootballApiService,
     private readonly predictor: StatisticsPredictorService,
+    private readonly footballMatchService: FootballMatchService,
   ) {}
 
   async onApplicationBootstrap() {
@@ -24,6 +26,7 @@ export class JobsService implements OnApplicationBootstrap {
     this.logger.log('Bootstrap sync...');
     try {
       const r = await this.footballApiService.syncTodayMatches();
+      this.footballMatchService.invalidateCache('today-matches');
       this.logger.log(`Bootstrap sync done — ${r.synced} matches`);
       // Gera táticas em background sem bloquear
       this.generateTacticsForAll().catch(err =>
@@ -39,6 +42,7 @@ export class JobsService implements OnApplicationBootstrap {
   async syncMorning(): Promise<void> {
     try {
       const r = await this.footballApiService.syncTodayMatches();
+      this.footballMatchService.invalidateCache('today-matches');
       this.logger.log(`Morning sync done — ${r.synced} matches`);
       await this.generateTacticsForToday();
     } catch (err) {
@@ -53,6 +57,7 @@ export class JobsService implements OnApplicationBootstrap {
     this.logger.log('Midnight BRT sync — ensuring late-night games appear on new day...');
     try {
       const r = await this.footballApiService.syncTodayMatches();
+      this.footballMatchService.invalidateCache('today-matches');
       this.logger.log(`Midnight BRT sync done — ${r.synced} matches`);
       await this.generateTacticsForToday();
     } catch (err) {
@@ -71,6 +76,7 @@ export class JobsService implements OnApplicationBootstrap {
   async syncLiveMatches(): Promise<void> {
     try {
       const r = await this.footballApiService.syncTodayMatches();
+      this.footballMatchService.invalidateCache('today-matches');
       this.logger.log(`Live sync done — ${r.synced} matches`);
     } catch (err) {
       this.logger.error('Live sync failed', err);
@@ -82,6 +88,7 @@ export class JobsService implements OnApplicationBootstrap {
   async syncLateNight(): Promise<void> {
     try {
       const r = await this.footballApiService.syncTodayMatches();
+      this.footballMatchService.invalidateCache('today-matches');
       this.logger.log(`Late night sync done — ${r.synced} matches`);
     } catch (err) {
       this.logger.error('Late night sync failed', err);
