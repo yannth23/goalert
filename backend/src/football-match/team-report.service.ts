@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { RedisService } from '../redis/redis.service';
 import { ScraperService } from './scraper.service';
 import { StatisticsPredictorService } from './statistics-predictor.service';
 import OpenAI from 'openai';
@@ -42,16 +41,16 @@ interface TeamReport {
   aiAnalysis: string;
 }
 
-const CACHE_TTL_SECONDS = 3600; // 1 hora
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hora
 
 @Injectable()
 export class TeamReportService {
   private readonly logger = new Logger(TeamReportService.name);
   private readonly openai: OpenAI;
+  private readonly memCache = new Map<string, { data: TeamReport; expiresAt: number }>();
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly redis: RedisService,
     private readonly scraper: ScraperService,
     private readonly predictor: StatisticsPredictorService,
   ) {
@@ -64,14 +63,12 @@ export class TeamReportService {
   async getTeamReport(teamName: string): Promise<TeamReport> {
     const cacheKey = `team-report:${teamName.toLowerCase().replace(/\s+/g, '-')}`;
 
-    // Tenta cache primeiro
-    try {
-      const cached = await this.redis.getJson<TeamReport>(cacheKey);
-      if (cached) {
-        this.logger.log(`[team-report] cache hit para ${teamName}`);
-        return cached;
-      }
-    } catch {}
+    // Tenta cache em memória primeiro
+    const entry = this.memCache.get(cacheKey);
+    if (entry && Date.now() < entry.expiresAt) {
+      this.logger.log(`[team-report] cache hit para ${teamName}`);
+      return entry.data;
+    }
 
     try {
       this.logger.log(`[team-report] gerando relatório para ${teamName}...`);
@@ -94,8 +91,8 @@ export class TeamReportService {
         aiAnalysis,
       };
 
-      // Cacheia o resultado
-      await this.redis.setJson(cacheKey, report, CACHE_TTL_SECONDS).catch(() => {});
+      // Cacheia o resultado em memória
+      this.memCache.set(cacheKey, { data: report, expiresAt: Date.now() + CACHE_TTL_MS });
 
       return report;
     } catch (error: any) {
