@@ -17,6 +17,13 @@ export interface UserPreference {
   receiveDailyNotifications: boolean;
 }
 
+export interface KeyDuel {
+  homePlayer: string;
+  awayPlayer: string;
+  context: string;
+  advantage: 'home' | 'away' | 'equal';
+}
+
 export interface TacticalAnalysis {
   formation: string;
   lineup: string[];
@@ -33,6 +40,10 @@ export interface TacticalAnalysis {
     pressingEfficiency: number;
     deepCompletions: number;
   };
+  winProbHome?: number;
+  drawProb?: number;
+  winProbAway?: number;
+  keyDuels?: KeyDuel[];
 }
 
 export interface FootballMatch {
