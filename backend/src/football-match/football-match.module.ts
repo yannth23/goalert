@@ -11,6 +11,6 @@ import { PrismaModule } from '../prisma/prisma.module';
   imports: [PrismaModule],
   controllers: [FootballMatchController],
   providers: [FootballMatchService, FootballApiService, ScraperService, StatisticsPredictorService, TeamReportService],
-  exports: [FootballMatchService, FootballApiService, StatisticsPredictorService, TeamReportService],
+  exports: [FootballMatchService, FootballApiService, ScraperService, StatisticsPredictorService, TeamReportService],
 })
 export class FootballMatchModule {}
