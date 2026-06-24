@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Query, UseGuards, Param, Headers, UnauthorizedException } from '@nestjs/common';
+import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { FootballMatchService } from './football-match.service';
 import { FootballApiService } from './football-api.service';
 import { TeamReportService } from './team-report.service';
@@ -33,6 +34,7 @@ export class FootballMatchController {
   @Get('competition')
   getByCompetition(@Query('name') name: string) { return this.footballMatchService.getMatchesByCompetition(name); }
 
+  @Throttle({ strict: { limit: 10, ttl: 60_000 } })
   @Get('h2h')
   getHeadToHead(@Query('team1') team1: string, @Query('team2') team2: string) {
     return this.footballMatchService.getHeadToHead(team1, team2);
@@ -44,11 +46,13 @@ export class FootballMatchController {
   getSystemStatus() { return this.footballMatchService.getSystemStatus(); }
 
   /** Manual sync trigger (admin). Requires JWT. */
+  @SkipThrottle()
   @Post('sync')
   @UseGuards(JwtAuthGuard)
   syncMatches() { return this.footballApiService.syncTodayMatches(); }
 
   /** Force sync via secret header — sem JWT, para uso administrativo direto. */
+  @SkipThrottle()
   @Post('force-sync')
   forceSyncMatches(@Headers('x-admin-secret') secret: string) {
     const expected = process.env.ADMIN_SYNC_SECRET ?? process.env.JWT_SECRET;
@@ -57,6 +61,7 @@ export class FootballMatchController {
   }
 
   /** Reset completo do banco + resync — apaga todos os jogos e repopula */
+  @SkipThrottle()
   @Post('reset-and-sync')
   async resetAndSync(@Headers('x-admin-secret') secret: string) {
     const expected = process.env.ADMIN_SYNC_SECRET ?? process.env.JWT_SECRET;
@@ -66,6 +71,7 @@ export class FootballMatchController {
   }
 
   /** Regenera táticas para todos os jogos sem análise (incluindo encerrados) */
+  @SkipThrottle()
   @Post('regen-tactics')
   async regenTactics(@Headers('x-admin-secret') secret: string) {
     const expected = process.env.ADMIN_SYNC_SECRET ?? process.env.JWT_SECRET;
@@ -86,6 +92,7 @@ export class FootballMatchController {
   }
 
   /** Get comprehensive team report with tactics, statistics, and web insights */
+  @Throttle({ strict: { limit: 10, ttl: 60_000 } })
   @Get('team/:teamName/report')
   getTeamReport(@Param('teamName') teamName: string) {
     return this.teamReportService.getTeamReport(teamName);
