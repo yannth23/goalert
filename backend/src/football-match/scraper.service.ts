@@ -73,13 +73,6 @@ export class ScraperService {
   async scrapeTodayMatches(): Promise<ScrapedMatch[]> {
     const today    = new Date().toISOString().split('T')[0];
 
-    try {
-      if (cached && cached.length > 0) {
-        this.logger.log(`[scraper] cache hit — ${cached.length} matches`);
-        return cached;
-      }
-    } catch { /* cache miss */ }
-
     // Tenta SofaScore primeiro (melhor cobertura)
     try {
       const matches = await this.fetchSofaScore(today);
@@ -125,13 +118,6 @@ export class ScraperService {
    * Retorna horários em UTC — o frontend converte para BRT via America/Sao_Paulo.
    */
   async fetchGoogleMatchTimes(date: string): Promise<MatchTime[]> {
-    try {
-      if (cached?.length > 0) {
-        this.logger.log(`[google-times] cache hit: ${cached.length} horários`);
-        return cached.map(m => ({ ...m, kickoffUtc: new Date(m.kickoffUtc) }));
-      }
-    } catch {}
-
     // 1. Tenta Google ("jogos copa do mundo 2026")
     try {
       const times = await this.parseGoogleFootballWidget();
