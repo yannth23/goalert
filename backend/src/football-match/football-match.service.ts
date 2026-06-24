@@ -29,6 +29,7 @@ export interface H2HResult {
 @Injectable()
 export class FootballMatchService {
   private readonly logger = new Logger(FootballMatchService.name);
+  private readonly memCache = new Map<string, { data: any; expiresAt: number }>();
 
   constructor(
     private readonly prisma:              PrismaService,
@@ -36,12 +37,27 @@ export class FootballMatchService {
     private readonly scraper:             ScraperService,
   ) {}
 
+  private getCached<T>(key: string): T | null {
+    const entry = this.memCache.get(key);
+    if (!entry || Date.now() > entry.expiresAt) return null;
+    return entry.data as T;
+  }
+
+  private setCached(key: string, data: any, ttlMs: number): void {
+    this.memCache.set(key, { data, expiresAt: Date.now() + ttlMs });
+  }
+
+  invalidateCache(key?: string): void {
+    if (key) this.memCache.delete(key);
+    else this.memCache.clear();
+  }
+
   async getTodayMatches() {
+    const cached = this.getCached<any[]>('today-matches');
+    if (cached) { this.logger.log('[service] cache hit — today-matches'); return cached; }
+
     const { start, end } = getTodayRange();
     const now = new Date();
-
-    // Cache deletion removed to allow normal cache behavior and avoid hitting API limits unnecessarily
-    // The sync job handles cache invalidation when new data is fetched.
 
     this.logger.log(`Fetching matches from DB in range: ${start.toISOString()} - ${end.toISOString()}`);
     const matches = await this.prisma.footballMatch.findMany({
@@ -73,7 +89,9 @@ export class FootballMatchService {
       }
       return m;
     });
-    return sanitised.map(mapMatchToDto);
+    const result = sanitised.map(mapMatchToDto);
+    this.setCached('today-matches', result, 60_000);
+    return result;
   }
 
   async getMatchesByCompetition(competition: string) {
@@ -107,6 +125,10 @@ export class FootballMatchService {
   }
 
   async getHeadToHead(team1: string, team2: string): Promise<H2HResult> {
+    const cacheKey = `h2h:${team1}:${team2}`;
+    const cached = this.getCached<H2HResult>(cacheKey);
+    if (cached) return cached;
+
     // 1. Tenta via scraping (Sofascore) — histórico real
     try {
       const scraped = await this.scraper.scrapeH2H(team1, team2);
@@ -162,7 +184,7 @@ export class FootballMatchService {
       }
     }
 
-    return {
+    const h2hResult = {
       homeTeam: team1,
       awayTeam: team2,
       homeWins, draws, awayWins,
@@ -177,6 +199,8 @@ export class FootballMatchService {
         championship: m.championship,
       })),
     };
+    this.setCached(cacheKey, h2hResult, 30 * 60_000);
+    return h2hResult;
   }
 
   async getSystemStatus() {
