@@ -413,13 +413,6 @@ export class ScraperService {
    * Retorna lista com os 11 titulares ou [] se todas falharem.
    */
   async scrapeLineup(teamName: string): Promise<string[]> {
-    try {
-      if (cached && cached.length >= 11) {
-        this.logger.log(`[scraper] lineup cache hit: ${teamName}`);
-        return cached;
-      }
-    } catch {}
-
     // Tenta cada fonte em sequência até obter >= 11 jogadores
     const sources: Array<() => Promise<string[]>> = [
       () => this.lineupFromSofaScore(teamName),
@@ -633,10 +626,6 @@ export class ScraperService {
    * Em produção, isso consumiria os datasets abertos da StatsBomb.
    */
   async scrapeAdvancedStats(teamName: string) {
-    try {
-      if (cached) return cached;
-    } catch {}
-
     // Simulação de dados StatsBomb: xG, Passes Progressivos, Eficiência de Pressão
     const stats = {
       expectedGoals: parseFloat((1.1 + Math.random() * 0.9).toFixed(2)),
@@ -653,13 +642,6 @@ export class ScraperService {
   }
 
   async scrapeH2H(team1Name: string, team2Name: string): Promise<ScrapedH2H | null> {
-    try {
-      if (cached) {
-        this.logger.log(`[scraper] h2h cache hit: ${team1Name} vs ${team2Name}`);
-        return cached;
-      }
-    } catch {}
-
     const sofascoreHeaders = {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
       'Referer': 'https://www.sofascore.com/',
