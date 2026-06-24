@@ -27,6 +27,12 @@ export interface TacticalAnalysis {
   gameDominanceProb: number;
   heatmapData: { x: number; y: number; value: number }[];
   goalScenarios?: string[];
+  expectedGoals?: number;
+  advancedStats?: {
+    passesProgressive: number;
+    pressingEfficiency: number;
+    deepCompletions: number;
+  };
 }
 
 export interface FootballMatch {
