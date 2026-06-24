@@ -133,7 +133,7 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
   const time = new Date(match.date).toLocaleTimeString('pt-BR', {
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'UTC', // Força a exibição do horário UTC enviado pelo backend (que já é o horário de Brasília no scraper)
+    timeZone: 'America/Sao_Paulo',
   });
 
   const status = STATUS_MAP[match.status] ?? {
