@@ -63,8 +63,19 @@ export interface ScrapedMatch {
 @Injectable()
 export class ScraperService {
   private readonly logger = new Logger(ScraperService.name);
+  private readonly memCache = new Map<string, { data: any; expiresAt: number }>();
 
   constructor() {}
+
+  private getCached<T>(key: string): T | null {
+    const entry = this.memCache.get(key);
+    if (!entry || Date.now() > entry.expiresAt) return null;
+    return entry.data as T;
+  }
+
+  private setCached(key: string, data: any, ttlMs: number): void {
+    this.memCache.set(key, { data, expiresAt: Date.now() + ttlMs });
+  }
 
   /** Public entry-point: returns today's matches from the best available scraper.
    *  Tenta em paralelo SofaScore + ESPN (múltiplas ligas) e mescla os resultados.
@@ -72,12 +83,15 @@ export class ScraperService {
    */
   async scrapeTodayMatches(): Promise<ScrapedMatch[]> {
     const today    = new Date().toISOString().split('T')[0];
+    const cached = this.getCached<ScrapedMatch[]>('today-matches');
+    if (cached) { this.logger.log('[scraper] cache hit — today-matches'); return cached; }
 
     // Tenta SofaScore primeiro (melhor cobertura)
     try {
       const matches = await this.fetchSofaScore(today);
       if (matches.length > 0) {
         this.logger.log(`[scraper] SofaScore — ${matches.length} matches`);
+        this.setCached('today-matches', matches, 2 * 60_000);
         return matches;
       }
     } catch (err: any) {
@@ -89,6 +103,7 @@ export class ScraperService {
       const matches = await this.fetchESPNMultiLeague(today);
       if (matches.length > 0) {
         this.logger.log(`[scraper] ESPN multi-league — ${matches.length} matches`);
+        this.setCached('today-matches', matches, 2 * 60_000);
         return matches;
       }
     } catch (err: any) {
@@ -100,6 +115,7 @@ export class ScraperService {
       const matches = await this.fetchTheSportsDB(today);
       if (matches.length > 0) {
         this.logger.log(`[scraper] TheSportsDB — ${matches.length} matches`);
+        this.setCached('today-matches', matches, 2 * 60_000);
         return matches;
       }
     } catch (err: any) {
@@ -118,6 +134,10 @@ export class ScraperService {
    * Retorna horários em UTC — o frontend converte para BRT via America/Sao_Paulo.
    */
   async fetchGoogleMatchTimes(date: string): Promise<MatchTime[]> {
+    const cacheKey = `google-times:${date}`;
+    const cached = this.getCached<MatchTime[]>(cacheKey);
+    if (cached) { this.logger.log('[google-times] cache hit'); return cached; }
+
     // 1. Tenta Google ("jogos copa do mundo 2026")
     try {
       const times = await this.parseGoogleFootballWidget();
@@ -399,6 +419,10 @@ export class ScraperService {
    * Retorna lista com os 11 titulares ou [] se todas falharem.
    */
   async scrapeLineup(teamName: string): Promise<string[]> {
+    const cacheKey = `lineup:${teamName}`;
+    const cached = this.getCached<string[]>(cacheKey);
+    if (cached) { this.logger.log(`[scraper] lineup cache hit: ${teamName}`); return cached; }
+
     // Tenta cada fonte em sequência até obter >= 11 jogadores
     const sources: Array<() => Promise<string[]>> = [
       () => this.lineupFromSofaScore(teamName),
@@ -411,6 +435,7 @@ export class ScraperService {
         const players = await source();
         if (players.length >= 11) {
           this.logger.log(`[scraper] escalação obtida para ${teamName}: ${players.slice(0, 3).join(', ')}...`);
+          this.setCached(`lineup:${teamName}`, players, 30 * 60_000);
           return players;
         }
       } catch (err: any) {
@@ -612,6 +637,10 @@ export class ScraperService {
    * Em produção, isso consumiria os datasets abertos da StatsBomb.
    */
   async scrapeAdvancedStats(teamName: string) {
+    const cacheKey = `adv-stats:${teamName}`;
+    const cached = this.getCached<any>(cacheKey);
+    if (cached) return cached;
+
     // Simulação de dados StatsBomb: xG, Passes Progressivos, Eficiência de Pressão
     const stats = {
       expectedGoals: parseFloat((1.1 + Math.random() * 0.9).toFixed(2)),
@@ -619,6 +648,7 @@ export class ScraperService {
       pressingEfficiency: Math.floor(40 + Math.random() * 30),
       deepCompletions: Math.floor(8 + Math.random() * 12),
     };
+    this.setCached(`adv-stats:${teamName}`, stats, 30 * 60_000);
     return stats;
   }
 
@@ -628,6 +658,10 @@ export class ScraperService {
   }
 
   async scrapeH2H(team1Name: string, team2Name: string): Promise<ScrapedH2H | null> {
+    const cacheKey = `h2h:${team1Name}:${team2Name}`;
+    const cached = this.getCached<ScrapedH2H>(cacheKey);
+    if (cached) { this.logger.log(`[scraper] h2h cache hit: ${team1Name} vs ${team2Name}`); return cached; }
+
     const sofascoreHeaders = {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
       'Referer': 'https://www.sofascore.com/',
@@ -713,9 +747,8 @@ export class ScraperService {
         recentMatches,
       };
 
-      // Cache por 12h — histórico não muda com frequência
+      this.setCached(cacheKey, result, 12 * 60 * 60_000);
       this.logger.log(`[scraper] h2h obtido: ${team1Name} vs ${team2Name} — ${h2hEvents.length} jogos`);
-
       return result;
     } catch (err: any) {
       this.logger.warn(`[scraper] falha ao buscar h2h ${team1Name} vs ${team2Name}: ${err.message}`);
