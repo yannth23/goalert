@@ -61,8 +61,12 @@ export class FootballApiService {
   async syncTodayMatches() {
     const { start, end } = getTodayRange();
     const todayBrazil = getTodayBrazil();
+    
+    // Para garantir que pegamos jogos que começaram na virada do dia UTC/BRT, buscamos um range maior na API
+    const yesterday = new Date(start.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const tomorrow = new Date(end.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-    this.logger.log(`Syncing matches for BRT: ${todayBrazil} (range: ${start.toISOString()} - ${end.toISOString()})`);
+    this.logger.log(`Syncing matches for BRT: ${todayBrazil} (API range: ${yesterday} to ${tomorrow})`);
 
     let matchesToProcess: any[] = [];
     let source = 'none';
@@ -73,22 +77,34 @@ export class FootballApiService {
         this.logger.log('Trying Football-Data.org...');
         const response = await axios.get(`${FOOTBALL_DATA_BASE_URL}/matches`, {
           headers: this.footballDataHeaders,
-          params: { dateFrom: todayBrazil, dateTo: todayBrazil },
+          params: { dateFrom: yesterday, dateTo: tomorrow },
         });
         
         if (response.data?.matches?.length > 0) {
-          matchesToProcess = response.data.matches.map((m: any) => ({
-            externalId: m.id.toString(),
-            date: new Date(m.utcDate),
-            championship: m.competition.name,
-            homeTeam: translateTeam(m.homeTeam.name),
-            awayTeam: translateTeam(m.awayTeam.name),
-            homeFlag: m.homeTeam.crest,
-            awayFlag: m.awayTeam.crest,
-            status: STATUS_MAP[m.status] ?? 'NS',
-            homeScore: m.score.fullTime.home,
-            awayScore: m.score.fullTime.away,
-          }));
+          // Filtramos apenas os jogos que caem no nosso range de 27h do Brasil
+          const filtered = response.data.matches.filter((m: any) => {
+            const d = new Date(m.utcDate);
+            return d >= start && d <= end;
+          });
+
+          matchesToProcess = filtered.map((m: any) => {
+            // Extração inteligente de placar: tenta FullTime -> RegularTime -> HalfTime
+            const hScore = m.score.fullTime?.home ?? m.score.regularTime?.home ?? m.score.halfTime?.home ?? null;
+            const aScore = m.score.fullTime?.away ?? m.score.regularTime?.away ?? m.score.halfTime?.away ?? null;
+
+            return {
+              externalId: m.id.toString(),
+              date: new Date(m.utcDate),
+              championship: m.competition.name,
+              homeTeam: translateTeam(m.homeTeam.name),
+              awayTeam: translateTeam(m.awayTeam.name),
+              homeFlag: m.homeTeam.crest,
+              awayFlag: m.awayTeam.crest,
+              status: STATUS_MAP[m.status] ?? 'NS',
+              homeScore: hScore,
+              awayScore: aScore,
+            };
+          });
           source = 'football-data.org';
         }
       }
