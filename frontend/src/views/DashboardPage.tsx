@@ -51,17 +51,37 @@ export function DashboardPage() {
   const [syncing, setSyncing] = useState(false);
   const { toast, showToast } = useToast();
 
+  // Busca inicial + polling a cada 30s
   useEffect(() => {
     if (!user) return;
-    Promise.all([
-      api.getTodayMatches(),
-      api.getUser(user.id),
-    ]).then(([matchData, userData]) => {
-      setMatches(matchData);
-      setFavoriteTeams(userData.favoriteTeams);
-    }).catch(() => {
-      showToast('Erro ao carregar dados.');
-    }).finally(() => setLoadingData(false));
+
+    async function fetchMatches() {
+      try {
+        const matchData = await api.getTodayMatches();
+        setMatches(matchData);
+      } catch {
+        // silencioso no polling
+      }
+    }
+
+    async function fetchAll() {
+      try {
+        const [matchData, userData] = await Promise.all([
+          api.getTodayMatches(),
+          api.getUser(user!.id),
+        ]);
+        setMatches(matchData);
+        setFavoriteTeams(userData.favoriteTeams);
+      } catch {
+        showToast('Erro ao carregar dados.');
+      } finally {
+        setLoadingData(false);
+      }
+    }
+
+    fetchAll();
+    const interval = setInterval(fetchMatches, REFRESH_MS);
+    return () => clearInterval(interval);
   }, [user]);
 
   // Auto-sync: se o banco estiver vazio após o carregamento, dispara um sync e re-busca
@@ -374,3 +394,4 @@ export function DashboardPage() {
     </main>
   );
 }
+
