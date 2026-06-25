@@ -156,17 +156,34 @@ export class FootballApiService {
 
     for (const match of matchesToProcess) {
       try {
-        // Gera predições baseadas em histórico
-        const predictions = await this.statisticsPredictor.predictMatch(match.homeTeam, match.awayTeam);
-        
-        // Se não houver externalId, usamos um identificador composto para evitar nulos no @unique
-        // Usamos apenas times e data (sem o prefixo da fonte) para que SofaScore e ESPN não criem jogos duplicados
         // Garante sempre um lookupId válido e não-nulo
         const dateStr = match.date.toISOString().split('T')[0];
         const fallbackId = `match_${match.homeTeam}_${match.awayTeam}_${dateStr}`;
         const lookupId = !match.externalId || match.externalId.startsWith('scraped_')
           ? fallbackId
           : match.externalId;
+
+        // Verifica se já tem predictions no banco
+        const existing = await this.prisma.footballMatch.findUnique({
+          where: { externalId: lookupId },
+          select: { predictedGoalsHome: true, homeTactics: true },
+        });
+        const hasPredictions = existing?.predictedGoalsHome !== null && existing?.homeTactics !== null;
+
+        // Gera predictions só se ainda não tem (evita bloquear o sync a cada 2min)
+        let predictions: any = {
+          predictedGoalsHome: null, predictedGoalsAway: null,
+          predictedCards: null, predictedFouls: null,
+          homeTactics: null, awayTactics: null,
+          aiAnalysis: null,
+        };
+        if (!hasPredictions) {
+          try {
+            predictions = await this.statisticsPredictor.predictMatch(match.homeTeam, match.awayTeam);
+          } catch (predErr: any) {
+            this.logger.warn(`Predictions failed for ${match.homeTeam} vs ${match.awayTeam}: ${predErr.message}`);
+          }
+        }
 
         await this.prisma.footballMatch.upsert({
           where:  { externalId: lookupId },
