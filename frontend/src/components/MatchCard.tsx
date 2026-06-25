@@ -24,6 +24,19 @@ const FLAGS: Record<string, string> = {
   'Gana': '🇬🇭', 'Nigéria': '🇳🇬', 'Egito': '🇪🇬', 'Argélia': '🇩🇿', 'Tunísia': '🇹🇳',
   'Catar': '🇶🇦', 'Arábia Saudita': '🇸🇦', 'Irã': '🇮🇷', 'Austrália': '🇦🇺', 'Suíça': '🇨🇭',
   'Dinamarca': '🇩🇰', 'Sérvia': '🇷🇸', 'Polônia': '🇵🇱', 'Suécia': '🇸🇪', 'Noruega': '🇳🇴',
+  'Equador': '🇪🇨', 'Colômbia': '🇨🇴', 'Chile': '🇨🇱', 'Peru': '🇵🇪', 'Paraguai': '🇵🇾',
+  'Bolívia': '🇧🇴', 'Venezuela': '🇻🇪', 'Panamá': '🇵🇦', 'Costa Rica': '🇨🇷', 'Jamaica': '🇯🇲',
+  'Haiti': '🇭🇹', 'Trinidad': '🇹🇹', 'El Salvador': '🇸🇻', 'Honduras': '🇭🇳', 'Guatemala': '🇬🇹',
+  'Turquia': '🇹🇷', 'Ucrânia': '🇺🇦', 'Áustria': '🇦🇹', 'Tchéquia': '🇨🇿', 'Hungria': '🇭🇺',
+  'Romênia': '🇷🇴', 'Grécia': '🇬🇷', 'Escócia': '🏴󠁧󠁢󠁳󠁣󠁴󠁿', 'País de Gales': '🏴󠁧󠁢󠁷󠁬󠁳󠁿', 'Eslováquia': '🇸🇰',
+  'Eslovênia': '🇸🇮', 'Albânia': '🇦🇱', 'Geórgia': '🇬🇪', 'Macedônia': '🇲🇰', 'Kosovo': '🇽🇰',
+  'Iraque': '🇮🇶', 'Indonésia': '🇮🇩', 'China': '🇨🇳', 'Nova Zelândia': '🇳🇿', 'Índia': '🇮🇳',
+  'Costa do Marfim': '🇨🇮', 'África do Sul': '🇿🇦', 'Zimbábue': '🇿🇼', 'RD Congo': '🇨🇩',
+  'Curaçau': '🇨🇼', 'Cabo Verde': '🇨🇻', 'Islândia': '🇮🇸', 'Finlândia': '🇫🇮',
+  'Bielorrússia': '🇧🇾', 'Moldávia': '🇲🇩', 'Armênia': '🇦🇲', 'Azerbaijão': '🇦🇿',
+  'Cazaquistão': '🇰🇿', 'Uzbequistão': '🇺🇿', 'Afeganistão': '🇦🇫', 'Paquistão': '🇵🇰',
+  'Bósnia': '🇧🇦', 'Montenegro': '🇲🇪', 'Bulgária': '🇧🇬', 'Lituânia': '🇱🇹',
+  'Letônia': '🇱🇻', 'Estônia': '🇪🇪', 'Luxemburgo': '🇱🇺', 'Malta': '🇲🇹',
 };
 
 const STYLE_ICON: Record<string, string> = {
@@ -232,15 +245,15 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
           <div className="flex flex-wrap justify-center gap-3">
             <div className="flex flex-col items-center">
               <span className="text-[9px] text-slate-500 uppercase font-bold">Gols</span>
-              <span className="text-xs font-black text-white">{match.predictions.predictedGoalsHome} – {match.predictions.predictedGoalsAway}</span>
+              <span className="text-xs font-black text-white">{match.predictions.goalsHome?.toFixed(1)} – {match.predictions.goalsAway?.toFixed(1)}</span>
             </div>
             <div className="flex flex-col items-center">
               <span className="text-[9px] text-slate-500 uppercase font-bold">Cartões</span>
-              <span className="text-xs font-black text-white">{match.predictions.predictedCards}</span>
+              <span className="text-xs font-black text-white">{match.predictions.cards}</span>
             </div>
             <div className="flex flex-col items-center">
               <span className="text-[9px] text-slate-500 uppercase font-bold">Faltas</span>
-              <span className="text-xs font-black text-white">{match.predictions.predictedFouls}</span>
+              <span className="text-xs font-black text-white">{match.predictions.fouls}</span>
             </div>
           </div>
         </div>
