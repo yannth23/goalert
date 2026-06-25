@@ -80,7 +80,7 @@ export function DashboardPage() {
     }
 
     fetchAll();
-    const interval = setInterval(fetchMatches, REFRESH_MS);
+    const interval = setInterval(fetchMatches, 30_000);
     return () => clearInterval(interval);
   }, [user]);
 
@@ -95,17 +95,6 @@ export function DashboardPage() {
       .catch(() => {})
       .finally(() => setSyncing(false));
   }, [loadingData, matches.length, user]);
-
-  // Auto-refresh live match scores every 30 seconds
-  useEffect(() => {
-    const timer = setInterval(async () => {
-      try {
-        const matchData = await api.getTodayMatches();
-        setMatches(matchData);
-      } catch { /* silent */ }
-    }, 30_000);
-    return () => clearInterval(timer);
-  }, []);
 
   async function handleAddTeam(e: React.FormEvent) {
     e.preventDefault();
