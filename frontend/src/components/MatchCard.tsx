@@ -240,41 +240,86 @@ export function MatchCard({ match, highlighted }: MatchCardProps) {
 
       <TacticalClash match={match} />
 
+      {/* Predições + Análise AI */}
       {match.predictions && (
-        <div className="mt-4 pt-4 border-t border-slate-800/50">
-          <div className="flex flex-wrap justify-center gap-3">
-            <div className="flex flex-col items-center">
-              <span className="text-[9px] text-slate-500 uppercase font-bold">Gols</span>
-              <span className="text-xs font-black text-white">{match.predictions.goalsHome?.toFixed(1)} – {match.predictions.goalsAway?.toFixed(1)}</span>
+        <div className="mt-4 pt-4 border-t border-slate-800/50 space-y-3">
+
+          {/* Stats row */}
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-slate-800/60 rounded-xl p-2.5 text-center">
+              <p className="text-[9px] text-slate-500 uppercase font-bold tracking-widest mb-1">⚽ Gols proj.</p>
+              <p className="text-sm font-black text-white">
+                {match.predictions.goalsHome?.toFixed(1)}
+                <span className="text-slate-500 mx-0.5">–</span>
+                {match.predictions.goalsAway?.toFixed(1)}
+              </p>
             </div>
-            <div className="flex flex-col items-center">
-              <span className="text-[9px] text-slate-500 uppercase font-bold">Cartões</span>
-              <span className="text-xs font-black text-white">{match.predictions.cards}</span>
+            <div className="bg-slate-800/60 rounded-xl p-2.5 text-center">
+              <p className="text-[9px] text-slate-500 uppercase font-bold tracking-widest mb-1">🟨 Cartões</p>
+              <p className="text-sm font-black text-white">{match.predictions.cards ?? '—'}</p>
             </div>
-            <div className="flex flex-col items-center">
-              <span className="text-[9px] text-slate-500 uppercase font-bold">Faltas</span>
-              <span className="text-xs font-black text-white">{match.predictions.fouls}</span>
+            <div className="bg-slate-800/60 rounded-xl p-2.5 text-center">
+              <p className="text-[9px] text-slate-500 uppercase font-bold tracking-widest mb-1">🦵 Faltas</p>
+              <p className="text-sm font-black text-white">{match.predictions.fouls ?? '—'}</p>
             </div>
           </div>
+
+          {/* Análise AI — sempre visível, expansível */}
+          {match.aiAnalysis && (
+            <div className="relative">
+              <button
+                onClick={() => setShowTactics(!showTactics)}
+                className="w-full text-left"
+              >
+                <div className={`bg-slate-950/80 border border-slate-800 rounded-xl p-3 transition-all ${showTactics ? '' : 'line-clamp-2'}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[10px] font-black text-purple-400 bg-purple-950/50 px-2 py-0.5 rounded-full tracking-widest uppercase">AI Insight</span>
+                    {match.tactics?.home?.shortInsight && (
+                      <span className="text-[10px] text-slate-500 truncate">{match.tactics.home.shortInsight}</span>
+                    )}
+                  </div>
+                  <p className={`text-xs text-slate-300 leading-relaxed ${showTactics ? '' : 'line-clamp-2'}`}>
+                    {match.aiAnalysis}
+                  </p>
+                  {!showTactics && (
+                    <p className="text-[10px] text-purple-400 mt-1 font-semibold">Ver análise completa ↓</p>
+                  )}
+                  {showTactics && (
+                    <p className="text-[10px] text-slate-600 mt-1 font-semibold">Recolher ↑</p>
+                  )}
+                </div>
+              </button>
+
+              {/* Ponto de atenção */}
+              {showTactics && match.attentionPoint && (
+                <div className="mt-2 flex items-start gap-2 bg-yellow-950/30 border border-yellow-800/40 rounded-xl p-3">
+                  <span className="text-base shrink-0">👁️</span>
+                  <div>
+                    <p className="text-[10px] font-black text-yellow-400 uppercase tracking-widest mb-0.5">Ponto de atenção</p>
+                    <p className="text-xs text-slate-300">{match.attentionPoint}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {!match.aiAnalysis && (
+            <div className="flex items-center gap-2 text-xs text-slate-600 bg-slate-800/30 rounded-xl px-3 py-2">
+              <span className="animate-pulse">⚙️</span>
+              <span>Análise tática em processamento...</span>
+            </div>
+          )}
         </div>
       )}
 
-      <div className="mt-4 flex flex-col gap-2">
-        <button
-          onClick={() => setShowTactics(!showTactics)}
-          className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl transition-all"
-        >
-          {showTactics ? 'Ocultar Análise AI' : 'Ver Análise AI'}
-        </button>
-        
-        {showTactics && (
-          <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 animate-in fade-in slide-in-from-top-2">
-            <p className="text-xs text-slate-300 leading-relaxed italic">
-              "{match.aiAnalysis || 'Análise tática em processamento...'}"
-            </p>
+      {!match.predictions && (
+        <div className="mt-4 pt-4 border-t border-slate-800/50">
+          <div className="flex items-center gap-2 text-xs text-slate-600 bg-slate-800/30 rounded-xl px-3 py-2">
+            <span className="animate-pulse">⚙️</span>
+            <span>Predições sendo geradas pela IA...</span>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
