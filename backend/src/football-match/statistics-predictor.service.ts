@@ -401,11 +401,12 @@ Responda APENAS o JSON:
         homeDominanceProb: wph,
         homeStyle: hs, homeDesc: descMap[hs],
         awayStyle: as, awayDesc: descMap[as],
-        analysis: `${homeTeam} x ${awayTeam}: duelo tático equilibrado na Copa 2026.`,
+        analysis: `${homeTeam} adota postura de ${descMap[hs]}, enquanto ${awayTeam} responde com ${descMap[as]}. O confronto entre esses estilos deve criar espaços em transição. Times de nível Copa do Mundo — cada detalhe tático conta. Fique atento às bolas paradas e ao aproveitamento em contra-ataques.`,
         goalScenarios: [
-          `Cruzamentos pela lateral explorando os espaços deixados pelo adversário`,
-          `Bolas paradas e escanteios disputados na área`,
-          `Transição rápida com finalização antes da defesa se reorganizar`,
+          `${homeTeam} explora espaços nas costas da linha defensiva adversária`,
+          `Bolas paradas: escanteios e faltas próximas à área`,
+          `${awayTeam} aproveita saída errada para contra-atacar`,
+          `Cruzamento pela lateral direita com finalização no segundo pau`,
         ],
         winProbHome: winHome,
         drawProb: draw,
@@ -421,7 +422,7 @@ REGRAS ABSOLUTAS:
 1. "homeDominanceProb": NUNCA use 50. Diferença mínima de 8 pontos. Base: ranking FIFA, histórico, Copa 2026.
 2. "homeStyle" e "awayStyle": OBRIGATORIAMENTE diferentes entre si. PROIBIDO usar "balanced". Estilos válidos APENAS: "possession", "counter", "pressing", "defensive".
 3. "homeDesc" e "awayDesc": descrição em português de até 60 caracteres, específica para ESTE confronto.
-4. "analysis": resumo tático rico, específico, NÃO GENÉRICO — mencione os jogadores-chave, como as formações se encaixam e o ponto crítico do jogo. Mínimo 300 caracteres, máximo 600 caracteres.
+4. "analysis": análise tática PROFUNDA e ESPECÍFICA — mencione estilo de jogo de cada time nesta Copa 2026, como as formações se encaixam, quais zonas do campo serão disputadas, o ponto crítico que pode decidir o jogo e os jogadores que fazem diferença. PROIBIDO frases genéricas como "duelo equilibrado". Mínimo 400 caracteres, máximo 700 caracteres.
 5. "goalScenarios": array com exatamente 4 formas ESPECÍFICAS e DISTINTAS de gol poderem sair neste jogo. Varie entre: cabeçada em cruzamento, chute de fora da área, lateral, jogada individual, falta/escanteio, contra-ataque, pênalti. Cada item deve ser uma frase descritiva (20-80 chars), não apenas um rótulo.
 6. "winProbHome", "drawProb", "winProbAway": probabilidades de resultado em números inteiros que DEVEM somar exatamente 100. Baseie-se no ranking FIFA, forma recente e histórico de confrontos.
 7. "keyDuels": exatamente 3 duelos-chave específicos deste jogo — um por setor (ataque/defesa, meio-campo, corredores). Cada duelo deve ter nomes REAIS dos jogadores, contexto específico e quem tem vantagem ("home", "away" ou "equal").`;
