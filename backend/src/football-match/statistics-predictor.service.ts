@@ -401,12 +401,25 @@ Responda APENAS o JSON:
         homeDominanceProb: wph,
         homeStyle: hs, homeDesc: descMap[hs],
         awayStyle: as, awayDesc: descMap[as],
-        analysis: `${homeTeam} adota postura de ${descMap[hs]}, enquanto ${awayTeam} responde com ${descMap[as]}. O confronto entre esses estilos deve criar espaços em transição. Times de nível Copa do Mundo — cada detalhe tático conta. Fique atento às bolas paradas e ao aproveitamento em contra-ataques.`,
+        analysis: (() => {
+          const scenarios: Record<string, string> = {
+            'possession_defensive': `${homeTeam} deve dominar a posse e girar a bola buscando abrir espaços, enquanto ${awayTeam} se fecha em bloco baixo esperando o erro adversário. O perigo vem de bolas paradas e lances de segunda trave. A paciência de ${homeTeam} será testada.`,
+            'possession_counter': `${homeTeam} controla, ${awayTeam} contra-ataca. Duelo clássico de Copa: quem tiver o melhor ataque rápido leva vantagem. Espaços nas costas da zaga de ${homeTeam} serão o alvo principal. Um gol muda tudo.`,
+            'pressing_counter': `${homeTeam} vai pressionar alto desde o início tentando asfixiar a saída de bola de ${awayTeam}. Se o pressing falhar, espaços imensos se abrem para o contra-ataque adversário. Jogo de alto risco dos dois lados.`,
+            'pressing_defensive': `Intensidade máxima de ${homeTeam} contra organização defensiva de ${awayTeam}. O duelo vai se decidir na segunda bola e nos lances parados. Time que aguentar a pressão nos primeiros 20 minutos sai na frente.`,
+            'possession_pressing': `Batalha pelo controle do jogo — ${homeTeam} quer manter a bola, ${awayTeam} quer roubar alto. Zona do meio-campo será o campo de batalha. Quem vencer os duelos no terço médio controla o jogo.`,
+            'counter_defensive': `Jogo fechado esperado. ${homeTeam} vai explorar transições rápidas enquanto ${awayTeam} aposta no bloqueio defensivo. Gol de bola parada ou lance individual podem ser decisivos nesse confronto equilibrado.`,
+          };
+          const key = hs + '_' + as;
+          const reverseKey = as + '_' + hs;
+          return scenarios[key] || scenarios[reverseKey] || 
+            `${homeTeam} (${descMap[hs]}) enfrenta ${awayTeam} (${descMap[as]}) num duelo de estilos opostos. A zona de meio-campo será disputada palmo a palmo. Bolas paradas e erros individuais podem ser decisivos.`;
+        })(),
         goalScenarios: [
-          `${homeTeam} explora espaços nas costas da linha defensiva adversária`,
-          `Bolas paradas: escanteios e faltas próximas à área`,
-          `${awayTeam} aproveita saída errada para contra-atacar`,
-          `Cruzamento pela lateral direita com finalização no segundo pau`,
+          `${homeTeam} explora espaços nas costas da linha defensiva adversária em transição`,
+          `Bola parada: escanteio ou falta na entrada da área`,
+          `${awayTeam} aproveita saída de bola errada para contra-atacar em velocidade`,
+          `Lance individual de jogador estrela desequilibra o duelo tático`,
         ],
         winProbHome: winHome,
         drawProb: draw,
@@ -422,7 +435,7 @@ REGRAS ABSOLUTAS:
 1. "homeDominanceProb": NUNCA use 50. Diferença mínima de 8 pontos. Base: ranking FIFA, histórico, Copa 2026.
 2. "homeStyle" e "awayStyle": OBRIGATORIAMENTE diferentes entre si. PROIBIDO usar "balanced". Estilos válidos APENAS: "possession", "counter", "pressing", "defensive".
 3. "homeDesc" e "awayDesc": descrição em português de até 60 caracteres, específica para ESTE confronto.
-4. "analysis": análise tática PROFUNDA e ESPECÍFICA — mencione estilo de jogo de cada time nesta Copa 2026, como as formações se encaixam, quais zonas do campo serão disputadas, o ponto crítico que pode decidir o jogo e os jogadores que fazem diferença. PROIBIDO frases genéricas como "duelo equilibrado". Mínimo 400 caracteres, máximo 700 caracteres.
+4. "analysis": análise tática JORNALÍSTICA e ESPECÍFICA — como um comentarista da Globo. Mencione: (a) o estilo real de cada seleção nesta Copa, (b) qual zona do campo será o campo de batalha, (c) o maior perigo tático de cada time, (d) o jogador que pode decidir. PROIBIDO: "duelo equilibrado", "confronto tático", frases genéricas. Escreva com emoção e especificidade. Mínimo 450 caracteres.
 5. "goalScenarios": array com exatamente 4 formas ESPECÍFICAS e DISTINTAS de gol poderem sair neste jogo. Varie entre: cabeçada em cruzamento, chute de fora da área, lateral, jogada individual, falta/escanteio, contra-ataque, pênalti. Cada item deve ser uma frase descritiva (20-80 chars), não apenas um rótulo.
 6. "winProbHome", "drawProb", "winProbAway": probabilidades de resultado em números inteiros que DEVEM somar exatamente 100. Baseie-se no ranking FIFA, forma recente e histórico de confrontos.
 7. "keyDuels": exatamente 3 duelos-chave específicos deste jogo — um por setor (ataque/defesa, meio-campo, corredores). Cada duelo deve ter nomes REAIS dos jogadores, contexto específico e quem tem vantagem ("home", "away" ou "equal").`;
