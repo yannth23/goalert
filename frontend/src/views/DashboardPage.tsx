@@ -16,7 +16,7 @@ import { Loading } from '../components/Loading';
 import { EmptyState } from '../components/EmptyState';
 import type { FootballMatch } from '../types';
 
-type Tab = 'jogos' | 'grupos' | 'conta';
+type Tab = 'jogos' | 'bracket' | 'previsoes' | 'grupos' | 'conta';
 type StyleFilter = 'all' | 'pressing' | 'counter' | 'possession' | 'defensive';
 
 const STYLE_OPTS: { key: StyleFilter; label: string; icon: string; active: string; inactive: string }[] = [
@@ -183,6 +183,7 @@ export function DashboardPage() {
         <div className="max-w-4xl mx-auto px-2 sm:px-4 flex min-w-max sm:min-w-0">
           {([
             { key: 'jogos', label: 'Jogos' },
+            { key: 'bracket', label: '🏆 Copa' },
             { key: 'grupos', label: 'Grupos' },
             { key: 'conta', label: 'Conta' },
           ] as { key: Tab; label: string }[]).map(({ key, label }) => (
@@ -307,6 +308,9 @@ export function DashboardPage() {
             )}
           </>
         )}
+
+        {/* ── ABA BRACKET ── */}
+        {tab === 'bracket' && <BracketPage />}
 
         {/* ── ABA GRUPOS ── */}
         {tab === 'grupos' && (
