@@ -129,6 +129,36 @@ export class JobsService implements OnApplicationBootstrap {
     }
   }
 
+  /** Limpa análises genéricas do banco para forçar regeneração */
+  private async clearGenericAnalysis(): Promise<void> {
+    try {
+      // Detecta análises genéricas pelo padrão do fallback antigo
+      const genericPatterns = [
+        'duelo tático equilibrado na Copa 2026',
+        'adota postura de Controla o jogo',
+        'adota postura de Explora espaços',
+        'adota postura de Pressiona alto',
+        'adota postura de Bloco defensivo',
+      ];
+
+      for (const pattern of genericPatterns) {
+        const result = await this.prisma.footballMatch.updateMany({
+          where: { aiAnalysis: { contains: pattern } },
+          data: {
+            aiAnalysis:   null,
+            homeTactics:  null,
+            awayTactics:  null,
+          },
+        });
+        if (result.count > 0) {
+          this.logger.log(`Cleared ${result.count} matches with generic analysis: "${pattern}"`);
+        }
+      }
+    } catch (err: any) {
+      this.logger.error('clearGenericAnalysis failed', err.message);
+    }
+  }
+
   /** Gera táticas para TODOS os jogos sem análise (sem filtro de data) */
   private async generateTacticsForAll(): Promise<void> {
     try {
