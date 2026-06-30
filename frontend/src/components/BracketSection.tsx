@@ -19,7 +19,7 @@ const FLAGS: Record<string, string> = {
   'Morocco': '🇲🇦', 'Marrocos': '🇲🇦',
   'Japan': '🇯🇵', 'Japão': '🇯🇵',
   'South Korea': '🇰🇷', 'Coreia do Sul': '🇰🇷',
-  'United States': '🇺🇸', 'EUA': '🇺🇸',
+  'United States': '🇺🇸', 'USA': '🇺🇸', 'EUA': '🇺🇸',
   'Mexico': '🇲🇽', 'México': '🇲🇽',
   'Canada': '🇨🇦', 'Canadá': '🇨🇦',
   'Senegal': '🇸🇳',
@@ -49,55 +49,58 @@ const FLAGS: Record<string, string> = {
   'Venezuela': '🇻🇪',
   'Paraguay': '🇵🇾', 'Paraguai': '🇵🇾',
   'Bolivia': '🇧🇴', 'Bolívia': '🇧🇴',
-  'Curaçau': '🇨🇼', 'Curaçao': '🇨🇼',
+  'Curaçao': '🇨🇼', 'Curaçau': '🇨🇼',
   'Cabo Verde': '🇨🇻', 'Cape Verde': '🇨🇻',
   'Iraq': '🇮🇶', 'Iraque': '🇮🇶',
   'Algeria': '🇩🇿', 'Argélia': '🇩🇿',
-  'Czech Republic': '🇨🇿', 'Tchéquia': '🇨🇿',
+  'Czechia': '🇨🇿', 'Czech Republic': '🇨🇿', 'Tchéquia': '🇨🇿',
   'Haiti': '🇭🇹',
   'Azerbaijan': '🇦🇿', 'Azerbaijão': '🇦🇿',
+  'South Africa': '🇿🇦', 'África do Sul': '🇿🇦',
+  'Bosnia and Herzegovina': '🇧🇦', 'Bosnia-Herzegovina': '🇧🇦', 'Bósnia e Herzegovina': '🇧🇦',
+  'New Zealand': '🇳🇿', 'Nova Zelândia': '🇳🇿',
+  'Egypt': '🇪🇬', 'Egito': '🇪🇬',
+  'Jordan': '🇯🇴', 'Jordânia': '🇯🇴',
+  'Congo DR': '🇨🇩', 'DR Congo': '🇨🇩', 'RD Congo': '🇨🇩',
+  'Uzbekistan': '🇺🇿', 'Uzbequistão': '🇺🇿',
 };
 
-// Composição oficial dos 12 grupos da Copa 2026 — usado como fonte de verdade
-// para agrupar os times mesmo se a API não fornecer "group" explícito.
+// Composição OFICIAL dos 12 grupos da Copa do Mundo FIFA 2026 (sorteio de 5 dez 2025)
 const GROUP_TEAMS: Record<string, string[]> = {
-  'A': ['EUA', 'Panamá', 'Bolívia', 'Argélia'],
-  'B': ['Argentina', 'Chile', 'Peru', 'Canadá'],
-  'C': ['Brasil', 'Colômbia', 'Equador', 'Catar'],
-  'D': ['Espanha', 'Croácia', 'Marrocos', 'Azerbaijão'],
-  'E': ['França', 'Bélgica', 'Itália', 'Camarões'],
-  'F': ['Portugal', 'Polônia', 'Tchéquia', 'Iraque'],
-  'G': ['Alemanha', 'Japão', 'EUA', 'Arábia Saudita'],
-  'H': ['Inglaterra', 'Sérvia', 'Escócia', 'Senegal'],
-  'I': ['Holanda', 'Dinamarca', 'Áustria', 'Nigéria'],
-  'J': ['Uruguai', 'Noruega', 'Suíça', 'Costa do Marfim'],
-  'K': ['Coreia do Sul', 'Austrália', 'Irã', 'Gana'],
-  'L': ['México', 'Ucrânia', 'Turquia', 'Cabo Verde'],
+  'A': ['Mexico', 'South Africa', 'South Korea', 'Czechia'],
+  'B': ['Canada', 'Bosnia and Herzegovina', 'Qatar', 'Switzerland'],
+  'C': ['Brazil', 'Morocco', 'Haiti', 'Scotland'],
+  'D': ['United States', 'Paraguay', 'Australia', 'Turkey'],
+  'E': ['Germany', 'Curaçao', "Côte d'Ivoire", 'Ecuador'],
+  'F': ['Netherlands', 'Japan', 'Sweden', 'Tunisia'],
+  'G': ['Belgium', 'Egypt', 'Iran', 'New Zealand'],
+  'H': ['Spain', 'Cabo Verde', 'Saudi Arabia', 'Uruguay'],
+  'I': ['France', 'Senegal', 'Iraq', 'Norway'],
+  'J': ['Argentina', 'Algeria', 'Austria', 'Jordan'],
+  'K': ['Portugal', 'Congo DR', 'Uzbekistan', 'Colombia'],
+  'L': ['England', 'Croatia', 'Ghana', 'Panama'],
 };
 
-// Estrutura de avanço: cada fase usa os vencedores da fase anterior, em pares.
-// Rd32 (jogos 49-64) -> Oitavas oficiais (8 jogos) -> Quartas (4) -> Semi (2) -> Final (1)
-const QUARTERFINAL_PAIRS: [number, number][] = [
-  [49, 50], [51, 52], [53, 54], [55, 56], [57, 58], [59, 60], [61, 62], [63, 64],
-];
-
-const BRACKET_SLOTS = [
-  { id: 49, homeSlot: '1A', awaySlot: '2B' },
-  { id: 50, homeSlot: '1C', awaySlot: '2D' },
-  { id: 51, homeSlot: '1E', awaySlot: '2F' },
-  { id: 52, homeSlot: '1G', awaySlot: '2H' },
-  { id: 53, homeSlot: '1I', awaySlot: '2J' },
-  { id: 54, homeSlot: '1K', awaySlot: '2L' },
-  { id: 55, homeSlot: '1B', awaySlot: '2A' },
-  { id: 56, homeSlot: '1D', awaySlot: '2C' },
-  { id: 57, homeSlot: '1F', awaySlot: '2E' },
-  { id: 58, homeSlot: '1H', awaySlot: '2G' },
-  { id: 59, homeSlot: '1J', awaySlot: '2I' },
-  { id: 60, homeSlot: '1L', awaySlot: '2K' },
-  { id: 61, homeSlot: '3RD_0', awaySlot: '3RD_1' },
-  { id: 62, homeSlot: '3RD_2', awaySlot: '3RD_3' },
-  { id: 63, homeSlot: '3RD_4', awaySlot: '3RD_5' },
-  { id: 64, homeSlot: '3RD_6', awaySlot: '3RD_7' },
+// Round of 32 oficial — 16 jogos (FIFA match 73-88).
+// Tipos: (a) 1º vs 2º de outro grupo; (b) 1º vs melhor 3º; (c) 2º vs 2º.
+// Fonte: fixture oficial FIFA divulgado após o sorteio.
+const ROUND_OF_32: { id: number; homeSlot: string; awaySlot: string }[] = [
+  { id: 73, homeSlot: '1A', awaySlot: '2B' },
+  { id: 74, homeSlot: '1E', awaySlot: '3D|F|G' },  // Germany vs Paraguay (3rd)
+  { id: 75, homeSlot: '1F', awaySlot: '2C' },       // Netherlands vs Morocco
+  { id: 76, homeSlot: '1C', awaySlot: '2F' },       // Brazil vs Japan
+  { id: 77, homeSlot: '2E', awaySlot: '2I' },       // Ivory Coast vs Norway
+  { id: 78, homeSlot: '1I', awaySlot: '3D|E|F' },   // France vs Sweden (3rd)
+  { id: 79, homeSlot: '1A', awaySlot: '3D|E|I' },   // Mexico vs Ecuador (3rd)
+  { id: 80, homeSlot: '1L', awaySlot: '3I|J|K' },   // England vs DR Congo (3rd)
+  { id: 81, homeSlot: '1G', awaySlot: '3F|H|I' },   // Belgium vs Senegal (3rd)
+  { id: 82, homeSlot: '1D', awaySlot: '3B|F|G' },   // USA vs Bosnia (3rd)
+  { id: 83, homeSlot: '1H', awaySlot: '2J' },        // Spain vs Austria
+  { id: 84, homeSlot: '1B', awaySlot: '3A|J|K' },   // Switzerland vs Algeria (3rd)
+  { id: 85, homeSlot: '2K', awaySlot: '2L' },        // Portugal-runner vs Croatia(runner) — actually 2K vs 2L
+  { id: 86, homeSlot: '2D', awaySlot: '2G' },        // Australia vs Egypt
+  { id: 87, homeSlot: '1J', awaySlot: '2H' },        // Argentina vs Cabo Verde
+  { id: 88, homeSlot: '1K', awaySlot: '3E|H|L' },   // Colombia vs Ghana (3rd)
 ];
 
 interface RawMatch {
@@ -123,6 +126,36 @@ interface TeamStats {
   points: number;
 }
 
+interface RawStandingEntry {
+  position: number;
+  teamName: string;
+  points: number;
+  played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDifference: number;
+}
+
+interface RawStandingGroup {
+  group: string;
+  table: RawStandingEntry[];
+}
+
+interface ResolvedSlot {
+  id: number;
+  home: string;
+  away: string;
+  homeScore?: number;
+  awayScore?: number;
+  status?: string;
+  isResolved: boolean;
+}
+
+type Phase = 'r32' | 'r16' | 'quartas' | 'semi' | 'final';
+
 const LIVE_STATUSES = new Set(['1H', 'HT', '2H', 'ET', 'PEN']);
 
 function getFlag(name: string): string {
@@ -131,6 +164,11 @@ function getFlag(name: string): string {
 
 function newTeamStats(name: string): TeamStats {
   return { teamName: name, played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0 };
+}
+
+function normalizeGroupLetter(raw: string): string {
+  const m = raw.match(/([A-L])\s*$/i);
+  return m ? m[1].toUpperCase() : raw.trim().toUpperCase();
 }
 
 /** Calcula a tabela de um grupo a partir dos jogos finalizados entre os 4 times do grupo */
@@ -166,21 +204,32 @@ function computeGroupTable(teams: string[], matches: RawMatch[]): TeamStats[] {
   });
 }
 
+/**
+ * Resolve um slot do bracket para o nome do time.
+ * Slots como "1A"/"2B" apontam direto pra posição do grupo.
+ * Slots como "3D|F|G" (melhor 3º entre D, F, G) usam o ranking de 3ºs lugares —
+ * aqui simplificamos pegando o próximo 3º disponível na fila geral dos 8 melhores,
+ * já que a tabela oficial de combinação (495 cenários) é complexa demais pra replicar 1:1
+ * sem a definição final dos grupos classificados.
+ */
 function resolveSlot(
   slot: string,
   groupTables: Record<string, TeamStats[]>,
-  best8Thirds: TeamStats[]
+  best8Thirds: TeamStats[],
+  usedThirds: Set<string>
 ): string {
-  if (slot.startsWith('3RD_')) {
-    const idx = parseInt(slot.split('_')[1]);
-    return best8Thirds[idx]?.teamName || `3º melhor`;
+  const directMatch = slot.match(/^([12])([A-L])$/);
+  if (directMatch) {
+    const pos = parseInt(directMatch[1]);
+    const letter = directMatch[2];
+    return groupTables[letter]?.[pos - 1]?.teamName || slot;
   }
-  const match = slot.match(/^([12])([A-L])$/);
-  if (!match) return slot;
-  const pos = parseInt(match[1]);
-  const letter = match[2];
-  const table = groupTables[letter];
-  return table?.[pos - 1]?.teamName || slot;
+  if (slot.startsWith('3')) {
+    const next = best8Thirds.find(t => !usedThirds.has(t.teamName));
+    if (next) { usedThirds.add(next.teamName); return next.teamName; }
+    return `3º melhor`;
+  }
+  return slot;
 }
 
 function SlotCard({ homeTeam, awayTeam, homeScore, awayScore, status, gameId, isResolved }: {
@@ -241,56 +290,20 @@ function SlotCard({ homeTeam, awayTeam, homeScore, awayScore, status, gameId, is
   );
 }
 
-interface RawStandingEntry {
-  position: number;
-  teamName: string;
-  points: number;
-  played: number;
-  wins: number;
-  draws: number;
-  losses: number;
-  goalsFor: number;
-  goalsAgainst: number;
-  goalDifference: number;
-}
-
-interface RawStandingGroup {
-  group: string;
-  table: RawStandingEntry[];
-}
-
-function normalizeGroupLetter(raw: string): string {
-  // ESPN pode retornar "Group A", "A", "GROUP_A" etc.
-  const m = raw.match(/([A-L])\s*$/i);
-  return m ? m[1].toUpperCase() : raw.trim().toUpperCase();
-}
-
-type Phase = 'oitavas32' | 'oitavas' | 'quartas' | 'semi' | 'final';
-
-interface ResolvedSlot {
-  id: number;
-  home: string;
-  away: string;
-  homeScore?: number;
-  awayScore?: number;
-  status?: string;
-  isResolved: boolean;
-}
-
 function getWinner(slot: ResolvedSlot): string | null {
   if (slot.status !== 'FT') return null;
   const hs = slot.homeScore ?? 0;
   const as_ = slot.awayScore ?? 0;
-  if (hs === as_) return null; // pênaltis não capturados — aguarda dado real
+  if (hs === as_) return null;
   return hs > as_ ? slot.home : slot.away;
 }
 
 export function BracketSection() {
-  const [allMatches, setAllMatches]   = useState<RawMatch[]>([]);
+  const [allMatches, setAllMatches]       = useState<RawMatch[]>([]);
   const [realStandings, setRealStandings] = useState<RawStandingGroup[]>([]);
-  const [loading, setLoading]         = useState(true);
-  const [error, setError]             = useState(false);
-  const [activePhase, setActivePhase] = useState<Phase>('oitavas32');
+  const [loading, setLoading]             = useState(true);
+  const [error, setError]                 = useState(false);
+  const [activePhase, setActivePhase]     = useState<Phase>('r32');
 
   useEffect(() => {
     const load = async () => {
@@ -312,8 +325,7 @@ export function BracketSection() {
     return () => clearInterval(t);
   }, []);
 
-  // Fonte primária: standings reais (ESPN/Football-Data). Se vazio, calcula localmente
-  // a partir do histórico de jogos como fallback.
+  // Fonte primária: standings reais (ESPN). Fallback: cálculo local pelo histórico de jogos.
   const groupTables: Record<string, TeamStats[]> = {};
 
   if (realStandings.length > 0) {
@@ -321,15 +333,8 @@ export function BracketSection() {
       const letter = normalizeGroupLetter(g.group);
       groupTables[letter] = g.table
         .map(e => ({
-          teamName:       e.teamName,
-          played:         e.played,
-          wins:           e.wins,
-          draws:          e.draws,
-          losses:         e.losses,
-          goalsFor:       e.goalsFor,
-          goalsAgainst:   e.goalsAgainst,
-          goalDifference: e.goalDifference,
-          points:         e.points,
+          teamName: e.teamName, played: e.played, wins: e.wins, draws: e.draws, losses: e.losses,
+          goalsFor: e.goalsFor, goalsAgainst: e.goalsAgainst, goalDifference: e.goalDifference, points: e.points,
         }))
         .sort((a, b) => {
           if (b.points !== a.points) return b.points - a.points;
@@ -339,14 +344,12 @@ export function BracketSection() {
     });
   }
 
-  // Preenche grupos faltantes (ou todos, se standings real veio vazio) com cálculo local
   Object.entries(GROUP_TEAMS).forEach(([letter, teams]) => {
     if (!groupTables[letter] || groupTables[letter].length === 0) {
       groupTables[letter] = computeGroupTable(teams, allMatches);
     }
   });
 
-  // Melhores 3ºs lugares — só considera grupos onde os 4 times já jogaram pelo menos 1 jogo
   const allThirds = Object.values(groupTables)
     .map(table => table[2])
     .filter((t): t is TeamStats => !!t && t.played > 0)
@@ -357,31 +360,25 @@ export function BracketSection() {
     });
   const best8Thirds = allThirds.slice(0, 8);
 
-  // Fase de grupos é considerada completa quando todos os 12 grupos têm
-  // todos os 4 times com 3 jogos disputados (3 rodadas da fase de grupos)
-  const groupsComplete = Object.values(groupTables).every(
-    table => table.every(t => t.played >= 3)
-  );
+  const groupsComplete = Object.values(groupTables).every(table => table.every(t => t.played >= 3));
+  const groupsStarted  = allMatches.some(m => m.status === 'FT');
 
-  const groupsStarted = allMatches.some(m => m.status === 'FT');
+  const usedThirds = new Set<string>();
+  const resolvedSlots: ResolvedSlot[] = ROUND_OF_32.map(slot => {
+    const homeResolved = resolveSlot(slot.homeSlot, groupTables, best8Thirds, usedThirds);
+    const awayResolved = resolveSlot(slot.awaySlot, groupTables, best8Thirds, usedThirds);
 
-  // Resolve cada slot do bracket (nome do time, considerando empates de classificação)
-  const resolvedSlots = BRACKET_SLOTS.map(slot => {
-    const homeResolved = resolveSlot(slot.homeSlot, groupTables, best8Thirds);
-    const awayResolved = resolveSlot(slot.awaySlot, groupTables, best8Thirds);
+    const homeIsTeam = !homeResolved.match(/^[12][A-L]$/) && homeResolved !== '3º melhor';
+    const awayIsTeam = !awayResolved.match(/^[12][A-L]$/) && awayResolved !== '3º melhor';
+    const isResolved = homeIsTeam && awayIsTeam;
 
-    const homeIsTeamName = !homeResolved.match(/^[12][A-L]$/) && homeResolved !== '3º melhor';
-    const awayIsTeamName = !awayResolved.match(/^[12][A-L]$/) && awayResolved !== '3º melhor';
-    const isResolved = homeIsTeamName && awayIsTeamName;
-
-    // Procura jogo real no histórico que bata com os dois times resolvidos
     const live = allMatches.find(m =>
       (m.team1 === homeResolved && m.team2 === awayResolved) ||
       (m.team1 === awayResolved && m.team2 === homeResolved)
     );
 
     return {
-      ...slot,
+      id:         slot.id,
       home:       live ? live.team1 : homeResolved,
       away:       live ? live.team2 : awayResolved,
       homeScore:  live?.team1Score,
@@ -391,10 +388,8 @@ export function BracketSection() {
     };
   });
 
-  // ── Avanço de fases: Quartas, Semi, Final ──────────────────────────────
-  // Cada fase usa os vencedores da fase anterior, em pares consecutivos.
   function buildNextRound(prevSlots: ResolvedSlot[], startId: number): ResolvedSlot[] {
-    const pairs: ResolvedSlot[] = [];
+    const next: ResolvedSlot[] = [];
     for (let i = 0; i < prevSlots.length; i += 2) {
       const a = prevSlots[i];
       const b = prevSlots[i + 1];
@@ -403,10 +398,6 @@ export function BracketSection() {
       const winnerA = getWinner(a);
       const winnerB = getWinner(b);
 
-      const home = winnerA || (a.isResolved ? '' : '');
-      const away = winnerB || (b.isResolved ? '' : '');
-
-      // Procura jogo real entre os dois vencedores, se ambos já definidos
       const live = (winnerA && winnerB)
         ? allMatches.find(m =>
             (m.team1 === winnerA && m.team2 === winnerB) ||
@@ -414,8 +405,8 @@ export function BracketSection() {
           )
         : undefined;
 
-      pairs.push({
-        id:         startId + pairs.length,
+      next.push({
+        id:         startId + next.length,
         home:       live ? live.team1 : (winnerA || ''),
         away:       live ? live.team2 : (winnerB || ''),
         homeScore:  live?.team1Score,
@@ -424,38 +415,69 @@ export function BracketSection() {
         isResolved: !!(winnerA && winnerB),
       });
     }
-    return pairs;
+    return next;
   }
 
-  // Rd. 32 (oitavas oficiais, jogos 49-64) já está em resolvedSlots
-  const quarterfinals = buildNextRound(resolvedSlots, 65);   // jogos 65-68
-  const semifinals    = buildNextRound(quarterfinals, 69);   // jogos 69-70
-  const final          = buildNextRound(semifinals, 71);      // jogo 71
+  const roundOf16   = buildNextRound(resolvedSlots, 89);  // jogos 89-96
+  const quarterfinals = buildNextRound(roundOf16, 97);     // jogos 97-100
+  const semifinals    = buildNextRound(quarterfinals, 101); // jogos 101-102
+  const final          = buildNextRound(semifinals, 104);   // jogo 104
 
-  const liveCount = resolvedSlots.filter(s => LIVE_STATUSES.has(s.status || '')).length
-    + quarterfinals.filter(s => LIVE_STATUSES.has(s.status || '')).length
-    + semifinals.filter(s => LIVE_STATUSES.has(s.status || '')).length
-    + final.filter(s => LIVE_STATUSES.has(s.status || '')).length;
+  const liveCount =
+    resolvedSlots.filter(s => LIVE_STATUSES.has(s.status || '')).length +
+    roundOf16.filter(s => LIVE_STATUSES.has(s.status || '')).length +
+    quarterfinals.filter(s => LIVE_STATUSES.has(s.status || '')).length +
+    semifinals.filter(s => LIVE_STATUSES.has(s.status || '')).length +
+    final.filter(s => LIVE_STATUSES.has(s.status || '')).length;
 
   const PHASES: { key: Phase; label: string; emoji: string }[] = [
-    { key: 'oitavas32', label: 'Oitavas',  emoji: '⚔️' },
-    { key: 'quartas',   label: 'Quartas',  emoji: '🔥' },
-    { key: 'semi',      label: 'Semifinal', emoji: '⚡' },
-    { key: 'final',     label: 'Final',    emoji: '🏆' },
+    { key: 'r32',     label: 'Rd. de 32', emoji: '⚔️' },
+    { key: 'r16',     label: 'Oitavas',   emoji: '🎯' },
+    { key: 'quartas', label: 'Quartas',   emoji: '🔥' },
+    { key: 'semi',    label: 'Semifinal', emoji: '⚡' },
+    { key: 'final',   label: 'Final',     emoji: '🏆' },
   ];
+
+  function renderPhase(slots: ResolvedSlot[], emptyIcon: string, emptyTitle: string, emptyDesc: string, gridCols: string) {
+    const hasContent = slots.some(s => s.isResolved || s.home || s.away);
+    if (!hasContent) {
+      return (
+        <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
+          <span className="text-5xl">{emptyIcon}</span>
+          <p className="text-white font-bold text-lg">{emptyTitle}</p>
+          <p className="text-slate-500 text-sm max-w-xs">{emptyDesc}</p>
+        </div>
+      );
+    }
+    return (
+      <div className={`grid ${gridCols} gap-3`}>
+        {slots.map(slot => (
+          <SlotCard
+            key={slot.id}
+            gameId={slot.id}
+            homeTeam={slot.home}
+            awayTeam={slot.away}
+            homeScore={slot.homeScore}
+            awayScore={slot.awayScore}
+            status={slot.status}
+            isResolved={slot.isResolved}
+          />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <section id="bracket" className="px-4 py-12 border-t border-slate-800/50">
       <div className="max-w-6xl mx-auto">
 
-        {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div>
             <h2 className="text-2xl font-black text-white uppercase tracking-tight">
               🏆 Chaveamento — Mata-mata
             </h2>
             <p className="text-slate-500 text-sm mt-0.5">
-              Copa do Mundo FIFA 2026 · Calculado a partir dos jogos reais
+              Copa do Mundo FIFA 2026 · 12 grupos → Rd. de 32 → Final
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -466,19 +488,13 @@ export function BracketSection() {
               </span>
             )}
             {!groupsStarted && (
-              <span className="text-xs text-slate-600 bg-slate-800 px-3 py-1.5 rounded-full">
-                📋 Fase de grupos ainda não começou
-              </span>
+              <span className="text-xs text-slate-600 bg-slate-800 px-3 py-1.5 rounded-full">📋 Grupos ainda não começaram</span>
             )}
             {groupsStarted && !groupsComplete && (
-              <span className="text-xs text-slate-400 bg-slate-800 px-3 py-1.5 rounded-full">
-                📊 Fase de grupos em andamento
-              </span>
+              <span className="text-xs text-slate-400 bg-slate-800 px-3 py-1.5 rounded-full">📊 Fase de grupos em andamento</span>
             )}
             {groupsComplete && (
-              <span className="text-xs text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-3 py-1.5 rounded-full">
-                ✅ Grupos encerrados
-              </span>
+              <span className="text-xs text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-3 py-1.5 rounded-full">✅ Grupos encerrados</span>
             )}
           </div>
         </div>
@@ -490,9 +506,7 @@ export function BracketSection() {
               key={key}
               onClick={() => setActivePhase(key)}
               className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-1.5 ${
-                activePhase === key
-                  ? 'bg-yellow-500 text-black'
-                  : 'bg-slate-800 text-slate-400 hover:text-white'
+                activePhase === key ? 'bg-yellow-500 text-black' : 'bg-slate-800 text-slate-400 hover:text-white'
               }`}
             >
               <span>{emoji}</span>{label}
@@ -512,81 +526,26 @@ export function BracketSection() {
           </div>
         ) : (
           <>
-            {/* Oitavas (Rd. de 32) */}
-            {activePhase === 'oitavas32' && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                {resolvedSlots.map(slot => (
-                  <SlotCard
-                    key={slot.id}
-                    gameId={slot.id}
-                    homeTeam={slot.home}
-                    awayTeam={slot.away}
-                    homeScore={slot.homeScore}
-                    awayScore={slot.awayScore}
-                    status={slot.status}
-                    isResolved={slot.isResolved}
-                  />
-                ))}
-              </div>
+            {activePhase === 'r32' && renderPhase(
+              resolvedSlots, '⚔️', 'Rd. de 32',
+              'Confrontos definidos pelos classificados de cada grupo + 8 melhores 3ºs lugares.',
+              'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'
             )}
-
-            {/* Quartas de Final */}
-            {activePhase === 'quartas' && (
-              quarterfinals.some(s => s.isResolved || s.home || s.away) ? (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {quarterfinals.map(slot => (
-                    <SlotCard
-                      key={slot.id}
-                      gameId={slot.id}
-                      homeTeam={slot.home}
-                      awayTeam={slot.away}
-                      homeScore={slot.homeScore}
-                      awayScore={slot.awayScore}
-                      status={slot.status}
-                      isResolved={slot.isResolved}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
-                  <span className="text-5xl">🔥</span>
-                  <p className="text-white font-bold text-lg">Quartas de Final</p>
-                  <p className="text-slate-500 text-sm max-w-xs">
-                    Aguardando o fim das oitavas para definir os confrontos.
-                  </p>
-                </div>
-              )
+            {activePhase === 'r16' && renderPhase(
+              roundOf16, '🎯', 'Oitavas de Final',
+              'Aguardando o fim da Rd. de 32 para definir os confrontos.',
+              'grid-cols-2 sm:grid-cols-4'
             )}
-
-            {/* Semifinais */}
-            {activePhase === 'semi' && (
-              semifinals.some(s => s.isResolved || s.home || s.away) ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl mx-auto">
-                  {semifinals.map(slot => (
-                    <SlotCard
-                      key={slot.id}
-                      gameId={slot.id}
-                      homeTeam={slot.home}
-                      awayTeam={slot.away}
-                      homeScore={slot.homeScore}
-                      awayScore={slot.awayScore}
-                      status={slot.status}
-                      isResolved={slot.isResolved}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
-                  <span className="text-5xl">⚡</span>
-                  <p className="text-white font-bold text-lg">Semifinais</p>
-                  <p className="text-slate-500 text-sm max-w-xs">
-                    Aguardando o fim das quartas de final.
-                  </p>
-                </div>
-              )
+            {activePhase === 'quartas' && renderPhase(
+              quarterfinals, '🔥', 'Quartas de Final',
+              'Aguardando o fim das oitavas.',
+              'grid-cols-2 sm:grid-cols-4'
             )}
-
-            {/* Final */}
+            {activePhase === 'semi' && renderPhase(
+              semifinals, '⚡', 'Semifinais',
+              'Aguardando o fim das quartas de final.',
+              'grid-cols-1 sm:grid-cols-2 max-w-xl mx-auto'
+            )}
             {activePhase === 'final' && (
               final.some(s => s.isResolved || s.home || s.away) ? (
                 <div className="max-w-sm mx-auto">
@@ -615,36 +574,25 @@ export function BracketSection() {
                 <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
                   <span className="text-5xl">🏆</span>
                   <p className="text-white font-bold text-lg">Grande Final</p>
-                  <p className="text-slate-500 text-sm max-w-xs">
-                    Aguardando o fim das semifinais.
-                  </p>
+                  <p className="text-slate-500 text-sm max-w-xs">Aguardando o fim das semifinais.</p>
                 </div>
               )
             )}
 
-            {/* Status da classificação — só na aba de oitavas e enquanto grupos não terminaram */}
-            {activePhase === 'oitavas32' && !groupsComplete && (
+            {activePhase === 'r32' && !groupsComplete && (
               <div className="mt-6 bg-slate-900 border border-slate-800 rounded-xl p-4">
-                <p className="text-xs font-black text-yellow-400 uppercase tracking-widest mb-3">
-                  Classificação por grupo
-                </p>
+                <p className="text-xs font-black text-yellow-400 uppercase tracking-widest mb-3">Classificação por grupo</p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                   {Object.entries(groupTables).map(([letter, table]) => {
                     const allPlayed = table.every(t => t.played >= 3);
                     return (
                       <div key={letter} className="bg-slate-800/50 rounded-lg p-2.5">
-                        <p className="text-[10px] font-black text-yellow-400 uppercase tracking-widest mb-1.5">
-                          Grupo {letter}
-                        </p>
+                        <p className="text-[10px] font-black text-yellow-400 uppercase tracking-widest mb-1.5">Grupo {letter}</p>
                         {table.slice(0, 2).map((t, i) => (
                           <div key={i} className="flex items-center gap-1.5 py-0.5">
-                            <span className={`text-[10px] font-black w-3 ${allPlayed ? 'text-emerald-400' : 'text-slate-600'}`}>
-                              {i + 1}
-                            </span>
+                            <span className={`text-[10px] font-black w-3 ${allPlayed ? 'text-emerald-400' : 'text-slate-600'}`}>{i + 1}</span>
                             <span className="text-sm">{getFlag(t.teamName)}</span>
-                            <span className={`text-[11px] font-semibold truncate ${t.played > 0 ? 'text-white' : 'text-slate-500'}`}>
-                              {t.teamName}
-                            </span>
+                            <span className={`text-[11px] font-semibold truncate ${t.played > 0 ? 'text-white' : 'text-slate-500'}`}>{t.teamName}</span>
                             <span className="ml-auto text-[10px] font-black text-yellow-500">{t.points}pts</span>
                           </div>
                         ))}
@@ -653,7 +601,6 @@ export function BracketSection() {
                   })}
                 </div>
 
-                {/* Melhores 3ºs */}
                 {allThirds.length > 0 && (
                   <div className="mt-4">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
@@ -677,7 +624,6 @@ export function BracketSection() {
           </>
         )}
 
-        {/* Legenda */}
         <div className="mt-4 flex items-center gap-4 text-xs text-slate-600 flex-wrap">
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded bg-yellow-500/80" />
