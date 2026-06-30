@@ -19,7 +19,7 @@ const FLAGS: Record<string, string> = {
   'Morocco': '🇲🇦', 'Marrocos': '🇲🇦',
   'Japan': '🇯🇵', 'Japão': '🇯🇵',
   'South Korea': '🇰🇷', 'Coreia do Sul': '🇰🇷',
-  'United States': '🇺🇸', 'USA': '🇺🇸', 'EUA': '🇺🇸',
+  'United States': '🇺🇸', 'USA': '🇺🇸', 'EUA': '🇺🇸', 'Estados Unidos': '🇺🇸',
   'Mexico': '🇲🇽', 'México': '🇲🇽',
   'Canada': '🇨🇦', 'Canadá': '🇨🇦',
   'Senegal': '🇸🇳',
@@ -66,19 +66,21 @@ const FLAGS: Record<string, string> = {
 };
 
 // Composição OFICIAL dos 12 grupos da Copa do Mundo FIFA 2026 (sorteio de 5 dez 2025)
+// Composição oficial dos 12 grupos — nomes em português, iguais ao que o
+// backend salva via translateTeam() (translation.util.ts).
 const GROUP_TEAMS: Record<string, string[]> = {
-  'A': ['Mexico', 'South Africa', 'South Korea', 'Czechia'],
-  'B': ['Canada', 'Bosnia and Herzegovina', 'Qatar', 'Switzerland'],
-  'C': ['Brazil', 'Morocco', 'Haiti', 'Scotland'],
-  'D': ['United States', 'Paraguay', 'Australia', 'Turkey'],
-  'E': ['Germany', 'Curaçao', "Côte d'Ivoire", 'Ecuador'],
-  'F': ['Netherlands', 'Japan', 'Sweden', 'Tunisia'],
-  'G': ['Belgium', 'Egypt', 'Iran', 'New Zealand'],
-  'H': ['Spain', 'Cabo Verde', 'Saudi Arabia', 'Uruguay'],
-  'I': ['France', 'Senegal', 'Iraq', 'Norway'],
-  'J': ['Argentina', 'Algeria', 'Austria', 'Jordan'],
-  'K': ['Portugal', 'Congo DR', 'Uzbekistan', 'Colombia'],
-  'L': ['England', 'Croatia', 'Ghana', 'Panama'],
+  'A': ['México', 'África do Sul', 'Coreia do Sul', 'Tchéquia'],
+  'B': ['Canadá', 'Bósnia e Herzegovina', 'Catar', 'Suíça'],
+  'C': ['Brasil', 'Marrocos', 'Haiti', 'Escócia'],
+  'D': ['Estados Unidos', 'Paraguai', 'Austrália', 'Turquia'],
+  'E': ['Alemanha', 'Curaçao', 'Costa do Marfim', 'Equador'],
+  'F': ['Holanda', 'Japão', 'Suécia', 'Tunísia'],
+  'G': ['Bélgica', 'Egito', 'Irã', 'Nova Zelândia'],
+  'H': ['Espanha', 'Cabo Verde', 'Arábia Saudita', 'Uruguai'],
+  'I': ['França', 'Senegal', 'Iraque', 'Noruega'],
+  'J': ['Argentina', 'Argélia', 'Áustria', 'Jordânia'],
+  'K': ['Portugal', 'RD Congo', 'Uzbequistão', 'Colômbia'],
+  'L': ['Inglaterra', 'Croácia', 'Gana', 'Panamá'],
 };
 
 // Round of 32 oficial — 16 jogos (FIFA match 73-88).
