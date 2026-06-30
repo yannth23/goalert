@@ -235,16 +235,45 @@ function SlotCard({ homeTeam, awayTeam, homeScore, awayScore, status, gameId, is
   );
 }
 
+interface RawStandingEntry {
+  position: number;
+  teamName: string;
+  points: number;
+  played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDifference: number;
+}
+
+interface RawStandingGroup {
+  group: string;
+  table: RawStandingEntry[];
+}
+
+function normalizeGroupLetter(raw: string): string {
+  // ESPN pode retornar "Group A", "A", "GROUP_A" etc.
+  const m = raw.match(/([A-L])\s*$/i);
+  return m ? m[1].toUpperCase() : raw.trim().toUpperCase();
+}
+
 export function BracketSection() {
-  const [allMatches, setAllMatches] = useState<RawMatch[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState(false);
+  const [allMatches, setAllMatches]   = useState<RawMatch[]>([]);
+  const [realStandings, setRealStandings] = useState<RawStandingGroup[]>([]);
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState(false);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const data = await api.getByCompetition('World Cup');
-        setAllMatches(data as RawMatch[]);
+        const [matchesData, standingsData] = await Promise.all([
+          api.getByCompetition('World Cup'),
+          api.getStandings(),
+        ]);
+        setAllMatches(matchesData as RawMatch[]);
+        setRealStandings((standingsData as RawStandingGroup[]) || []);
         setError(false);
       } catch {
         setError(true);
@@ -256,10 +285,38 @@ export function BracketSection() {
     return () => clearInterval(t);
   }, []);
 
-  // Calcula a tabela de cada grupo a partir dos jogos reais já disputados
+  // Fonte primária: standings reais (ESPN/Football-Data). Se vazio, calcula localmente
+  // a partir do histórico de jogos como fallback.
   const groupTables: Record<string, TeamStats[]> = {};
+
+  if (realStandings.length > 0) {
+    realStandings.forEach(g => {
+      const letter = normalizeGroupLetter(g.group);
+      groupTables[letter] = g.table
+        .map(e => ({
+          teamName:       e.teamName,
+          played:         e.played,
+          wins:           e.wins,
+          draws:          e.draws,
+          losses:         e.losses,
+          goalsFor:       e.goalsFor,
+          goalsAgainst:   e.goalsAgainst,
+          goalDifference: e.goalDifference,
+          points:         e.points,
+        }))
+        .sort((a, b) => {
+          if (b.points !== a.points) return b.points - a.points;
+          if (b.goalDifference !== a.goalDifference) return b.goalDifference - a.goalDifference;
+          return b.goalsFor - a.goalsFor;
+        });
+    });
+  }
+
+  // Preenche grupos faltantes (ou todos, se standings real veio vazio) com cálculo local
   Object.entries(GROUP_TEAMS).forEach(([letter, teams]) => {
-    groupTables[letter] = computeGroupTable(teams, allMatches);
+    if (!groupTables[letter] || groupTables[letter].length === 0) {
+      groupTables[letter] = computeGroupTable(teams, allMatches);
+    }
   });
 
   // Melhores 3ºs lugares — só considera grupos onde os 4 times já jogaram pelo menos 1 jogo
