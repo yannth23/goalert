@@ -22,6 +22,23 @@ export interface ScrapedH2HMatch {
   championship: string;
 }
 
+export interface ScrapedStandingTeam {
+  teamName: string;
+  played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDifference: number;
+  points: number;
+}
+
+export interface ScrapedGroupStanding {
+  group: string;
+  table: ScrapedStandingTeam[];
+}
+
 export interface ScrapedH2H {
   homeWins: number;
   draws: number;
@@ -427,6 +444,62 @@ export class ScraperService {
    * SofaScore → ESPN → TheSportsDB → GE/globo (scraping HTML).
    * Retorna lista com os 11 titulares ou [] se todas falharem.
    */
+  /**
+   * Busca a classificação oficial dos grupos da Copa do Mundo direto da ESPN.
+   * Essa é a fonte mais confiável para standings em tempo real durante o torneio.
+   */
+  async fetchESPNStandings(): Promise<ScrapedGroupStanding[]> {
+    const cacheKey = 'espn-standings';
+    const cached = this.getCached<ScrapedGroupStanding[]>(cacheKey);
+    if (cached) { this.logger.log('[espn-standings] cache hit'); return cached; }
+
+    try {
+      const res = await axios.get(
+        'https://site.api.espn.com/apis/v2/sports/soccer/fifa.world/standings',
+        { timeout: SCRAPER_TIMEOUT_MS, headers: { Accept: 'application/json' } },
+      );
+
+      const groupsRaw: any[] = res.data?.children ?? [];
+      const standings: ScrapedGroupStanding[] = groupsRaw.map((g: any) => {
+        const groupName = (g.name || g.abbreviation || '').replace(/^Group /i, '').trim();
+        const entries: any[] = g.standings?.entries ?? [];
+
+        const table: ScrapedStandingTeam[] = entries.map((entry: any) => {
+          const stats = entry.stats || [];
+          const getStat = (name: string) => stats.find((s: any) => s.name === name)?.value ?? 0;
+          return {
+            teamName:       normalizeName(entry.team?.displayName ?? entry.team?.name ?? ''),
+            played:         getStat('gamesPlayed'),
+            wins:           getStat('wins'),
+            draws:          getStat('ties') || getStat('draws'),
+            losses:         getStat('losses'),
+            goalsFor:       getStat('pointsFor') || getStat('goalsFor'),
+            goalsAgainst:   getStat('pointsAgainst') || getStat('goalsAgainst'),
+            goalDifference: getStat('pointDifferential') || getStat('goalDifferential'),
+            points:         getStat('points'),
+          };
+        }).sort((a: ScrapedStandingTeam, b: ScrapedStandingTeam) => {
+          if (b.points !== a.points) return b.points - a.points;
+          if (b.goalDifference !== a.goalDifference) return b.goalDifference - a.goalDifference;
+          return b.goalsFor - a.goalsFor;
+        });
+
+        return { group: groupName, table };
+      }).filter((g: ScrapedGroupStanding) => g.table.length > 0);
+
+      if (standings.length > 0) {
+        this.logger.log(`[espn-standings] ${standings.length} grupos carregados da ESPN`);
+        this.setCached(cacheKey, standings, 5 * 60_000); // cache 5 min
+        return standings;
+      }
+      this.logger.warn('[espn-standings] ESPN retornou 0 grupos');
+      return [];
+    } catch (err: any) {
+      this.logger.warn(`[espn-standings] Falha ao buscar standings da ESPN: ${err.message}`);
+      return [];
+    }
+  }
+
   async scrapeLineup(teamName: string): Promise<string[]> {
     const cacheKey = `lineup:${teamName}`;
     const cached = this.getCached<string[]>(cacheKey);
