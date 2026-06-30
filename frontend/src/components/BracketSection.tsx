@@ -235,8 +235,13 @@ function resolveSlot(
     return groupTables[letter]?.[pos - 1]?.teamName || slot;
   }
   if (slot.startsWith('3')) {
-    const next = best8Thirds.find(t => !usedThirds.has(t.teamName));
-    if (next) { usedThirds.add(next.teamName); return next.teamName; }
+    // slot tipo "3ABCDF" = melhor 3º entre os grupos A, B, C, D, F
+    const eligibleLetters = slot.slice(1).split('');
+    const candidate = best8Thirds.find(t =>
+      !usedThirds.has(t.teamName) &&
+      eligibleLetters.some(letter => groupTables[letter]?.[2]?.teamName === t.teamName)
+    );
+    if (candidate) { usedThirds.add(candidate.teamName); return candidate.teamName; }
     return `3º melhor`;
   }
   return slot;
@@ -428,7 +433,34 @@ export function BracketSection() {
     return next;
   }
 
-  const roundOf16   = buildNextRound(resolvedSlots, 89);  // jogos 89-96
+  // Round of 16 usa pares OFICIAIS (não sequenciais) — ex: Winner 73 vs Winner 75
+  const slotById = new Map(resolvedSlots.map(s => [s.id, s]));
+  const roundOf16: ResolvedSlot[] = ROUND_OF_16_PAIRS.map(([idA, idB], i) => {
+    const a = slotById.get(idA);
+    const b = slotById.get(idB);
+    if (!a || !b) return { id: 89 + i, home: '', away: '', isResolved: false };
+
+    const winnerA = getWinner(a);
+    const winnerB = getWinner(b);
+
+    const live = (winnerA && winnerB)
+      ? allMatches.find(m =>
+          (m.team1 === winnerA && m.team2 === winnerB) ||
+          (m.team1 === winnerB && m.team2 === winnerA)
+        )
+      : undefined;
+
+    return {
+      id:         89 + i,
+      home:       live ? live.team1 : (winnerA || `Venc. Jogo ${idA}`),
+      away:       live ? live.team2 : (winnerB || `Venc. Jogo ${idB}`),
+      homeScore:  live?.team1Score,
+      awayScore:  live?.team2Score,
+      status:     live?.status,
+      isResolved: !!(winnerA && winnerB),
+    };
+  });
+
   const quarterfinals = buildNextRound(roundOf16, 97);     // jogos 97-100
   const semifinals    = buildNextRound(quarterfinals, 101); // jogos 101-102
   const final          = buildNextRound(semifinals, 104);   // jogo 104
