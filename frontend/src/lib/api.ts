@@ -67,6 +67,13 @@ export const api = {
 
   getStandings: () => request<unknown[]>('/matches/standings'),
 
+  getByCompetition: (name: string) =>
+    request<{
+      id: string; date: string; championship: string;
+      team1: string; team2: string; status: string;
+      team1Score?: number; team2Score?: number;
+    }[]>(`/matches/competition?name=${encodeURIComponent(name)}`),
+
   getTopScorers: () =>
     request<{ playerId: number; playerName: string; teamName: string; goals: number; assists: number }[]>('/matches/scorers'),
 
