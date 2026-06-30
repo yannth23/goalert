@@ -75,6 +75,12 @@ const GROUP_TEAMS: Record<string, string[]> = {
   'L': ['México', 'Ucrânia', 'Turquia', 'Cabo Verde'],
 };
 
+// Estrutura de avanço: cada fase usa os vencedores da fase anterior, em pares.
+// Rd32 (jogos 49-64) -> Oitavas oficiais (8 jogos) -> Quartas (4) -> Semi (2) -> Final (1)
+const QUARTERFINAL_PAIRS: [number, number][] = [
+  [49, 50], [51, 52], [53, 54], [55, 56], [57, 58], [59, 60], [61, 62], [63, 64],
+];
+
 const BRACKET_SLOTS = [
   { id: 49, homeSlot: '1A', awaySlot: '2B' },
   { id: 50, homeSlot: '1C', awaySlot: '2D' },
@@ -257,6 +263,26 @@ function normalizeGroupLetter(raw: string): string {
   // ESPN pode retornar "Group A", "A", "GROUP_A" etc.
   const m = raw.match(/([A-L])\s*$/i);
   return m ? m[1].toUpperCase() : raw.trim().toUpperCase();
+}
+
+type Phase = 'oitavas32' | 'oitavas' | 'quartas' | 'semi' | 'final';
+
+interface ResolvedSlot {
+  id: number;
+  home: string;
+  away: string;
+  homeScore?: number;
+  awayScore?: number;
+  status?: string;
+  isResolved: boolean;
+}
+
+function getWinner(slot: ResolvedSlot): string | null {
+  if (slot.status !== 'FT') return null;
+  const hs = slot.homeScore ?? 0;
+  const as_ = slot.awayScore ?? 0;
+  if (hs === as_) return null; // pênaltis não capturados — aguarda dado real
+  return hs > as_ ? slot.home : slot.away;
 }
 
 export function BracketSection() {
