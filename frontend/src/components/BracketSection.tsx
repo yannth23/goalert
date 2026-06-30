@@ -83,26 +83,34 @@ const GROUP_TEAMS: Record<string, string[]> = {
   'L': ['Inglaterra', 'Croácia', 'Gana', 'Panamá'],
 };
 
-// Round of 32 oficial — 16 jogos (FIFA match 73-88).
-// Tipos: (a) 1º vs 2º de outro grupo; (b) 1º vs melhor 3º; (c) 2º vs 2º.
-// Fonte: fixture oficial FIFA divulgado após o sorteio.
+// Round of 32 OFICIAL FIFA — 16 jogos (match 73-88), confirmado via Wikipedia/FIFA.com.
+// Os grupos cujos 3ºs lugares avançaram nesta edição (top 8): B, D, E, F, I, J, K, L.
 const ROUND_OF_32: { id: number; homeSlot: string; awaySlot: string }[] = [
-  { id: 73, homeSlot: '1A', awaySlot: '2B' },
-  { id: 74, homeSlot: '1E', awaySlot: '3D|F|G' },  // Germany vs Paraguay (3rd)
-  { id: 75, homeSlot: '1F', awaySlot: '2C' },       // Netherlands vs Morocco
-  { id: 76, homeSlot: '1C', awaySlot: '2F' },       // Brazil vs Japan
-  { id: 77, homeSlot: '2E', awaySlot: '2I' },       // Ivory Coast vs Norway
-  { id: 78, homeSlot: '1I', awaySlot: '3D|E|F' },   // France vs Sweden (3rd)
-  { id: 79, homeSlot: '1A', awaySlot: '3D|E|I' },   // Mexico vs Ecuador (3rd)
-  { id: 80, homeSlot: '1L', awaySlot: '3I|J|K' },   // England vs DR Congo (3rd)
-  { id: 81, homeSlot: '1G', awaySlot: '3F|H|I' },   // Belgium vs Senegal (3rd)
-  { id: 82, homeSlot: '1D', awaySlot: '3B|F|G' },   // USA vs Bosnia (3rd)
-  { id: 83, homeSlot: '1H', awaySlot: '2J' },        // Spain vs Austria
-  { id: 84, homeSlot: '1B', awaySlot: '3A|J|K' },   // Switzerland vs Algeria (3rd)
-  { id: 85, homeSlot: '2K', awaySlot: '2L' },        // Portugal-runner vs Croatia(runner) — actually 2K vs 2L
-  { id: 86, homeSlot: '2D', awaySlot: '2G' },        // Australia vs Egypt
-  { id: 87, homeSlot: '1J', awaySlot: '2H' },        // Argentina vs Cabo Verde
-  { id: 88, homeSlot: '1K', awaySlot: '3E|H|L' },   // Colombia vs Ghana (3rd)
+  { id: 73, homeSlot: '2A', awaySlot: '2B' },
+  { id: 74, homeSlot: '1E', awaySlot: '3ABCDF' },
+  { id: 75, homeSlot: '1F', awaySlot: '2C' },
+  { id: 76, homeSlot: '1C', awaySlot: '2F' },
+  { id: 77, homeSlot: '1I', awaySlot: '3CDFGH' },
+  { id: 78, homeSlot: '2E', awaySlot: '2I' },
+  { id: 79, homeSlot: '1A', awaySlot: '3CEFHI' },
+  { id: 80, homeSlot: '1L', awaySlot: '3EHIJK' },
+  { id: 81, homeSlot: '1D', awaySlot: '3BEFIJ' },
+  { id: 82, homeSlot: '1G', awaySlot: '3AEHIJ' },
+  { id: 83, homeSlot: '2K', awaySlot: '2L' },
+  { id: 84, homeSlot: '1H', awaySlot: '2J' },
+  { id: 85, homeSlot: '1B', awaySlot: '3EFGIJ' },
+  { id: 86, homeSlot: '1J', awaySlot: '2H' },
+  { id: 87, homeSlot: '1K', awaySlot: '3DEIJL' },
+  { id: 88, homeSlot: '2D', awaySlot: '2G' },
+];
+
+// Grupos cujos 3ºs colocados avançaram nesta edição (confirmado oficialmente).
+const QUALIFIED_THIRD_GROUPS = ['B', 'D', 'E', 'F', 'I', 'J', 'K', 'L'];
+
+// Round of 16 OFICIAL — usa vencedores específicos do R32, não pares sequenciais.
+const ROUND_OF_16_PAIRS: [number, number][] = [
+  [73, 75], [74, 77], [76, 78], [79, 80],
+  [81, 82], [83, 84], [86, 88], [85, 87],
 ];
 
 interface RawMatch {
