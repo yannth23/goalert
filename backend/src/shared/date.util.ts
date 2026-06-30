@@ -37,10 +37,10 @@ export function getTodayBrazil(): string {
  */
 export function getTodayRange(): DayRange {
   const dateStr = getTodayBrazil(); // ex: "2026-06-21"
+  // Começa estritamente à meia-noite de hoje no horário de Brasília (BRT)
   const start = new Date(`${dateStr}T00:00:00-03:00`);
-  // Fim do dia normal (23:59:59 BRT) + 3 horas = 02:59:59 BRT do dia seguinte (27h no total)
-  const endOfDay = new Date(`${dateStr}T23:59:59-03:00`);
-  const end = new Date(endOfDay.getTime() + 3 * 60 * 60 * 1000);
+  // Termina às 23:59:59 do mesmo dia em Brasília
+  const end = new Date(`${dateStr}T23:59:59-03:00`);
   return { start, end };
 }
 

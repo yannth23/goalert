@@ -217,8 +217,6 @@ export class FootballApiService {
             homeTactics:        (predictions.homeTactics || Prisma.DbNull) as any,
             awayTactics:        (predictions.awayTactics || Prisma.DbNull) as any,
             aiAnalysis:         predictions.aiAnalysis,
-            // shortInsight: não disponível no PredictionResult atual
-
           },
           create: {
             externalId:   lookupId,
@@ -238,8 +236,6 @@ export class FootballApiService {
             homeTactics:        (predictions.homeTactics || Prisma.DbNull) as any,
             awayTactics:        (predictions.awayTactics || Prisma.DbNull) as any,
             aiAnalysis:         predictions.aiAnalysis,
-            // shortInsight:       predictions.shortInsight,
-            // attentionPoint:     predictions.attentionPoint,
           },
         });
       } catch (err: any) {
