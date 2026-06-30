@@ -268,7 +268,36 @@ export class FootballApiService {
     const cached   = await this.cacheGet(cacheKey);
     if (cached) return cached;
 
-    // Tenta Football-Data.org para classificação
+    // 1. Tenta ESPN — fonte mais confiável para standings em tempo real durante a Copa
+    try {
+      const espnStandings = await this.scraper.fetchESPNStandings();
+      if (espnStandings.length > 0) {
+        const mapped = espnStandings.map((group, gi) => ({
+          group: group.group,
+          table: group.table.map((entry, i) => ({
+            position:       i + 1,
+            teamId:         gi * 4 + i,
+            teamName:       entry.teamName,
+            crest:          null,
+            points:         entry.points,
+            played:         entry.played,
+            wins:           entry.wins,
+            draws:          entry.draws,
+            losses:         entry.losses,
+            goalsFor:       entry.goalsFor,
+            goalsAgainst:   entry.goalsAgainst,
+            goalDifference: entry.goalDifference,
+          })),
+        }));
+        await this.cacheSet(cacheKey, mapped, 300); // cache curto: 5 min
+        this.logger.log(`Standings via ESPN: ${mapped.length} grupos`);
+        return mapped;
+      }
+    } catch (err: any) {
+      this.logger.warn(`Standings from ESPN failed: ${err.message}`);
+    }
+
+    // 2. Fallback: Football-Data.org
     try {
       if (process.env.FOOTBALL_DATA_API_KEY) {
         const response = await axios.get(`${FOOTBALL_DATA_BASE_URL}/competitions/${WC_CODE}/standings`, {
