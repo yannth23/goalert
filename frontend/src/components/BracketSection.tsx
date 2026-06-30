@@ -290,6 +290,7 @@ export function BracketSection() {
   const [realStandings, setRealStandings] = useState<RawStandingGroup[]>([]);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState(false);
+  const [activePhase, setActivePhase] = useState<Phase>('oitavas32');
 
   useEffect(() => {
     const load = async () => {
@@ -448,10 +449,10 @@ export function BracketSection() {
       <div className="max-w-6xl mx-auto">
 
         {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div>
             <h2 className="text-2xl font-black text-white uppercase tracking-tight">
-              🏆 Chaveamento — Oitavas de Final
+              🏆 Chaveamento — Mata-mata
             </h2>
             <p className="text-slate-500 text-sm mt-0.5">
               Copa do Mundo FIFA 2026 · Calculado a partir dos jogos reais
@@ -482,6 +483,23 @@ export function BracketSection() {
           </div>
         </div>
 
+        {/* Abas de fase */}
+        <div className="flex gap-1.5 mb-6 overflow-x-auto scrollbar-hide">
+          {PHASES.map(({ key, label, emoji }) => (
+            <button
+              key={key}
+              onClick={() => setActivePhase(key)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-1.5 ${
+                activePhase === key
+                  ? 'bg-yellow-500 text-black'
+                  : 'bg-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>{emoji}</span>{label}
+            </button>
+          ))}
+        </div>
+
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {Array.from({ length: 16 }).map((_, i) => (
@@ -494,24 +512,118 @@ export function BracketSection() {
           </div>
         ) : (
           <>
-            {/* Grid 16 jogos */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {resolvedSlots.map(slot => (
-                <SlotCard
-                  key={slot.id}
-                  gameId={slot.id}
-                  homeTeam={slot.home}
-                  awayTeam={slot.away}
-                  homeScore={slot.homeScore}
-                  awayScore={slot.awayScore}
-                  status={slot.status}
-                  isResolved={slot.isResolved}
-                />
-              ))}
-            </div>
+            {/* Oitavas (Rd. de 32) */}
+            {activePhase === 'oitavas32' && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {resolvedSlots.map(slot => (
+                  <SlotCard
+                    key={slot.id}
+                    gameId={slot.id}
+                    homeTeam={slot.home}
+                    awayTeam={slot.away}
+                    homeScore={slot.homeScore}
+                    awayScore={slot.awayScore}
+                    status={slot.status}
+                    isResolved={slot.isResolved}
+                  />
+                ))}
+              </div>
+            )}
 
-            {/* Status da classificação — só mostra enquanto grupos não terminaram */}
-            {!groupsComplete && (
+            {/* Quartas de Final */}
+            {activePhase === 'quartas' && (
+              quarterfinals.some(s => s.isResolved || s.home || s.away) ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {quarterfinals.map(slot => (
+                    <SlotCard
+                      key={slot.id}
+                      gameId={slot.id}
+                      homeTeam={slot.home}
+                      awayTeam={slot.away}
+                      homeScore={slot.homeScore}
+                      awayScore={slot.awayScore}
+                      status={slot.status}
+                      isResolved={slot.isResolved}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
+                  <span className="text-5xl">🔥</span>
+                  <p className="text-white font-bold text-lg">Quartas de Final</p>
+                  <p className="text-slate-500 text-sm max-w-xs">
+                    Aguardando o fim das oitavas para definir os confrontos.
+                  </p>
+                </div>
+              )
+            )}
+
+            {/* Semifinais */}
+            {activePhase === 'semi' && (
+              semifinals.some(s => s.isResolved || s.home || s.away) ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl mx-auto">
+                  {semifinals.map(slot => (
+                    <SlotCard
+                      key={slot.id}
+                      gameId={slot.id}
+                      homeTeam={slot.home}
+                      awayTeam={slot.away}
+                      homeScore={slot.homeScore}
+                      awayScore={slot.awayScore}
+                      status={slot.status}
+                      isResolved={slot.isResolved}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
+                  <span className="text-5xl">⚡</span>
+                  <p className="text-white font-bold text-lg">Semifinais</p>
+                  <p className="text-slate-500 text-sm max-w-xs">
+                    Aguardando o fim das quartas de final.
+                  </p>
+                </div>
+              )
+            )}
+
+            {/* Final */}
+            {activePhase === 'final' && (
+              final.some(s => s.isResolved || s.home || s.away) ? (
+                <div className="max-w-sm mx-auto">
+                  {final.map(slot => (
+                    <SlotCard
+                      key={slot.id}
+                      gameId={slot.id}
+                      homeTeam={slot.home}
+                      awayTeam={slot.away}
+                      homeScore={slot.homeScore}
+                      awayScore={slot.awayScore}
+                      status={slot.status}
+                      isResolved={slot.isResolved}
+                    />
+                  ))}
+                  {final[0] && getWinner(final[0]) && (
+                    <div className="mt-4 text-center bg-gradient-to-r from-yellow-600/20 via-yellow-500/30 to-yellow-600/20 border border-yellow-500/40 rounded-xl py-4">
+                      <p className="text-xs text-yellow-400 font-bold uppercase tracking-widest mb-1">Campeão</p>
+                      <p className="text-2xl font-black text-white">
+                        {getFlag(getWinner(final[0])!)} {getWinner(final[0])}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
+                  <span className="text-5xl">🏆</span>
+                  <p className="text-white font-bold text-lg">Grande Final</p>
+                  <p className="text-slate-500 text-sm max-w-xs">
+                    Aguardando o fim das semifinais.
+                  </p>
+                </div>
+              )
+            )}
+
+            {/* Status da classificação — só na aba de oitavas e enquanto grupos não terminaram */}
+            {activePhase === 'oitavas32' && !groupsComplete && (
               <div className="mt-6 bg-slate-900 border border-slate-800 rounded-xl p-4">
                 <p className="text-xs font-black text-yellow-400 uppercase tracking-widest mb-3">
                   Classificação por grupo
