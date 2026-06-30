@@ -390,7 +390,58 @@ export function BracketSection() {
     };
   });
 
-  const liveCount = resolvedSlots.filter(s => LIVE_STATUSES.has(s.status || '')).length;
+  // ── Avanço de fases: Quartas, Semi, Final ──────────────────────────────
+  // Cada fase usa os vencedores da fase anterior, em pares consecutivos.
+  function buildNextRound(prevSlots: ResolvedSlot[], startId: number): ResolvedSlot[] {
+    const pairs: ResolvedSlot[] = [];
+    for (let i = 0; i < prevSlots.length; i += 2) {
+      const a = prevSlots[i];
+      const b = prevSlots[i + 1];
+      if (!a || !b) continue;
+
+      const winnerA = getWinner(a);
+      const winnerB = getWinner(b);
+
+      const home = winnerA || (a.isResolved ? '' : '');
+      const away = winnerB || (b.isResolved ? '' : '');
+
+      // Procura jogo real entre os dois vencedores, se ambos já definidos
+      const live = (winnerA && winnerB)
+        ? allMatches.find(m =>
+            (m.team1 === winnerA && m.team2 === winnerB) ||
+            (m.team1 === winnerB && m.team2 === winnerA)
+          )
+        : undefined;
+
+      pairs.push({
+        id:         startId + pairs.length,
+        home:       live ? live.team1 : (winnerA || ''),
+        away:       live ? live.team2 : (winnerB || ''),
+        homeScore:  live?.team1Score,
+        awayScore:  live?.team2Score,
+        status:     live?.status,
+        isResolved: !!(winnerA && winnerB),
+      });
+    }
+    return pairs;
+  }
+
+  // Rd. 32 (oitavas oficiais, jogos 49-64) já está em resolvedSlots
+  const quarterfinals = buildNextRound(resolvedSlots, 65);   // jogos 65-68
+  const semifinals    = buildNextRound(quarterfinals, 69);   // jogos 69-70
+  const final          = buildNextRound(semifinals, 71);      // jogo 71
+
+  const liveCount = resolvedSlots.filter(s => LIVE_STATUSES.has(s.status || '')).length
+    + quarterfinals.filter(s => LIVE_STATUSES.has(s.status || '')).length
+    + semifinals.filter(s => LIVE_STATUSES.has(s.status || '')).length
+    + final.filter(s => LIVE_STATUSES.has(s.status || '')).length;
+
+  const PHASES: { key: Phase; label: string; emoji: string }[] = [
+    { key: 'oitavas32', label: 'Oitavas',  emoji: '⚔️' },
+    { key: 'quartas',   label: 'Quartas',  emoji: '🔥' },
+    { key: 'semi',      label: 'Semifinal', emoji: '⚡' },
+    { key: 'final',     label: 'Final',    emoji: '🏆' },
+  ];
 
   return (
     <section id="bracket" className="px-4 py-12 border-t border-slate-800/50">
