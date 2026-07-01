@@ -97,6 +97,12 @@ export const api = {
 
   forceSync: () => request<{ synced: number; live: number; errors: number; source: string }>('/matches/sync', { method: 'POST' }),
 
+  resetAndSync: (secret: string) => 
+    request<{ synced: number; live: number; errors: number; source: string }>('/matches/reset-and-sync', { 
+      method: 'POST',
+      headers: { 'x-admin-secret': secret }
+    }),
+
   getFavoriteTeams: (userId: string) => request<{ id: string; teamName: string }[]>(`/users/${userId}/teams`),
 
   addFavoriteTeam: (userId: string, teamName: string) =>

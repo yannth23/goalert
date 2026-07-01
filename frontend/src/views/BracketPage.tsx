@@ -289,6 +289,38 @@ export function BracketPage() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [activeTab, setActiveTab] = useState<'grupos' | 'bracket'>('grupos');
   const [activePhase, setActivePhase] = useState<'r32' | 'r16' | 'quartas' | 'semi' | 'final'>('r32');
+  const [resetting, setResetting] = useState(false);
+
+  const handleReset = async () => {
+    if (!confirm('Tem certeza que deseja resetar todos os dados? Isso irá limpar todos os placares e buscar dados frescos.')) {
+      return;
+    }
+    
+    const secret = prompt('Digite a senha de administrador:');
+    if (!secret) return;
+    
+    setResetting(true);
+    try {
+      await api.resetAndSync(secret);
+      alert('Dados resetados com sucesso!');
+      // Recarrega os dados
+      const data = await api.getByCompetition('World Cup');
+      setMatches(data.map(m => ({
+        id: m.id,
+        homeTeam: m.team1,
+        awayTeam: m.team2,
+        team1Score: m.team1Score,
+        team2Score: m.team2Score,
+        status: m.status,
+        date: m.date,
+        championship: m.championship,
+      })) as Match[]);
+    } catch (err) {
+      alert('Erro ao resetar: ' + (err as Error).message);
+    } finally {
+      setResetting(false);
+    }
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -498,6 +530,17 @@ export function BracketPage() {
 
   return (
     <div className="space-y-6">
+      {/* Header com botão de reset */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold text-white">Copa do Mundo FIFA 2026</h1>
+        <button
+          onClick={handleReset}
+          disabled={resetting}
+          className="px-4 py-2 text-xs font-bold rounded-lg bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition"
+        >
+          {resetting ? 'Resetando...' : '🔄 Reset Dados'}
+        </button>
+      </div>
 
       {/* Sub-tabs */}
       <div className="flex gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
