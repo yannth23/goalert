@@ -222,6 +222,7 @@ TEAM_TRANSLATIONS['Ivory Coast'] = 'Costa do Marfim';
 TEAM_TRANSLATIONS['Côte d\'Ivoire'] = 'Costa do Marfim';
 TEAM_TRANSLATIONS['DR Congo'] = 'RD Congo';
 TEAM_TRANSLATIONS['Congo DR'] = 'RD Congo';
+TEAM_TRANSLATIONS['Bosnia-Herzegovina'] = 'Bósnia e Herzegovina';
 
 export function translateTeam(teamName: string): string {
   return TEAM_TRANSLATIONS[teamName] || teamName;
