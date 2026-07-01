@@ -5,6 +5,13 @@ import { FootballApiService } from './football-api.service';
 import { TeamReportService } from './team-report.service';
 import { StatisticsPredictorService } from './statistics-predictor.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import {
+  TEAM_FLAGS,
+  WORLD_CUP_GROUPS,
+  QUALIFIED_THIRD_GROUPS,
+  ROUND_OF_32_FIXTURE,
+  ROUND_OF_16_PAIRS,
+} from '../shared';
 
 @Controller('matches')
 export class FootballMatchController {
@@ -14,6 +21,22 @@ export class FootballMatchController {
     private readonly teamReportService:    TeamReportService,
     private readonly predictor:            StatisticsPredictorService,
   ) {}
+
+  /**
+   * Metadata estática de times/grupos/bracket — bandeiras, composição dos 12
+   * grupos oficiais e fixture da Rd. de 32/16. O frontend consome isso em vez
+   * de manter cópia própria (ver shared/team-metadata.util.ts para o porquê).
+   */
+  @Get('metadata')
+  getMetadata() {
+    return {
+      flags: TEAM_FLAGS,
+      groups: WORLD_CUP_GROUPS,
+      qualifiedThirdGroups: QUALIFIED_THIRD_GROUPS,
+      roundOf32Fixture: ROUND_OF_32_FIXTURE,
+      roundOf16Pairs: ROUND_OF_16_PAIRS,
+    };
+  }
 
   @Get()
   async getTodayMatches() { 
