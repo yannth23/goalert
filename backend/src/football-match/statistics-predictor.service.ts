@@ -246,18 +246,18 @@ export class StatisticsPredictorService {
     const hasRealLineup = scrapedLineup.length >= 11;
 
     const prompt = hasRealLineup
-      ? `A seleção ${teamName} disputou seu último jogo na Copa do Mundo 2026 com ESTA escalação real (obtida via scraping — use EXATAMENTE esses nomes, sem inventar outros):
+      ? `${teamName} na Copa 2026 com esta escalação real:
 ${scrapedLineup.slice(0, 11).join(', ')}
 
-Com base nessa escalação, determine:
-1. Formação tática mais provável (ex: 4-3-3, 4-4-2, 3-5-2 etc.)
-2. O jogador estrela atual desta Copa (Key Player) — deve ser um dos nomes acima.
-3. Intensidade/Agressividade do estilo de jogo (0-100).
-4. Foco de ataque: wings, center, defense, counter ou balanced.
-5. Estilo de domínio: APENAS "possession", "counter", "pressing" ou "defensive" — NUNCA "balanced".
-6. Descrição curta em português (máx 80 chars) do estilo.
+Determine:
+1. Formação tática provável
+2. Jogador estrela (um dos nomes acima)
+3. Intensidade (0-100)
+4. Foco: wings, center, counter ou balanced
+5. Estilo: APENAS "possession", "counter", "pressing" ou "defensive"
+6. Descrição CURTA (máx 30 chars): ex: "Gira a bola até achar o gol"
 
-Responda APENAS o JSON (coloque os 11 jogadores na ordem do campo, começando pelo goleiro):
+Responda APENAS o JSON:
 {
   "formation": "string",
   "lineup": ${JSON.stringify(scrapedLineup.slice(0, 11))},
@@ -265,18 +265,18 @@ Responda APENAS o JSON (coloque os 11 jogadores na ordem do campo, começando pe
   "intensity": number,
   "focus": "string",
   "dominanceStyle": "possession|counter|pressing|defensive",
-  "dominanceDescription": "string"
+  "dominanceDescription": "string (até 30 chars)"
 }`
-      : `Analise a seleção ${teamName} nos jogos mais recentes da Copa do Mundo 2026 (junho de 2026).
+      : `Analise ${teamName} na Copa 2026.
 
 Forneça:
-1. Formação tática REAL utilizada no último jogo.
-2. Escalação com os 11 titulares REAIS (nomes completos).
-3. O jogador estrela atual (Key Player) desta Copa.
-4. Intensidade/Agressividade (0-100).
-5. Foco de ataque: wings, center, defense ou counter.
-6. Estilo de domínio: APENAS "possession", "counter", "pressing" ou "defensive" — NUNCA "balanced".
-7. Descrição curta em português (máx 80 chars) do estilo.
+1. Formação tática REAL
+2. 11 titulares REAIS
+3. Jogador estrela
+4. Intensidade (0-100)
+5. Foco: wings, center, counter ou balanced
+6. Estilo: APENAS "possession", "counter", "pressing" ou "defensive"
+7. Descrição CURTA (máx 30 chars): ex: "Letal no contra-ataque"
 
 Responda APENAS o JSON:
 {
@@ -286,13 +286,13 @@ Responda APENAS o JSON:
   "intensity": number,
   "focus": "string",
   "dominanceStyle": "possession|counter|pressing|defensive",
-  "dominanceDescription": "string"
+  "dominanceDescription": "string (até 30 chars)"
 }`;
 
-    const systemMsg = 'Você é um analista tático de futebol de elite especializado na Copa do Mundo 2026. ' +
+    const systemMsg = 'Você é um analista tático de futebol. Respostas diretas e concisas. ' +
       (hasRealLineup
-        ? 'A escalação já foi fornecida via scraping — use EXATAMENTE esses nomes, apenas analise táticas e estilo.'
-        : 'Forneça análises REAIS baseadas nos jogos mais recentes. Evite repetir formações padrão sem embasamento.');
+        ? 'Use EXATAMENTE os nomes fornecidos. Análise objetiva.'
+        : 'Forneça dados REAIS. Sem inventar. Conciso.');
 
     const data = await this.tryModels(
       GROQ_TACTICS_MODELS,
@@ -337,16 +337,48 @@ Responda APENAS o JSON:
       ? scrapedLineup.slice(0, 11)
       : Array.from({ length: 11 }, (_, i) => `Titular ${i + 1}`);
 
+    // Fallback baseado em padrões táticos reais de seleções
+    const FORMATION_BY_TEAM: Record<string, string> = {
+      'Brasil': '4-3-3', 'Argentina': '4-4-2', 'França': '4-3-3', 'Alemanha': '4-2-3-1',
+      'Espanha': '4-3-3', 'Portugal': '4-3-3', 'Inglaterra': '4-3-3', 'Holanda': '3-4-3',
+      'Bélgica': '3-4-3', 'Itália': '4-3-3', 'Croácia': '4-3-3', 'Uruguai': '4-4-2',
+      'Estados Unidos': '4-3-3', 'México': '4-3-3', 'Japão': '4-2-3-1', 'Coreia do Sul': '4-4-2',
+      'Marrocos': '4-3-3', 'Senegal': '4-3-3', 'Canadá': '4-4-2', 'Equador': '4-3-3',
+    };
+
+    const formation = FORMATION_BY_TEAM[teamName] || '4-3-3';
+    const intensity = 65 + Math.floor(Math.random() * 20); // 65-85
+    
+    // Estilos baseados em características conhecidas das seleções
+    const STYLE_BY_TEAM: Record<string, { style: string; focus: string; desc: string }> = {
+      'Brasil': { style: 'possession', focus: 'wings', desc: 'Jogo ofensivo pelas pontas' },
+      'Argentina': { style: 'possession', focus: 'center', desc: 'Posse com Messi como pivô' },
+      'França': { style: 'counter', focus: 'wings', desc: 'Transições rápidas pelos lados' },
+      'Alemanha': { style: 'possession', focus: 'center', desc: 'Controle central do jogo' },
+      'Espanha': { style: 'possession', focus: 'center', desc: 'Tiki-taka e controle total' },
+      'Portugal': { style: 'possession', focus: 'wings', desc: 'Ataque pelos corredores' },
+      'Inglaterra': { style: 'pressing', focus: 'wings', desc: 'Pressão alta e cruzamentos' },
+      'Holanda': { style: 'pressing', focus: 'center', desc: 'Futebol total moderno' },
+      'Marrocos': { style: 'defensive', focus: 'counter', desc: 'Bloco sólido e contra-ataque' },
+      'Japão': { style: 'pressing', focus: 'center', desc: 'Pressão organizada e técnica' },
+      'Estados Unidos': { style: 'pressing', focus: 'wings', desc: 'Intensidade e velocidade' },
+      'México': { style: 'possession', focus: 'center', desc: 'Posse técnica no meio' },
+    };
+
+    const teamStyle = STYLE_BY_TEAM[teamName] || { 
+      style: 'pressing', focus: 'balanced', desc: 'Estilo a definir' 
+    };
+
     return {
-      formation: '4-4-2',
+      formation,
       lineup: fallbackLineup,
-      keyPlayer: fallbackLineup[0] || 'Jogador Chave',
-      intensity: 75,
-      focus: 'counter',
-      dominanceStyle: 'pressing',
-      dominanceDescription: 'Pressão alta e determinação',
+      keyPlayer: fallbackLineup[10] || 'Craque da equipe',
+      intensity,
+      focus: teamStyle.focus,
+      dominanceStyle: teamStyle.style as TacticalAnalysis['dominanceStyle'],
+      dominanceDescription: teamStyle.desc,
       gameDominanceProb: 50,
-      heatmapData: this.generateHeatmap('counter'),
+      heatmapData: this.generateHeatmap(teamStyle.focus),
     };
   }
 
@@ -388,78 +420,84 @@ Responda APENAS o JSON:
       const [hs, as] = homeTactics.intensity >= awayTactics.intensity
         ? CONTRAST_PAIRS[idx]
         : [CONTRAST_PAIRS[idx][1], CONTRAST_PAIRS[idx][0]];
+      
+      // Descrições curtas e diretas
       const descMap: Record<string, string> = {
-        possession: 'Controla o jogo com a posse', counter: 'Explora espaços no contra-ataque',
-        pressing: 'Pressiona alto e sufoca o adversário', defensive: 'Bloco defensivo organizado',
+        possession: 'Gira a bola até achar o gol',
+        counter: 'Letal no contra-ataque',
+        pressing: 'Pressão sufocante',
+        defensive: 'Bloco baixo impenetrável',
       };
-      // Probabilidades de resultado baseadas no dominanceProb
+      
+      // Probabilidades de resultado
       const wph = hProb === 50 ? 52 : hProb;
       const winHome = Math.round(wph * 0.85);
       const winAway = Math.round((100 - wph) * 0.85);
       const draw = 100 - winHome - winAway;
+      
+      // Análises concisas e diretas
+      const analysisMap: Record<string, string> = {
+        'possession_defensive': `${homeTeam} vai ter a bola, mas ${awayTeam} sabe se fechar. O jogo se decide na paciência: quem furar o bloco primeiro leva.`,
+        'possession_counter': `${homeTeam} controla, ${awayTeam} espera o erro. As costas dos laterais avançados serão o alvo. Um gol muda tudo.`,
+        'pressing_counter': `${homeTeam} vai sufocar desde o início. Se o pressing falhar, ${awayTeam} tem velocidade pra castigar. Jogo de alto risco.`,
+        'pressing_defensive': `Intensidade máxima contra organização total. Os primeiros 20 minutos definem: se o bloco resistir, o jogo vai pra tensão.`,
+        'possession_pressing': `Batalha no meio-campo. Quem ganhar os duelos na zona intermediária controla o jogo. Pressão alta pode gerar gol em erro.`,
+        'counter_defensive': `Jogo truncado. ${homeTeam} explora transições, ${awayTeam} aposta no bloqueio. Um lance individual ou bola parada decide.`,
+      };
+      
+      const key = hs + '_' + as;
+      const reverseKey = as + '_' + hs;
+      const analysis = analysisMap[key] || analysisMap[reverseKey] || 
+        `${homeTeam} e ${awayTeam} com estilos diferentes. O meio-campo será disputado palmo a palmo. Bolas paradas podem decidir.`;
+      
       return {
         homeDominanceProb: wph,
         homeStyle: hs, homeDesc: descMap[hs],
         awayStyle: as, awayDesc: descMap[as],
-        analysis: (() => {
-          const scenarios: Record<string, string> = {
-            'possession_defensive': `${homeTeam} deve dominar a posse e girar a bola buscando abrir espaços, enquanto ${awayTeam} se fecha em bloco baixo esperando o erro adversário. O perigo vem de bolas paradas e lances de segunda trave. A paciência de ${homeTeam} será testada.`,
-            'possession_counter': `${homeTeam} controla, ${awayTeam} contra-ataca. Duelo clássico de Copa: quem tiver o melhor ataque rápido leva vantagem. Espaços nas costas da zaga de ${homeTeam} serão o alvo principal. Um gol muda tudo.`,
-            'pressing_counter': `${homeTeam} vai pressionar alto desde o início tentando asfixiar a saída de bola de ${awayTeam}. Se o pressing falhar, espaços imensos se abrem para o contra-ataque adversário. Jogo de alto risco dos dois lados.`,
-            'pressing_defensive': `Intensidade máxima de ${homeTeam} contra organização defensiva de ${awayTeam}. O duelo vai se decidir na segunda bola e nos lances parados. Time que aguentar a pressão nos primeiros 20 minutos sai na frente.`,
-            'possession_pressing': `Batalha pelo controle do jogo — ${homeTeam} quer manter a bola, ${awayTeam} quer roubar alto. Zona do meio-campo será o campo de batalha. Quem vencer os duelos no terço médio controla o jogo.`,
-            'counter_defensive': `Jogo fechado esperado. ${homeTeam} vai explorar transições rápidas enquanto ${awayTeam} aposta no bloqueio defensivo. Gol de bola parada ou lance individual podem ser decisivos nesse confronto equilibrado.`,
-          };
-          const key = hs + '_' + as;
-          const reverseKey = as + '_' + hs;
-          return scenarios[key] || scenarios[reverseKey] || 
-            `${homeTeam} (${descMap[hs]}) enfrenta ${awayTeam} (${descMap[as]}) num duelo de estilos opostos. A zona de meio-campo será disputada palmo a palmo. Bolas paradas e erros individuais podem ser decisivos.`;
-        })(),
-        goalScenarios: [
-          `${homeTeam} explora espaços nas costas da linha defensiva adversária em transição`,
-          `Bola parada: escanteio ou falta na entrada da área`,
-          `${awayTeam} aproveita saída de bola errada para contra-atacar em velocidade`,
-          `Lance individual de jogador estrela desequilibra o duelo tático`,
-        ],
+        analysis,
+        goalScenarios: this.fallbackGoalScenarios(homeTeam, awayTeam, hs, as),
         winProbHome: winHome,
         drawProb: draw,
         winProbAway: winAway,
         keyDuels: [
-          { homePlayer: homeTactics.keyPlayer, awayPlayer: awayTactics.keyPlayer, context: 'Duelo de estrelas no meio-campo', advantage: wph > 55 ? 'home' : wph < 45 ? 'away' : 'equal' },
+          { homePlayer: homeTactics.keyPlayer, awayPlayer: awayTactics.keyPlayer, context: 'Duelo de craques', advantage: wph > 55 ? 'home' : wph < 45 ? 'away' : 'equal' },
+          { homePlayer: homeTactics.lineup?.[2] || 'Lateral', awayPlayer: awayTactics.lineup?.[2] || 'Lateral', context: 'Corredores laterais', advantage: 'equal' },
+          { homePlayer: homeTactics.lineup?.[0] || 'Goleiro', awayPlayer: awayTactics.lineup?.[9] || 'Atacante', context: 'Último recurso', advantage: wph > 55 ? 'home' : 'away' },
         ],
       };
     };
 
-    const analysisSystemMsg = `Você é um analista tático de futebol de elite cobrindo a Copa do Mundo 2026.
-REGRAS ABSOLUTAS:
-1. "homeDominanceProb": NUNCA use 50. Diferença mínima de 8 pontos. Base: ranking FIFA, histórico, Copa 2026.
-2. "homeStyle" e "awayStyle": OBRIGATORIAMENTE diferentes entre si. PROIBIDO usar "balanced". Estilos válidos APENAS: "possession", "counter", "pressing", "defensive".
-3. "homeDesc" e "awayDesc": descrição em português de até 60 caracteres, específica para ESTE confronto.
-4. "analysis": análise tática JORNALÍSTICA e ESPECÍFICA — como um comentarista da Globo. Mencione: (a) o estilo real de cada seleção nesta Copa, (b) qual zona do campo será o campo de batalha, (c) o maior perigo tático de cada time, (d) o jogador que pode decidir. PROIBIDO: "duelo equilibrado", "confronto tático", frases genéricas. Escreva com emoção e especificidade. Mínimo 450 caracteres.
-5. "goalScenarios": array com exatamente 4 formas ESPECÍFICAS e DISTINTAS de gol poderem sair neste jogo. Varie entre: cabeçada em cruzamento, chute de fora da área, lateral, jogada individual, falta/escanteio, contra-ataque, pênalti. Cada item deve ser uma frase descritiva (20-80 chars), não apenas um rótulo.
-6. "winProbHome", "drawProb", "winProbAway": probabilidades de resultado em números inteiros que DEVEM somar exatamente 100. Baseie-se no ranking FIFA, forma recente e histórico de confrontos.
-7. "keyDuels": exatamente 3 duelos-chave específicos deste jogo — um por setor (ataque/defesa, meio-campo, corredores). Cada duelo deve ter nomes REAIS dos jogadores, contexto específico e quem tem vantagem ("home", "away" ou "equal").`;
+    const analysisSystemMsg = `Você é um comentarista esportivo brasileiro especializado em Copa do Mundo. Escreva como o Polido ou o Caio Ribeiro — direto, técnico, mas com personalidade.
 
-    const analysisUserMsg = `Copa do Mundo 2026: ${homeTeam} (${homeTactics.formation}, destaque: ${homeTactics.keyPlayer}, xG médio: ${homeXG || 'N/A'}) vs ${awayTeam} (${awayTactics.formation}, destaque: ${awayTactics.keyPlayer}, xG médio: ${awayXG || 'N/A'}).
+REGRAS:
+1. "homeDominanceProb": NUNCA use 50. Diferença mínima de 8 pontos.
+2. "homeStyle" e "awayStyle": OBRIGATORIAMENTE diferentes. PROIBIDO "balanced". Apenas: "possession", "counter", "pressing", "defensive".
+3. "homeDesc" e "awayDesc": FRASE CURTA (máx 40 caracteres) que capture a essência do time. Exemplos bons: "Gira a bola até achar o gol", "Letal no contra-ataque", "Bloco baixo impenetrável", "Pressão sufocante".
+4. "analysis": Análise TÁTICA CONCISA (150-250 caracteres). Vá direto ao ponto. Mencione: (a) o que cada time vai tentar fazer, (b) onde o jogo será decidido, (c) um insight específico. PROIBIDO: frases genéricas como "duelo equilibrado", "confronto tático", "jogo difícil". Escreva como quem entende de futebol.
+5. "goalScenarios": 4 formas ESPECÍFICAS de gol. Cada item: frase curta (15-50 chars) descrevendo o lance. Ex: "Cruzamento rasteiro na área", "Chute de fora após tabela", "Gol de bola parada".
+6. "winProbHome", "drawProb", "winProbAway": inteiros que SOMAM 100.
+7. "keyDuels": 3 duelos específicos (ataque, meio, defesa). Nomes REAIS dos jogadores, contexto curto (máx 50 chars), vantagem: "home", "away" ou "equal".`;
 
-Analise o confronto tático real deste jogo. Descreva como os estilos se chocam com base nas formações e características conhecidas de cada seleção. O texto deve ser direto, preciso e revelar algo que não é óbvio — como um duelo específico de corredor, uma zona de pressão crítica, ou uma vulnerabilidade defensiva que pode ser explorada.
+    const analysisUserMsg = `Copa 2026: ${homeTeam} (${homeTactics.formation}, craque: ${homeTactics.keyPlayer}, xG: ${homeXG || '?'}) vs ${awayTeam} (${awayTactics.formation}, craque: ${awayTactics.keyPlayer}, xG: ${awayXG || '?'}).
+
+Analise este confronto. Onde será decidido? Qual o ponto fraco de cada um? Quem leva vantagem?
 
 Responda APENAS este JSON:
 {
   "homeDominanceProb": number,
   "homeStyle": "possession|counter|pressing|defensive",
-  "homeDesc": "string (até 60 chars)",
+  "homeDesc": "string (até 40 chars)",
   "awayStyle": "possession|counter|pressing|defensive",
-  "awayDesc": "string (até 60 chars)",
-  "analysis": "string (300-600 chars) — resumo tático específico, rico, NÃO genérico",
+  "awayDesc": "string (até 40 chars)",
+  "analysis": "string (150-250 chars) — análise direta e específica",
   "goalScenarios": ["string", "string", "string", "string"],
   "winProbHome": number,
   "drawProb": number,
   "winProbAway": number,
   "keyDuels": [
-    {"homePlayer": "string", "awayPlayer": "string", "context": "string (até 80 chars)", "advantage": "home|away|equal"},
-    {"homePlayer": "string", "awayPlayer": "string", "context": "string (até 80 chars)", "advantage": "home|away|equal"},
-    {"homePlayer": "string", "awayPlayer": "string", "context": "string (até 80 chars)", "advantage": "home|away|equal"}
+    {"homePlayer": "string", "awayPlayer": "string", "context": "string (até 50 chars)", "advantage": "home|away|equal"},
+    {"homePlayer": "string", "awayPlayer": "string", "context": "string (até 50 chars)", "advantage": "home|away|equal"},
+    {"homePlayer": "string", "awayPlayer": "string", "context": "string (até 50 chars)", "advantage": "home|away|equal"}
   ]
 }`;
 
@@ -573,30 +611,40 @@ Responda APENAS este JSON:
     homeStyle: string,
     awayStyle: string,
   ): string[] {
+    // Cenários curtos e diretos (15-40 caracteres)
     const scenarios: Record<string, string[]> = {
       possession: [
-        `${homeTeam} troca passes até abrir espaço e finaliza de dentro da área`,
-        `Cruzamento pela esquerda e cabeçada do centroavante`,
+        'Cruzamento rasteiro na área',
+        'Tabela pelo meio e finalização',
+        'Gol de bola parada',
       ],
       counter: [
-        `${awayTeam} rouba a bola no meio e avança em velocidade para o gol`,
-        `Passe em profundidade nas costas da defesa alta`,
+        'Contra-ataque em 3 toques',
+        'Passe longo nas costas da zaga',
+        'Transição rápida pela ponta',
       ],
       pressing: [
-        `Pressing alto força erro do goleiro ou defensor no campo adversário`,
-        `Segunda bola após pressão vira finalização de fora da área`,
+        'Roubo de bola e gol',
+        'Pressão no goleiro adversário',
+        'Chute de fora após recuperação',
       ],
       defensive: [
-        `Bola parada — escanteio ou falta lateral batida na área`,
-        `Contra-ataque rápido com dois toques após roubo de bola`,
+        'Cabeçada no escanteio',
+        'Contra-ataque letal',
+        'Pênalti em disputa aérea',
       ],
     };
 
+    const homeScenarios = scenarios[homeStyle] ?? scenarios['possession'];
+    const awayScenarios = scenarios[awayStyle] ?? scenarios['counter'];
+    
+    // Combina cenários dos dois times
     return [
-      ...(scenarios[homeStyle] ?? []),
-      ...(scenarios[awayStyle] ?? []),
-      `Chute de fora da área surpreende o goleiro desposicionado`,
-    ].slice(0, 4);
+      homeScenarios[0],
+      awayScenarios[0],
+      homeScenarios[1] || 'Chute de fora da área',
+      awayScenarios[1] || 'Jogada individual decisiva',
+    ].filter(s => s && s.length > 0).slice(0, 4);
   }
 
   /**
@@ -646,12 +694,12 @@ Responda APENAS este JSON:
 
   private defaultDesc(style: string | null): string {
     const map: Record<string, string> = {
-      pressing:   'Pressão alta e sufoca o adversário',
-      counter:    'Explora espaços no contra-ataque',
-      possession: 'Controla o jogo com a posse',
-      defensive:  'Bloco defensivo bem organizado',
+      pressing:   'Pressão sufocante',
+      counter:    'Letal no contra-ataque',
+      possession: 'Gira a bola até achar o gol',
+      defensive:  'Bloco baixo impenetrável',
     };
-    return map[style ?? 'pressing'] ?? 'Pressão alta e determinação';
+    return map[style ?? 'pressing'] ?? 'Estilo a definir';
   }
 
   private generateHeatmap(focus: string) {

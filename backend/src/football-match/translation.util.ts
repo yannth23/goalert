@@ -214,10 +214,14 @@ export const TEAM_TRANSLATIONS: Record<string, string> = {
 };
 
 // Adições extras
-TEAM_TRANSLATIONS['Curaçao'] = 'Curaçau';
-TEAM_TRANSLATIONS['Czech Republic'] = 'República Tcheca';
+TEAM_TRANSLATIONS['Curaçao'] = 'Curaçao';
+TEAM_TRANSLATIONS['Czech Republic'] = 'Tchéquia';
+TEAM_TRANSLATIONS['Czechia'] = 'Tchéquia';
 TEAM_TRANSLATIONS['South Korea'] = 'Coreia do Sul';
 TEAM_TRANSLATIONS['Ivory Coast'] = 'Costa do Marfim';
+TEAM_TRANSLATIONS['Côte d\'Ivoire'] = 'Costa do Marfim';
+TEAM_TRANSLATIONS['DR Congo'] = 'RD Congo';
+TEAM_TRANSLATIONS['Congo DR'] = 'RD Congo';
 
 export function translateTeam(teamName: string): string {
   return TEAM_TRANSLATIONS[teamName] || teamName;
