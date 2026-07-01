@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { FootballApiService } from './football-api.service';
 import { ScraperService } from './scraper.service';
 import { getTodayRange, mapMatchToDto } from '../shared';
+import { RedisService } from '../redis/redis.service';
 
 const LIVE_STATUSES       = new Set(['1H', 'HT', '2H', 'ET', 'PEN']);
 const MAX_MATCH_DURATION  = 3 * 60 * 60 * 1000; // 3 horas é mais que suficiente para um jogo normal + intervalo
@@ -35,25 +36,39 @@ export class FootballMatchService {
     private readonly prisma:              PrismaService,
     private readonly footballApiService:  FootballApiService,
     private readonly scraper:             ScraperService,
+    private readonly redis:               RedisService,
   ) {}
 
-  private getCached<T>(key: string): T | null {
+  // Cache híbrido: Redis + memCache como fallback
+  private async getCached<T>(key: string): Promise<T | null> {
+    const redisData = await this.redis.getJson<T>(key);
+    if (redisData !== null) return redisData;
     const entry = this.memCache.get(key);
     if (!entry || Date.now() > entry.expiresAt) return null;
     return entry.data as T;
   }
 
-  private setCached(key: string, data: any, ttlMs: number): void {
+  private async setCached(key: string, data: any, ttlMs: number): Promise<void> {
     this.memCache.set(key, { data, expiresAt: Date.now() + ttlMs });
+    await this.redis.setJson(key, data, Math.floor(ttlMs / 1000));
   }
 
-  invalidateCache(key?: string): void {
-    if (key) this.memCache.delete(key);
-    else this.memCache.clear();
+  async invalidateCache(key?: string): Promise<void> {
+    if (key) {
+      this.memCache.delete(key);
+      await this.redis.del(key);
+    } else {
+      this.memCache.clear();
+      // Limpa chaves conhecidas no Redis
+      const knownKeys = ['today-matches'];
+      for (const k of knownKeys) {
+        await this.redis.del(k);
+      }
+    }
   }
 
   async getTodayMatches() {
-    const cached = this.getCached<any[]>('today-matches');
+    const cached = await this.getCached<any[]>('today-matches');
     if (cached) { this.logger.log('[service] cache hit — today-matches'); return cached; }
 
     const { start, end } = getTodayRange();
@@ -93,7 +108,7 @@ export class FootballMatchService {
     // Só cacheia quando há partidas — resultado vazio não deve ser cacheado
     // pois o próximo request retentaria o banco (sync pode ainda estar rodando)
     if (result.length > 0) {
-      this.setCached('today-matches', result, 60_000);
+      await this.setCached('today-matches', result, 60_000);
     }
     return result;
   }
@@ -130,7 +145,7 @@ export class FootballMatchService {
 
   async getHeadToHead(team1: string, team2: string): Promise<H2HResult> {
     const cacheKey = `h2h:${team1}:${team2}`;
-    const cached = this.getCached<H2HResult>(cacheKey);
+    const cached = await this.getCached<H2HResult>(cacheKey);
     if (cached) return cached;
 
     // 1. Tenta via scraping (Sofascore) — histórico real
@@ -138,7 +153,7 @@ export class FootballMatchService {
       const scraped = await this.scraper.scrapeH2H(team1, team2);
       if (scraped && scraped.totalMatches > 0) {
         this.logger.log(`[h2h] dados do Sofascore: ${team1} vs ${team2} — ${scraped.totalMatches} jogos`);
-        return {
+        const result = {
           homeTeam: team1,
           awayTeam: team2,
           homeWins:       scraped.homeWins,
@@ -149,6 +164,8 @@ export class FootballMatchService {
           totalMatches:   scraped.totalMatches,
           recentMatches:  scraped.recentMatches,
         };
+        await this.setCached(cacheKey, result, 30 * 60_000);
+        return result;
       }
     } catch (err: any) {
       this.logger.warn(`[h2h] scraping falhou, usando banco: ${err.message}`);
@@ -203,7 +220,7 @@ export class FootballMatchService {
         championship: m.championship,
       })),
     };
-    this.setCached(cacheKey, h2hResult, 30 * 60_000);
+    await this.setCached(cacheKey, h2hResult, 30 * 60_000);
     return h2hResult;
   }
 

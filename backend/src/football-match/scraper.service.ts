@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { getTodayBrazil } from '../shared/date.util';
 import { translateTeam } from './translation.util';
+import { RedisService } from '../redis/redis.service';
 
 const SCRAPER_TIMEOUT_MS = 7_000;
 
@@ -83,7 +84,7 @@ export class ScraperService {
   private readonly logger = new Logger(ScraperService.name);
   private readonly memCache = new Map<string, { data: any; expiresAt: number }>();
 
-  constructor() {}
+  constructor(private readonly redis: RedisService) {}
 
   private getCached<T>(key: string): T | null {
     const entry = this.memCache.get(key);
@@ -95,9 +96,33 @@ export class ScraperService {
     this.memCache.set(key, { data, expiresAt: Date.now() + ttlMs });
   }
 
-  invalidateCache(key?: string): void {
-    if (key) this.memCache.delete(key);
-    else this.memCache.clear();
+  // Cache híbrido: tenta Redis primeiro, depois memCache
+  private async getCachedAsync<T>(key: string): Promise<T | null> {
+    // Tenta Redis primeiro
+    const redisData = await this.redis.getJson<T>(key);
+    if (redisData !== null) return redisData;
+    // Fallback para memCache
+    return this.getCached<T>(key);
+  }
+
+  private async setCachedAsync<T>(key: string, data: T, ttlMs: number): Promise<void> {
+    // Salva em ambos
+    this.setCached(key, data, ttlMs);
+    await this.redis.setJson(key, data, Math.floor(ttlMs / 1000));
+  }
+
+  async invalidateCache(key?: string): Promise<void> {
+    if (key) {
+      this.memCache.delete(key);
+      await this.redis.del(key);
+    } else {
+      this.memCache.clear();
+      // Limpa chaves conhecidas no Redis
+      const knownKeys = ['today-matches', 'lineup:', 'adv-stats:', 'h2h:', 'google-times:', 'espn-standings'];
+      for (const k of knownKeys) {
+        await this.redis.del(k);
+      }
+    }
   }
 
   /** Public entry-point: returns today's matches from the best available scraper.
@@ -106,7 +131,8 @@ export class ScraperService {
    */
   async scrapeTodayMatches(): Promise<ScrapedMatch[]> {
     const today    = getTodayBrazil(); // YYYY-MM-DD em BRT (America/Sao_Paulo)
-    const cached = this.getCached<ScrapedMatch[]>('today-matches');
+    const cacheKey = `today-matches:${today}`;
+    const cached = await this.getCachedAsync<ScrapedMatch[]>(cacheKey);
     if (cached) { this.logger.log('[scraper] cache hit — today-matches'); return cached; }
 
     // Tenta SofaScore primeiro (melhor cobertura)
@@ -114,7 +140,7 @@ export class ScraperService {
       const matches = await this.fetchSofaScore(today);
       if (matches.length > 0) {
         this.logger.log(`[scraper] SofaScore — ${matches.length} matches`);
-        this.setCached('today-matches', matches, 2 * 60_000);
+        await this.setCachedAsync(cacheKey, matches, 2 * 60_000);
         return matches;
       }
     } catch (err: any) {
@@ -126,7 +152,7 @@ export class ScraperService {
       const matches = await this.fetchESPNMultiLeague(today);
       if (matches.length > 0) {
         this.logger.log(`[scraper] ESPN multi-league — ${matches.length} matches`);
-        this.setCached('today-matches', matches, 2 * 60_000);
+        await this.setCachedAsync(cacheKey, matches, 2 * 60_000);
         return matches;
       }
     } catch (err: any) {
@@ -138,7 +164,7 @@ export class ScraperService {
       const matches = await this.fetchTheSportsDB(today);
       if (matches.length > 0) {
         this.logger.log(`[scraper] TheSportsDB — ${matches.length} matches`);
-        this.setCached('today-matches', matches, 2 * 60_000);
+        await this.setCachedAsync(cacheKey, matches, 2 * 60_000);
         return matches;
       }
     } catch (err: any) {
@@ -158,7 +184,7 @@ export class ScraperService {
    */
   async fetchGoogleMatchTimes(date: string): Promise<MatchTime[]> {
     const cacheKey = `google-times:${date}`;
-    const cached = this.getCached<MatchTime[]>(cacheKey);
+    const cached = await this.getCachedAsync<MatchTime[]>(cacheKey);
     if (cached) { this.logger.log('[google-times] cache hit'); return cached; }
 
     // 1. Tenta Google ("jogos copa do mundo 2026")
@@ -166,6 +192,7 @@ export class ScraperService {
       const times = await this.parseGoogleFootballWidget();
       if (times.length > 0) {
         this.logger.log(`[google-times] Google: ${times.length} horários extraídos`);
+        await this.setCachedAsync(cacheKey, times, 30 * 60_000);
         return times;
       }
     } catch (err: any) {
@@ -202,6 +229,7 @@ export class ScraperService {
 
       if (times.length > 0) {
         this.logger.log(`[google-times] ESPN Brasil: ${times.length} horários (UTC corretos)`);
+        await this.setCachedAsync(cacheKey, times, 30 * 60_000);
         return times;
       }
     } catch (err: any) {
@@ -450,7 +478,7 @@ export class ScraperService {
    */
   async fetchESPNStandings(): Promise<ScrapedGroupStanding[]> {
     const cacheKey = 'espn-standings';
-    const cached = this.getCached<ScrapedGroupStanding[]>(cacheKey);
+    const cached = await this.getCachedAsync<ScrapedGroupStanding[]>(cacheKey);
     if (cached) { this.logger.log('[espn-standings] cache hit'); return cached; }
 
     try {
@@ -489,7 +517,7 @@ export class ScraperService {
 
       if (standings.length > 0) {
         this.logger.log(`[espn-standings] ${standings.length} grupos carregados da ESPN`);
-        this.setCached(cacheKey, standings, 5 * 60_000); // cache 5 min
+        await this.setCachedAsync(cacheKey, standings, 5 * 60_000);
         return standings;
       }
       this.logger.warn('[espn-standings] ESPN retornou 0 grupos');
@@ -502,7 +530,7 @@ export class ScraperService {
 
   async scrapeLineup(teamName: string): Promise<string[]> {
     const cacheKey = `lineup:${teamName}`;
-    const cached = this.getCached<string[]>(cacheKey);
+    const cached = await this.getCachedAsync<string[]>(cacheKey);
     if (cached) { this.logger.log(`[scraper] lineup cache hit: ${teamName}`); return cached; }
 
     // Tenta cada fonte em sequência até obter >= 11 jogadores
@@ -517,7 +545,7 @@ export class ScraperService {
         const players = await source();
         if (players.length >= 11) {
           this.logger.log(`[scraper] escalação obtida para ${teamName}: ${players.slice(0, 3).join(', ')}...`);
-          this.setCached(`lineup:${teamName}`, players, 30 * 60_000);
+          await this.setCachedAsync(cacheKey, players, 30 * 60_000);
           return players;
         }
       } catch (err: any) {
@@ -720,7 +748,7 @@ export class ScraperService {
    */
   async scrapeAdvancedStats(teamName: string) {
     const cacheKey = `adv-stats:${teamName}`;
-    const cached = this.getCached<any>(cacheKey);
+    const cached = await this.getCachedAsync<any>(cacheKey);
     if (cached) return cached;
 
     // Simulação de dados StatsBomb: xG, Passes Progressivos, Eficiência de Pressão
@@ -730,7 +758,7 @@ export class ScraperService {
       pressingEfficiency: Math.floor(40 + Math.random() * 30),
       deepCompletions: Math.floor(8 + Math.random() * 12),
     };
-    this.setCached(`adv-stats:${teamName}`, stats, 30 * 60_000);
+    await this.setCachedAsync(cacheKey, stats, 30 * 60_000);
     return stats;
   }
 
@@ -741,7 +769,7 @@ export class ScraperService {
 
   async scrapeH2H(team1Name: string, team2Name: string): Promise<ScrapedH2H | null> {
     const cacheKey = `h2h:${team1Name}:${team2Name}`;
-    const cached = this.getCached<ScrapedH2H>(cacheKey);
+    const cached = await this.getCachedAsync<ScrapedH2H>(cacheKey);
     if (cached) { this.logger.log(`[scraper] h2h cache hit: ${team1Name} vs ${team2Name}`); return cached; }
 
     const sofascoreHeaders = {
@@ -829,7 +857,7 @@ export class ScraperService {
         recentMatches,
       };
 
-      this.setCached(cacheKey, result, 12 * 60 * 60_000);
+      await this.setCachedAsync(cacheKey, result, 12 * 60 * 60_000);
       this.logger.log(`[scraper] h2h obtido: ${team1Name} vs ${team2Name} — ${h2hEvents.length} jogos`);
       return result;
     } catch (err: any) {

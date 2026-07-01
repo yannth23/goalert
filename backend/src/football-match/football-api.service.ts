@@ -6,6 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { StatisticsPredictorService } from './statistics-predictor.service';
 import { ScraperService, ScrapedMatch } from './scraper.service';
 import { translateTeam } from './translation.util';
+import { RedisService } from '../redis/redis.service';
 
 const FOOTBALL_DATA_BASE_URL = 'https://api.football-data.org/v4';
 const WC_CODE = 'WC'; // FIFA World Cup code in football-data.org
@@ -47,19 +48,37 @@ export class FootballApiService {
     private readonly prisma: PrismaService,
     private readonly statisticsPredictor: StatisticsPredictorService,
     private readonly scraper: ScraperService,
+    private readonly redis: RedisService,
   ) {}
 
   private get footballDataHeaders() {
     return { 'X-Auth-Token': process.env.FOOTBALL_DATA_API_KEY };
   }
 
-  // Cache desativado — Redis removido para simplificar
-  private async cacheGet<T>(_key: string): Promise<T | null> { return null; }
-  private async cacheSet<T>(_key: string, _value: T, _ttl: number): Promise<void> {}
-  private async cacheDel(_key: string): Promise<void> {}
+  // Cache distribuído via Redis
+  private async cacheGet<T>(key: string): Promise<T | null> {
+    return this.redis.getJson<T>(key);
+  }
 
-  // Método para compatibilidade com clear-cache
-  invalidateCache(): void {}
+  private async cacheSet<T>(key: string, value: T, ttl: number): Promise<void> {
+    await this.redis.setJson(key, value, ttl);
+  }
+
+  private async cacheDel(key: string): Promise<void> {
+    await this.redis.del(key);
+  }
+
+  async invalidateCache(): Promise<void> {
+    if (!this.redis.isConnectedToRedis()) return;
+    // Limpa chaves de cache conhecidas
+    const keys = ['standings:wc', 'scorers:wc:top10', 'today-matches'];
+    const todayBrazil = getTodayBrazil();
+    keys.push(`matches:${todayBrazil}`);
+    for (const key of keys) {
+      await this.cacheDel(key);
+    }
+    this.logger.log('Redis cache limpo');
+  }
 
   async syncTodayMatches() {
     const { start, end } = getTodayRange();

@@ -95,18 +95,20 @@ export class FootballMatchController {
     return this.footballApiService.syncTodayMatches();
   }
 
-  /** Limpa todos os caches (memCache) do sistema */
+  /** Limpa todos os caches (Redis + memCache) do sistema */
   @SkipThrottle()
   @Post('clear-cache')
-  clearCache(@Headers('x-admin-secret') secret: string) {
+  async clearCache(@Headers('x-admin-secret') secret: string) {
     const expected = process.env.ADMIN_SYNC_SECRET ?? process.env.JWT_SECRET;
     if (!expected || secret !== expected) throw new UnauthorizedException('Invalid admin secret');
     
-    this.footballMatchService.invalidateCache();
-    this.scraper.invalidateCache();
-    this.footballApiService.invalidateCache();
+    await Promise.all([
+      this.footballMatchService.invalidateCache(),
+      this.scraper.invalidateCache(),
+      this.footballApiService.invalidateCache(),
+    ]);
     
-    return { success: true, message: 'Todos os caches foram limpos' };
+    return { success: true, message: 'Todos os caches foram limpos (Redis + MemCache)' };
   }
 
   /** Regenera táticas para todos os jogos sem análise (incluindo encerrados) */
