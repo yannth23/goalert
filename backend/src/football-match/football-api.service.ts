@@ -58,6 +58,9 @@ export class FootballApiService {
   private async cacheSet<T>(_key: string, _value: T, _ttl: number): Promise<void> {}
   private async cacheDel(_key: string): Promise<void> {}
 
+  // Método para compatibilidade com clear-cache
+  invalidateCache(): void {}
+
   async syncTodayMatches() {
     const { start, end } = getTodayRange();
     const todayBrazil = getTodayBrazil();

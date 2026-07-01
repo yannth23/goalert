@@ -4,6 +4,7 @@ import { FootballMatchService } from './football-match.service';
 import { FootballApiService } from './football-api.service';
 import { TeamReportService } from './team-report.service';
 import { StatisticsPredictorService } from './statistics-predictor.service';
+import { ScraperService } from './scraper.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import {
   TEAM_FLAGS,
@@ -20,6 +21,7 @@ export class FootballMatchController {
     private readonly footballApiService:   FootballApiService,
     private readonly teamReportService:    TeamReportService,
     private readonly predictor:            StatisticsPredictorService,
+    private readonly scraper:              ScraperService,
   ) {}
 
   /**
@@ -91,6 +93,20 @@ export class FootballMatchController {
     if (!expected || secret !== expected) throw new UnauthorizedException('Invalid admin secret');
     await this.footballMatchService.deleteAllMatches();
     return this.footballApiService.syncTodayMatches();
+  }
+
+  /** Limpa todos os caches (memCache) do sistema */
+  @SkipThrottle()
+  @Post('clear-cache')
+  clearCache(@Headers('x-admin-secret') secret: string) {
+    const expected = process.env.ADMIN_SYNC_SECRET ?? process.env.JWT_SECRET;
+    if (!expected || secret !== expected) throw new UnauthorizedException('Invalid admin secret');
+    
+    this.footballMatchService.invalidateCache();
+    this.scraper.invalidateCache();
+    this.footballApiService.invalidateCache();
+    
+    return { success: true, message: 'Todos os caches foram limpos' };
   }
 
   /** Regenera táticas para todos os jogos sem análise (incluindo encerrados) */
