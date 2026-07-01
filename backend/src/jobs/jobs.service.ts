@@ -28,8 +28,8 @@ export class JobsService implements OnApplicationBootstrap {
     this.logger.log('Bootstrap sync...');
     try {
       const r = await this.footballApiService.syncTodayMatches();
-      this.footballMatchService.invalidateCache('today-matches');
-      this.scraper.invalidateCache();
+      await this.footballMatchService.invalidateCache();
+      await this.scraper.invalidateCache();
       this.logger.log(`Bootstrap sync done — ${r.synced} matches`);
       // Gera táticas em background sem bloquear
       this.generateTacticsForAll().catch(err =>
@@ -45,8 +45,8 @@ export class JobsService implements OnApplicationBootstrap {
   async syncMorning(): Promise<void> {
     try {
       const r = await this.footballApiService.syncTodayMatches();
-      this.footballMatchService.invalidateCache('today-matches');
-      this.scraper.invalidateCache();
+      await this.footballMatchService.invalidateCache();
+      await this.scraper.invalidateCache();
       this.logger.log(`Morning sync done — ${r.synced} matches`);
       await this.generateTacticsForToday();
     } catch (err) {
@@ -61,8 +61,8 @@ export class JobsService implements OnApplicationBootstrap {
     this.logger.log('Midnight BRT sync — ensuring late-night games appear on new day...');
     try {
       const r = await this.footballApiService.syncTodayMatches();
-      this.footballMatchService.invalidateCache('today-matches');
-      this.scraper.invalidateCache();
+      await this.footballMatchService.invalidateCache();
+      await this.scraper.invalidateCache();
       this.logger.log(`Midnight BRT sync done — ${r.synced} matches`);
       await this.generateTacticsForToday();
     } catch (err) {
@@ -81,8 +81,8 @@ export class JobsService implements OnApplicationBootstrap {
   async syncLiveMatches(): Promise<void> {
     try {
       const r = await this.footballApiService.syncTodayMatches();
-      this.footballMatchService.invalidateCache('today-matches');
-      this.scraper.invalidateCache();
+      await this.footballMatchService.invalidateCache();
+      await this.scraper.invalidateCache();
       this.logger.log(`Live sync done — ${r.synced} matches`);
     } catch (err) {
       this.logger.error('Live sync failed', err);
@@ -94,8 +94,8 @@ export class JobsService implements OnApplicationBootstrap {
   async syncLateNight(): Promise<void> {
     try {
       const r = await this.footballApiService.syncTodayMatches();
-      this.footballMatchService.invalidateCache('today-matches');
-      this.scraper.invalidateCache();
+      await this.footballMatchService.invalidateCache();
+      await this.scraper.invalidateCache();
       this.logger.log(`Late night sync done — ${r.synced} matches`);
     } catch (err) {
       this.logger.error('Late night sync failed', err);

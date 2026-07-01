@@ -55,29 +55,10 @@ export class FootballApiService {
     return { 'X-Auth-Token': process.env.FOOTBALL_DATA_API_KEY };
   }
 
-  // Cache distribuído via Redis
-  private async cacheGet<T>(key: string): Promise<T | null> {
-    return this.redis.getJson<T>(key);
-  }
-
-  private async cacheSet<T>(key: string, value: T, ttl: number): Promise<void> {
-    await this.redis.setJson(key, value, ttl);
-  }
-
-  private async cacheDel(key: string): Promise<void> {
-    await this.redis.del(key);
-  }
-
   async invalidateCache(): Promise<void> {
-    if (!this.redis.isConnectedToRedis()) return;
-    // Limpa chaves de cache conhecidas
-    const keys = ['standings:wc', 'scorers:wc:top10', 'today-matches'];
-    const todayBrazil = getTodayBrazil();
-    keys.push(`matches:${todayBrazil}`);
-    for (const key of keys) {
-      await this.cacheDel(key);
-    }
-    this.logger.log('Redis cache limpo');
+    await this.redis.del('standings:wc');
+    await this.redis.del('scorers:wc:top10');
+    await this.redis.del(`matches:${getTodayBrazil()}`);
   }
 
   async syncTodayMatches() {
@@ -269,7 +250,7 @@ export class FootballApiService {
       where: { status: { in: ['1H', 'HT', '2H', 'ET', 'PEN'] } },
     });
 
-    await this.cacheDel(`matches:${todayBrazil}`);
+    await this.redis.del(`matches:${todayBrazil}`);
     this.logger.log(`Synced ${matchesToProcess.length} matches for ${todayBrazil} from ${source}. Matches: ${JSON.stringify(matchesToProcess.map(m => `${m.homeTeam} vs ${m.awayTeam}`))}`);
     
     // Verificação final no banco para depuração
@@ -283,7 +264,7 @@ export class FootballApiService {
 
   async getStandings() {
     const cacheKey = 'standings:wc';
-    const cached   = await this.cacheGet(cacheKey);
+    const cached   = await this.redis.getJson(cacheKey);
     if (cached) return cached;
 
     // 1. Tenta ESPN — fonte mais confiável para standings em tempo real durante a Copa
@@ -307,7 +288,7 @@ export class FootballApiService {
             goalDifference: entry.goalDifference,
           })),
         }));
-        await this.cacheSet(cacheKey, mapped, 300); // cache curto: 5 min
+        await this.redis.setJson(cacheKey, mapped, 300); // cache curto: 5 min
         this.logger.log(`Standings via ESPN: ${mapped.length} grupos`);
         return mapped;
       }
@@ -340,7 +321,7 @@ export class FootballApiService {
           })),
         }));
 
-        await this.cacheSet(cacheKey, standings, 3600);
+        await this.redis.setJson(cacheKey, standings, 3600);
         return standings;
       }
     } catch (err: any) {
@@ -352,7 +333,7 @@ export class FootballApiService {
 
   async getTopScorers() {
     const cacheKey = 'scorers:wc:top10';
-    const cached   = await this.cacheGet(cacheKey);
+    const cached   = await this.redis.getJson(cacheKey);
     if (cached) return cached;
 
     // Tenta Football-Data.org para artilheiros
@@ -370,7 +351,7 @@ export class FootballApiService {
           assists:    entry.assists ?? 0,
         }));
 
-        await this.cacheSet(cacheKey, scorers, 3600);
+        await this.redis.setJson(cacheKey, scorers, 3600);
         return scorers;
       }
     } catch (err: any) {

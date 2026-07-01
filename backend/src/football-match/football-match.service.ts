@@ -6,7 +6,7 @@ import { getTodayRange, mapMatchToDto } from '../shared';
 import { RedisService } from '../redis/redis.service';
 
 const LIVE_STATUSES       = new Set(['1H', 'HT', '2H', 'ET', 'PEN']);
-const MAX_MATCH_DURATION  = 3 * 60 * 60 * 1000; // 3 horas é mais que suficiente para um jogo normal + intervalo
+const MAX_MATCH_DURATION  = 3 * 60 * 60 * 1000;
 
 export interface H2HResult {
   homeTeam: string;
@@ -30,7 +30,6 @@ export interface H2HResult {
 @Injectable()
 export class FootballMatchService {
   private readonly logger = new Logger(FootballMatchService.name);
-  private readonly memCache = new Map<string, { data: any; expiresAt: number }>();
 
   constructor(
     private readonly prisma:              PrismaService,
@@ -39,36 +38,12 @@ export class FootballMatchService {
     private readonly redis:               RedisService,
   ) {}
 
-  // Cache híbrido: Redis + memCache como fallback
-  private async getCached<T>(key: string): Promise<T | null> {
-    const redisData = await this.redis.getJson<T>(key);
-    if (redisData !== null) return redisData;
-    const entry = this.memCache.get(key);
-    if (!entry || Date.now() > entry.expiresAt) return null;
-    return entry.data as T;
-  }
-
-  private async setCached(key: string, data: any, ttlMs: number): Promise<void> {
-    this.memCache.set(key, { data, expiresAt: Date.now() + ttlMs });
-    await this.redis.setJson(key, data, Math.floor(ttlMs / 1000));
-  }
-
-  async invalidateCache(key?: string): Promise<void> {
-    if (key) {
-      this.memCache.delete(key);
-      await this.redis.del(key);
-    } else {
-      this.memCache.clear();
-      // Limpa chaves conhecidas no Redis
-      const knownKeys = ['today-matches'];
-      for (const k of knownKeys) {
-        await this.redis.del(k);
-      }
-    }
+  async invalidateCache(): Promise<void> {
+    await this.redis.del('today-matches');
   }
 
   async getTodayMatches() {
-    const cached = await this.getCached<any[]>('today-matches');
+    const cached = await this.redis.getJson<any[]>('today-matches');
     if (cached) { this.logger.log('[service] cache hit — today-matches'); return cached; }
 
     const { start, end } = getTodayRange();
@@ -108,7 +83,7 @@ export class FootballMatchService {
     // Só cacheia quando há partidas — resultado vazio não deve ser cacheado
     // pois o próximo request retentaria o banco (sync pode ainda estar rodando)
     if (result.length > 0) {
-      await this.setCached('today-matches', result, 60_000);
+      await this.redis.setJson('today-matches', result, 60);
     }
     return result;
   }
@@ -145,7 +120,7 @@ export class FootballMatchService {
 
   async getHeadToHead(team1: string, team2: string): Promise<H2HResult> {
     const cacheKey = `h2h:${team1}:${team2}`;
-    const cached = await this.getCached<H2HResult>(cacheKey);
+    const cached = await this.redis.getJson<H2HResult>(cacheKey);
     if (cached) return cached;
 
     // 1. Tenta via scraping (Sofascore) — histórico real
@@ -164,7 +139,7 @@ export class FootballMatchService {
           totalMatches:   scraped.totalMatches,
           recentMatches:  scraped.recentMatches,
         };
-        await this.setCached(cacheKey, result, 30 * 60_000);
+        await this.redis.setJson(cacheKey, result, 30 * 60);
         return result;
       }
     } catch (err: any) {
@@ -220,7 +195,7 @@ export class FootballMatchService {
         championship: m.championship,
       })),
     };
-    await this.setCached(cacheKey, h2hResult, 30 * 60_000);
+    await this.redis.setJson(cacheKey, h2hResult, 30 * 60);
     return h2hResult;
   }
 
