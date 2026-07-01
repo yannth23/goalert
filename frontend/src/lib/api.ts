@@ -33,6 +33,14 @@ export interface SystemStatus {
   serverTime:          string;
 }
 
+export interface BracketMetadata {
+  flags: Record<string, string>;
+  groups: Record<string, string[]>;
+  qualifiedThirdGroups: string[];
+  roundOf32Fixture: { id: number; homeSlot: string; awaySlot: string }[];
+  roundOf16Pairs: [number, number][];
+}
+
 export interface H2HData {
   homeTeam: string;
   awayTeam: string;
@@ -67,6 +75,9 @@ export const api = {
 
   getStandings: () => request<unknown[]>('/matches/standings'),
 
+  /** Fonte única de bandeiras/grupos/fixture do bracket — não duplique isso localmente. */
+  getMetadata: () => request<BracketMetadata>('/matches/metadata'),
+
   getByCompetition: (name: string) =>
     request<{
       id: string; date: string; championship: string;
@@ -97,12 +108,7 @@ export const api = {
   updatePreferences: (userId: string, receiveDailyNotifications: boolean) =>
     request<{ receiveDailyNotifications: boolean }>(`/users/${userId}/preferences`, { method: 'PATCH', body: JSON.stringify({ receiveDailyNotifications }) }),
 
-  updateWhatsapp: (userId: string, whatsappNumber: string | null, receiveWhatsappNotifications: boolean) =>
-    request<{ whatsappNumber: string | null; receiveWhatsappNotifications: boolean }>(`/users/${userId}/whatsapp`, { method: 'PATCH', body: JSON.stringify({ whatsappNumber, receiveWhatsappNotifications }) }),
-
-  updateTelegram: (userId: string, telegramChatId: string | null, receiveTelegramNotifications: boolean) =>
-    request<{ telegramChatId: string | null; receiveTelegramNotifications: boolean }>(`/users/${userId}/telegram`, { method: 'PATCH', body: JSON.stringify({ telegramChatId, receiveTelegramNotifications }) }),
 
   getUser: (userId: string) =>
-    request<{ id: string; email: string; name?: string; favoriteTeams: { id: string; teamName: string }[]; preferences: { receiveDailyNotifications: boolean; receiveWhatsappNotifications: boolean; whatsappNumber: string | null; receiveTelegramNotifications: boolean; telegramChatId: string | null } | null }>(`/users/${userId}`),
+    request<{ id: string; email: string; name?: string; favoriteTeams: { id: string; teamName: string }[]; preferences: { receiveDailyNotifications: boolean } | null }>(`/users/${userId}`),
 };
