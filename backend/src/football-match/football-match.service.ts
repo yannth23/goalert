@@ -96,6 +96,14 @@ export class FootballMatchService {
     return matches.map(mapMatchToDto);
   }
 
+  async getAllMatchesByCompetition(competition: string) {
+    const matches = await this.prisma.footballMatch.findMany({
+      where: { championship: { contains: competition, mode: 'insensitive' } },
+      orderBy: { date: 'asc' },
+    });
+    return matches.map(mapMatchToDto);
+  }
+
   async getCalendarData(month?: string): Promise<{ date: string; count: number }[]> {
     const now = new Date();
     let year = now.getFullYear(), mon = now.getMonth();

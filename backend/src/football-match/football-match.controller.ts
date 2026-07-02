@@ -76,6 +76,12 @@ export class FootballMatchController {
   @UseGuards(JwtAuthGuard)
   syncMatches() { return this.footballApiService.syncTodayMatches(); }
 
+  /** Get all matches for a specific competition (for bracket calculation) */
+  @Get('competition/all')
+  getAllCompetitionMatches(@Query('name') name: string) {
+    return this.footballMatchService.getAllMatchesByCompetition(name);
+  }
+
   /** Force sync via secret header — sem JWT, para uso administrativo direto. */
   @SkipThrottle()
   @Post('force-sync')
