@@ -110,6 +110,12 @@ export const api = {
       headers: { 'x-admin-secret': secret }
     }),
 
+  syncAllWorldCup: (secret: string) =>
+    request<{ synced: number; errors: number }>('/matches/sync-all-world-cup', {
+      method: 'POST',
+      headers: { 'x-admin-secret': secret }
+    }),
+
   getFavoriteTeams: (userId: string) => request<{ id: string; teamName: string }[]>(`/users/${userId}/teams`),
 
   addFavoriteTeam: (userId: string, teamName: string) =>

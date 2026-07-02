@@ -101,6 +101,15 @@ export class FootballMatchController {
     return this.footballApiService.syncTodayMatches();
   }
 
+  /** Sincroniza TODOS os jogos da Copa do Mundo 2026 (fase de grupos completa) */
+  @SkipThrottle()
+  @Post('sync-all-world-cup')
+  async syncAllWorldCup(@Headers('x-admin-secret') secret: string) {
+    const expected = process.env.ADMIN_SYNC_SECRET ?? process.env.JWT_SECRET;
+    if (!expected || secret !== expected) throw new UnauthorizedException('Invalid admin secret');
+    return this.footballApiService.syncAllWorldCupMatches();
+  }
+
   /** Limpa todos os caches (Redis + memCache) do sistema */
   @SkipThrottle()
   @Post('clear-cache')

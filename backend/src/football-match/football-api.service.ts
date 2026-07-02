@@ -61,6 +61,130 @@ export class FootballApiService {
     await this.redis.del(`matches:${getTodayBrazil()}`);
   }
 
+  /**
+   * Sincroniza TODOS os jogos da Copa do Mundo 2026 desde o início
+   * Útil para preencher o histórico da fase de grupos e calcular classificação
+   */
+  async syncAllWorldCupMatches() {
+    this.logger.log('Syncing ALL World Cup 2026 matches...');
+    
+    if (!process.env.FOOTBALL_DATA_API_KEY) {
+      this.logger.warn('No FOOTBALL_DATA_API_KEY configured');
+      return { synced: 0, errors: 0 };
+    }
+
+    // Copa do Mundo 2026 começa em 11/06/2026 e vai até 19/07/2026
+    const startDate = '2026-06-11';
+    const endDate = '2026-07-19';
+    
+    let totalSynced = 0;
+    let totalErrors = 0;
+
+    try {
+      this.logger.log(`Fetching World Cup matches from ${startDate} to ${endDate}`);
+      
+      const response = await axios.get(`${FOOTBALL_DATA_BASE_URL}/competitions/WC/matches`, {
+        headers: this.footballDataHeaders,
+        params: { dateFrom: startDate, dateTo: endDate },
+      });
+
+      const matches = response.data?.matches || [];
+      this.logger.log(`Found ${matches.length} World Cup matches`);
+
+      for (const m of matches) {
+        try {
+          const hScore = m.score.fullTime?.home ?? m.score.regularTime?.home ?? m.score.halfTime?.home ?? null;
+          const aScore = m.score.fullTime?.away ?? m.score.regularTime?.away ?? m.score.halfTime?.away ?? null;
+
+          const matchData = {
+            externalId: m.id.toString(),
+            date: new Date(m.utcDate),
+            championship: 'FIFA World Cup',
+            homeTeam: translateTeam(m.homeTeam.name),
+            awayTeam: translateTeam(m.awayTeam.name),
+            homeFlag: m.homeTeam.crest,
+            awayFlag: m.awayTeam.crest,
+            status: STATUS_MAP[m.status] ?? 'NS',
+            homeScore: hScore,
+            awayScore: aScore,
+          };
+
+          // Gera predictions só se ainda não tem
+          const existing = await this.prisma.footballMatch.findUnique({
+            where: { externalId: matchData.externalId },
+            select: { predictedGoalsHome: true, homeTactics: true },
+          });
+          
+          let predictions: any = {
+            predictedGoalsHome: null, predictedGoalsAway: null,
+            predictedCards: null, predictedFouls: null,
+            homeTactics: null, awayTactics: null,
+            aiAnalysis: null,
+          };
+
+          if (!existing || (existing.predictedGoalsHome === null && existing.homeTactics === null)) {
+            try {
+              predictions = await this.statisticsPredictor.predictMatch(matchData.homeTeam, matchData.awayTeam);
+            } catch (predErr: any) {
+              this.logger.warn(`Predictions failed for ${matchData.homeTeam} vs ${matchData.awayTeam}: ${predErr.message}`);
+            }
+          }
+
+          await this.prisma.footballMatch.upsert({
+            where: { externalId: matchData.externalId },
+            update: {
+              date: matchData.date,
+              status: matchData.status,
+              homeScore: matchData.homeScore,
+              awayScore: matchData.awayScore,
+              homeFlag: matchData.homeFlag,
+              awayFlag: matchData.awayFlag,
+              predictedGoalsHome: predictions.predictedGoalsHome,
+              predictedGoalsAway: predictions.predictedGoalsAway,
+              predictedCards: predictions.predictedCards,
+              predictedFouls: predictions.predictedFouls,
+              homeTactics: (predictions.homeTactics || Prisma.DbNull) as any,
+              awayTactics: (predictions.awayTactics || Prisma.DbNull) as any,
+              aiAnalysis: predictions.aiAnalysis,
+            },
+            create: {
+              externalId: matchData.externalId,
+              date: matchData.date,
+              championship: matchData.championship,
+              homeTeam: matchData.homeTeam,
+              awayTeam: matchData.awayTeam,
+              homeFlag: matchData.homeFlag,
+              awayFlag: matchData.awayFlag,
+              status: matchData.status,
+              homeScore: matchData.homeScore,
+              awayScore: matchData.awayScore,
+              predictedGoalsHome: predictions.predictedGoalsHome,
+              predictedGoalsAway: predictions.predictedGoalsAway,
+              predictedCards: predictions.predictedCards,
+              predictedFouls: predictions.predictedFouls,
+              homeTactics: (predictions.homeTactics || Prisma.DbNull) as any,
+              awayTactics: (predictions.awayTactics || Prisma.DbNull) as any,
+              aiAnalysis: predictions.aiAnalysis,
+            },
+          });
+
+          totalSynced++;
+        } catch (err: any) {
+          this.logger.error(`Failed to upsert match ${m.homeTeam?.name} vs ${m.awayTeam?.name}: ${err.message}`);
+          totalErrors++;
+        }
+      }
+
+      this.logger.log(`Synced ${totalSynced} World Cup matches with ${totalErrors} errors`);
+      await this.invalidateCache();
+      
+      return { synced: totalSynced, errors: totalErrors };
+    } catch (err: any) {
+      this.logger.error(`Failed to sync World Cup matches: ${err.message}`);
+      return { synced: totalSynced, errors: totalErrors + 1 };
+    }
+  }
+
   async syncTodayMatches() {
     const { start, end } = getTodayRange();
     const todayBrazil = getTodayBrazil();
