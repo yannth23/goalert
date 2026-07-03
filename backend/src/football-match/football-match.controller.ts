@@ -98,7 +98,8 @@ export class FootballMatchController {
     const expected = process.env.ADMIN_SYNC_SECRET ?? process.env.JWT_SECRET;
     if (!expected || secret !== expected) throw new UnauthorizedException('Invalid admin secret');
     await this.footballMatchService.deleteAllMatches();
-    return this.footballApiService.syncTodayMatches();
+    // Busca TODOS os jogos da Copa do Mundo 2026
+    return this.footballApiService.syncAllWorldCupMatches();
   }
 
   /** Sincroniza TODOS os jogos da Copa do Mundo 2026 (fase de grupos completa) */
