@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { FootballApiService } from './football-api.service';
 import { ScraperService } from './scraper.service';
-import { getTodayRange, mapMatchToDto } from '../shared';
+import { mapMatchToDto, getTodayBrazil, addOneDay, subtractOneDay } from '../shared';
 import { RedisService } from '../redis/redis.service';
 
 const LIVE_STATUSES       = new Set(['1H', 'HT', '2H', 'ET', 'PEN']);
@@ -46,15 +46,21 @@ export class FootballMatchService {
     const cached = await this.redis.getJson<any[]>('today-matches');
     if (cached) { this.logger.log('[service] cache hit — today-matches'); return cached; }
 
-    const { start, end } = getTodayRange();
-    const now = new Date();
+    const todayBrazil = getTodayBrazil();
+    const nextDateStr = addOneDay(todayBrazil);
+    
+    // Range expandido: 00:00 BRT de ONTEM até 02:59:59 BRT de AMANHÃ
+    // Isso garante que jogos das 00:00-03:00 BRT apareçam em ambos os dias
+    const expandedStart = new Date(`${subtractOneDay(todayBrazil)}T00:00:00-03:00`);
+    const expandedEnd = new Date(`${nextDateStr}T02:59:59-03:00`);
 
-    this.logger.log(`Fetching matches from DB in range: ${start.toISOString()} - ${end.toISOString()}`);
+    this.logger.log(`Fetching matches from DB in range: ${expandedStart.toISOString()} - ${expandedEnd.toISOString()}`);
     const matches = await this.prisma.footballMatch.findMany({
-      where: { date: { gte: start, lte: end } },
+      where: { date: { gte: expandedStart, lte: expandedEnd } },
       orderBy: { date: 'asc' },
     });
     this.logger.log(`Found ${matches.length} matches in DB`);
+    const now = new Date();
     const sanitised = matches.map(m => {
       const matchTime = new Date(m.date).getTime();
       const elapsedMs = now.getTime() - matchTime;
@@ -209,11 +215,14 @@ export class FootballMatchService {
 
   async getSystemStatus() {
     const today = new Date().toISOString().split('T')[0];
-    const { start, end } = getTodayRange();
+    const todayBrazil = getTodayBrazil();
+    const nextDateStr = addOneDay(todayBrazil);
+    const expandedStart = new Date(`${subtractOneDay(todayBrazil)}T00:00:00-03:00`);
+    const expandedEnd = new Date(`${nextDateStr}T02:59:59-03:00`);
 
     const [totalToday, liveNow] = await Promise.all([
-      this.prisma.footballMatch.count({ where: { date: { gte: start, lte: end } } }),
-      this.prisma.footballMatch.count({ where: { date: { gte: start, lte: end }, status: { in: ['1H','HT','2H','ET','PEN'] } } }),
+      this.prisma.footballMatch.count({ where: { date: { gte: expandedStart, lte: expandedEnd } } }),
+      this.prisma.footballMatch.count({ where: { date: { gte: expandedStart, lte: expandedEnd }, status: { in: ['1H','HT','2H','ET','PEN'] } } }),
     ]);
 
     return {

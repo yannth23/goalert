@@ -29,10 +29,18 @@ export function getTodayBrazil(): string {
 }
 
 /** Returns the date string (YYYY-MM-DD) one day after the given date string. */
-function addOneDay(dateStr: string): string {
+export function addOneDay(dateStr: string): string {
   const [y, m, d] = dateStr.split('-').map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d));
   dt.setUTCDate(dt.getUTCDate() + 1);
+  return dt.toISOString().split('T')[0];
+}
+
+/** Returns the date string (YYYY-MM-DD) one day before the given date string. */
+export function subtractOneDay(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() - 1);
   return dt.toISOString().split('T')[0];
 }
 

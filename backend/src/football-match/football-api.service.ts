@@ -186,36 +186,47 @@ export class FootballApiService {
   }
 
   async syncTodayMatches() {
-    const { start, end } = getTodayRange();
     const todayBrazil = getTodayBrazil();
     
-    // Para garantir que pegamos jogos que começaram na virada do dia UTC/BRT, buscamos um range maior na API
-    const yesterday = new Date(start.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const tomorrow = new Date(end.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    // Range expandido: dia atual BRT + dia anterior BRT
+    // Para garantir que jogos de 00:00-03:00 BRT apareçam em ambos os dias
+    const todayStart = new Date(`${todayBrazil}T00:00:00-03:00`);
+    const todayEnd = new Date(`${todayBrazil}T23:59:59-03:00`);
+    
+    // Dia anterior BRT (para pegar jogos de 00:00-03:00 BRT que pertencem a ontem também)
+    const yesterdayBrazil = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
+    const yesterdayStr = yesterdayBrazil.toISOString().split('T')[0];
+    const yesterdayStart = new Date(`${yesterdayStr}T00:00:00-03:00`);
 
-    this.logger.log(`Syncing matches for BRT: ${todayBrazil} (API range: ${yesterday} to ${tomorrow})`);
+    this.logger.log(`Syncing matches for BRT: ${todayBrazil} (also checking ${yesterdayStr})`);
+
+    // Range expandido: ontem 00:00 BRT até hoje 23:59 BRT + madrugada de amanhã (03:00 BRT)
+    const expandedStart = yesterdayStart;
+    const expandedEnd = new Date(todayEnd.getTime() + 3 * 60 * 60 * 1000);
 
     let matchesToProcess: any[] = [];
     let source = 'none';
 
-    // 1. Tenta Football-Data.org
+    // 1. Tenta Football-Data.org (range expandido de 2 dias)
     try {
       if (process.env.FOOTBALL_DATA_API_KEY) {
         this.logger.log('Trying Football-Data.org...');
+        const dateFrom = new Date(yesterdayStart.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const dateTo = new Date(todayEnd.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        
         const response = await axios.get(`${FOOTBALL_DATA_BASE_URL}/matches`, {
           headers: this.footballDataHeaders,
-          params: { dateFrom: yesterday, dateTo: tomorrow },
+          params: { dateFrom, dateTo },
         });
         
         if (response.data?.matches?.length > 0) {
-          // Filtramos apenas os jogos que caem no nosso range de 27h do Brasil
+          // Filtramos jogos que caem no range expandido
           const filtered = response.data.matches.filter((m: any) => {
             const d = new Date(m.utcDate);
-            return d >= start && d <= end;
+            return d >= expandedStart && d <= expandedEnd;
           });
 
           matchesToProcess = filtered.map((m: any) => {
-            // Extração inteligente de placar: tenta FullTime -> RegularTime -> HalfTime
             const hScore = m.score.fullTime?.home ?? m.score.regularTime?.home ?? m.score.halfTime?.home ?? null;
             const aScore = m.score.fullTime?.away ?? m.score.regularTime?.away ?? m.score.halfTime?.away ?? null;
 
@@ -379,9 +390,9 @@ export class FootballApiService {
     
     // Verificação final no banco para depuração
     const finalCount = await this.prisma.footballMatch.count({
-      where: { date: { gte: start, lte: end } }
+      where: { date: { gte: expandedStart, lte: expandedEnd } }
     });
-    this.logger.log(`DB check: ${finalCount} matches now exist in range ${start.toISOString()} - ${end.toISOString()}`);
+    this.logger.log(`DB check: ${finalCount} matches now exist in range ${expandedStart.toISOString()} - ${expandedEnd.toISOString()}`);
 
     return { synced: matchesToProcess.length, live: liveCount, errors: 0, source };
   }
