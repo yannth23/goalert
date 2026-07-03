@@ -83,13 +83,22 @@ export class FootballApiService {
     try {
       this.logger.log(`Fetching World Cup matches from ${startDate} to ${endDate}`);
       
-      const response = await axios.get(`${FOOTBALL_DATA_BASE_URL}/competitions/WC/matches`, {
+      // Usa o endpoint /matches em vez de /competitions/WC/matches (que requer plano premium)
+      const response = await axios.get(`${FOOTBALL_DATA_BASE_URL}/matches`, {
         headers: this.footballDataHeaders,
         params: { dateFrom: startDate, dateTo: endDate },
       });
 
-      const matches = response.data?.matches || [];
-      this.logger.log(`Found ${matches.length} World Cup matches`);
+      const allMatches = response.data?.matches || [];
+      this.logger.log(`Found ${allMatches.length} total matches in the period`);
+
+      // Filtra apenas jogos da Copa do Mundo
+      const matches = allMatches.filter((m: any) => 
+        m.competition?.name?.toLowerCase().includes('world cup') ||
+        m.competition?.code === 'WC'
+      );
+      
+      this.logger.log(`Filtered ${matches.length} World Cup matches`);
 
       for (const m of matches) {
         try {
