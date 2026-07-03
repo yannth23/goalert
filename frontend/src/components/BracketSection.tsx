@@ -1,3 +1,4 @@
+tamanho: 27222
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -313,6 +314,38 @@ function getWinner(slot: ResolvedSlot): string | null {
   return hs > as_ ? slot.home : slot.away;
 }
 
+/**
+ * Encontra o jogo real correspondente a um par de times, considerando que o
+ * MESMO par pode ter se enfrentado mais de uma vez na competição (ex: dois
+ * times do mesmo grupo se reencontram no mata-mata). Sem esse cuidado, um
+ * .find() ingênuo pode pegar o placar de um confronto errado e o bracket
+ * mostra resultado que não bate com o jogo real daquela fase.
+ *
+ * Estratégia: entre os candidatos que batem com o par de nomes, escolhe o
+ * MAIS RECENTE por data que ainda não foi consumido por outro slot — e marca
+ * esse jogo como usado para não vazar pra um segundo card do bracket.
+ */
+function findMatchForPair(
+  homeTeam: string,
+  awayTeam: string,
+  allMatches: RawMatch[],
+  usedMatchIds: Set<string>
+): RawMatch | undefined {
+  const candidates = allMatches.filter(m =>
+    !usedMatchIds.has(m.id) &&
+    ((m.team1 === homeTeam && m.team2 === awayTeam) ||
+     (m.team1 === awayTeam && m.team2 === homeTeam))
+  );
+  if (candidates.length === 0) return undefined;
+
+  // Mais recente por data primeiro — o jogo do mata-mata é sempre depois do
+  // jogo equivalente na fase de grupos, então isso resolve a ambiguidade.
+  candidates.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const chosen = candidates[0];
+  usedMatchIds.add(chosen.id);
+  return chosen;
+}
+
 export function BracketSection() {
   const [allMatches, setAllMatches]       = useState<RawMatch[]>([]);
   const [realStandings, setRealStandings] = useState<RawStandingGroup[]>([]);
@@ -379,6 +412,10 @@ export function BracketSection() {
   const groupsStarted  = allMatches.some(m => m.status === 'FT');
 
   const usedThirds = new Set<string>();
+  // Compartilhado entre TODAS as fases (Rd32, Rd16, QF, Semi, Final) — garante
+  // que um jogo real do banco nunca seja atribuído a mais de um card do bracket.
+  const usedMatchIds = new Set<string>();
+
   const resolvedSlots: ResolvedSlot[] = ROUND_OF_32.map(slot => {
     const homeResolved = resolveSlot(slot.homeSlot, groupTables, best8Thirds, usedThirds);
     const awayResolved = resolveSlot(slot.awaySlot, groupTables, best8Thirds, usedThirds);
@@ -387,10 +424,7 @@ export function BracketSection() {
     const awayIsTeam = !awayResolved.match(/^[12][A-L]$/) && awayResolved !== '3º melhor';
     const isResolved = homeIsTeam && awayIsTeam;
 
-    const live = allMatches.find(m =>
-      (m.team1 === homeResolved && m.team2 === awayResolved) ||
-      (m.team1 === awayResolved && m.team2 === homeResolved)
-    );
+    const live = findMatchForPair(homeResolved, awayResolved, allMatches, usedMatchIds);
 
     return {
       id:         slot.id,
@@ -414,10 +448,7 @@ export function BracketSection() {
       const winnerB = getWinner(b);
 
       const live = (winnerA && winnerB)
-        ? allMatches.find(m =>
-            (m.team1 === winnerA && m.team2 === winnerB) ||
-            (m.team1 === winnerB && m.team2 === winnerA)
-          )
+        ? findMatchForPair(winnerA, winnerB, allMatches, usedMatchIds)
         : undefined;
 
       next.push({
@@ -444,10 +475,7 @@ export function BracketSection() {
     const winnerB = getWinner(b);
 
     const live = (winnerA && winnerB)
-      ? allMatches.find(m =>
-          (m.team1 === winnerA && m.team2 === winnerB) ||
-          (m.team1 === winnerB && m.team2 === winnerA)
-        )
+      ? findMatchForPair(winnerA, winnerB, allMatches, usedMatchIds)
       : undefined;
 
     return {
@@ -683,3 +711,4 @@ export function BracketSection() {
     </section>
   );
 }
+
