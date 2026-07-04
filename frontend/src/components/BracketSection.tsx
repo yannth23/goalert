@@ -1,4 +1,3 @@
-tamanho: 27222
 'use client';
 
 import { useEffect, useState } from 'react';
