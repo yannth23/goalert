@@ -90,7 +90,7 @@ export const api = {
       id: string; date: string; championship: string;
       team1: string; team2: string; status: string;
       team1Score?: number; team2Score?: number;
-    }[]>(`/matches/all-competition?name=${encodeURIComponent(name)}`),
+    }[]>(`/matches/competition?name=${encodeURIComponent(name)}&all=true`),
 
   getTopScorers: () =>
     request<{ playerId: number; playerName: string; teamName: string; goals: number; assists: number }[]>('/matches/scorers'),

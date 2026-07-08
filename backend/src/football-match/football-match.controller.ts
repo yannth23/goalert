@@ -63,7 +63,12 @@ export class FootballMatchController {
   }
 
   @Get('competition')
-  getByCompetition(@Query('name') name: string) { return this.footballMatchService.getMatchesByCompetition(name); }
+  getByCompetition(@Query('name') name: string, @Query('all') all?: string) { 
+    if (all === 'true') {
+      return this.footballMatchService.getAllMatchesByCompetition(name);
+    }
+    return this.footballMatchService.getMatchesByCompetition(name); 
+  }
 
   @Throttle({ strict: { limit: 10, ttl: 60_000 } })
   @Get('h2h')
