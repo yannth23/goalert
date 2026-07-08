@@ -56,6 +56,12 @@ export class FootballMatchController {
   @Get('scorers')
   getTopScorers() { return this.footballMatchService.getTopScorers(); }
 
+  /** Get all matches for a specific competition (for bracket calculation) */
+  @Get('competition/all')
+  getAllCompetitionMatches(@Query('name') name: string) {
+    return this.footballMatchService.getAllMatchesByCompetition(name);
+  }
+
   @Get('competition')
   getByCompetition(@Query('name') name: string) { return this.footballMatchService.getMatchesByCompetition(name); }
 
@@ -75,12 +81,6 @@ export class FootballMatchController {
   @Post('sync')
   @UseGuards(JwtAuthGuard)
   syncMatches() { return this.footballApiService.syncTodayMatches(); }
-
-  /** Get all matches for a specific competition (for bracket calculation) */
-  @Get('competition/all')
-  getAllCompetitionMatches(@Query('name') name: string) {
-    return this.footballMatchService.getAllMatchesByCompetition(name);
-  }
 
   /** Force sync via secret header — sem JWT, para uso administrativo direto. */
   @SkipThrottle()
