@@ -57,7 +57,7 @@ export class FootballMatchController {
   getTopScorers() { return this.footballMatchService.getTopScorers(); }
 
   /** Get all matches for a specific competition (for bracket calculation) */
-  @Get('competition/all')
+  @Get('all-competition')
   getAllCompetitionMatches(@Query('name') name: string) {
     return this.footballMatchService.getAllMatchesByCompetition(name);
   }
