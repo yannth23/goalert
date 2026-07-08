@@ -27,10 +27,16 @@ export class JobsService implements OnApplicationBootstrap {
   private async runBootstrapTasks() {
     this.logger.log('Bootstrap sync...');
     try {
+      // Primeiro, sincroniza TODOS os jogos da Copa do Mundo para o bracket
+      const allCup = await this.footballApiService.syncAllWorldCupMatches();
+      this.logger.log(`All World Cup matches synced — ${allCup.synced} matches`);
+      
+      // Depois, sincroniza os jogos do dia
       const r = await this.footballApiService.syncTodayMatches();
       await this.footballMatchService.invalidateCache();
       await this.scraper.invalidateCache();
-      this.logger.log(`Bootstrap sync done — ${r.synced} matches`);
+      this.logger.log(`Bootstrap sync done — ${r.synced} matches today`);
+      
       // Gera táticas em background sem bloquear
       this.generateTacticsForAll().catch(err =>
         this.logger.error('Background tactics generation failed', err)
