@@ -76,3 +76,47 @@ model FootballMatch {
   @@index([date])
   @@index([championship])
 }
+
+/**
+ * Estado PERSISTIDO do bracket de mata-mata da Copa do Mundo.
+ *
+ * POR QUE ISSO EXISTE (não recalcule isso no frontend de novo):
+ * Antes desta tabela, cada confronto do bracket era recalculado do zero a cada
+ * render, a partir do histórico de jogos + tabela de grupos. Isso causava
+ * "flicker" onde um confronto já definido mudava sozinho, ou sumia, porque
+ * a ordenação de desempate ou o timing de sync de um jogo específico mudava
+ * o resultado do cálculo entre uma atualização e outra.
+ *
+ * Regra de ouro: um BracketSlot, uma vez marcado como RESOLVED, nunca deve
+ * ser recalculado a partir do zero. Ele só avança pra frente (RESOLVED →
+ * IN_PROGRESS → DONE) conforme jogos reais terminam. Nunca "desresolva" um
+ * slot que já tinha os dois times definidos.
+ */
+model BracketSlot {
+  id          String   @id @default(cuid())
+  /** Número oficial FIFA do jogo (73-88 = Rd32, 89-96 = Rd16, 97-100 = QF, 101-102 = Semi, 104 = Final) */
+  gameNumber  Int      @unique
+  phase       String   // 'r32' | 'r16' | 'quartas' | 'semi' | 'final'
+
+  /** Slot ainda não resolvido: guarda a notação ("1A", "2B", "3ABCDF"). Resolvido: guarda o nome do time. */
+  homeSlot    String
+  awaySlot    String
+
+  /** Preenchido só quando o slot correspondente já foi calculado uma vez — depois disso, imutável. */
+  homeTeam    String?
+  awayTeam    String?
+
+  /** Vínculo com o jogo real no FootballMatch, uma vez que ele exista. */
+  matchId     String?  @unique
+  homeScore   Int?
+  awayScore   Int?
+  status      String   @default("PENDING") // PENDING | RESOLVED | IN_PROGRESS | DONE
+
+  /** Time vencedor, preenchido quando status = DONE. Alimenta a fase seguinte. */
+  winner      String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([phase])
+}
