@@ -40,6 +40,7 @@ export class BracketService {
    */
   async resolveRoundOf32(groupTables: Record<string, { teamName: string }[]>, best8Thirds: string[]): Promise<void> {
     const r32 = await this.prisma.bracketSlot.findMany({ where: { phase: 'r32' } });
+    this.logger.log(`resolveRoundOf32: ${r32.length} slots to check`);
 
     const usedThirds = new Set<string>();
     let resolved = 0;
@@ -49,6 +50,8 @@ export class BracketService {
 
       const home = this.resolveSlotNotation(slot.homeSlot, groupTables, best8Thirds, usedThirds);
       const away = this.resolveSlotNotation(slot.awaySlot, groupTables, best8Thirds, usedThirds);
+
+      this.logger.log(`Slot ${slot.gameNumber}: ${slot.homeSlot} -> ${home}, ${slot.awaySlot} -> ${away}`);
 
       if (!home || !away) continue; // ainda não dá pra resolver, tenta de novo depois
 
@@ -183,6 +186,8 @@ export class BracketService {
    * que ainda está vazio e avança o que acabou de terminar.
    */
   async syncFromDatabase(standings: { group: string; table: { teamName: string; points: number }[] }[]): Promise<void> {
+    this.logger.log(`syncFromDatabase called with ${standings.length} groups`);
+    
     if (standings.length > 0) {
       const groupTables: Record<string, { teamName: string }[]> = {};
       for (const g of standings) {
@@ -196,6 +201,7 @@ export class BracketService {
         .slice(0, 8)
         .map(t => t.teamName);
 
+      this.logger.log(`Group tables built: ${Object.keys(groupTables).length} groups, ${allThirds.length} best thirds`);
       await this.resolveRoundOf32(groupTables, allThirds);
     }
 
