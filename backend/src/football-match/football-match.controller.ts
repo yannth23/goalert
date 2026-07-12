@@ -127,6 +127,17 @@ export class FootballMatchController {
     return this.footballApiService.syncAllWorldCupMatches();
   }
 
+  /** Força sincronização do bracket - resolve slots e avança vencedores */
+  @SkipThrottle()
+  @Post('bracket/sync')
+  async syncBracket(@Headers('x-admin-secret') secret: string) {
+    const expected = process.env.ADMIN_SYNC_SECRET ?? process.env.JWT_SECRET;
+    if (!expected || secret !== expected) throw new UnauthorizedException('Invalid admin secret');
+    const standings = await this.footballApiService.getStandings();
+    await this.bracket.syncFromDatabase(standings as any);
+    return { success: true, message: 'Bracket sincronizado' };
+  }
+
   /** Limpa todos os caches (Redis + memCache) do sistema */
   @SkipThrottle()
   @Post('clear-cache')
