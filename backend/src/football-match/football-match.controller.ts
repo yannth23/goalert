@@ -6,6 +6,7 @@ import { TeamReportService } from './team-report.service';
 import { StatisticsPredictorService } from './statistics-predictor.service';
 import { ScraperService } from './scraper.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { BracketService } from './bracket.service';
 import {
   TEAM_FLAGS,
   WORLD_CUP_GROUPS,
@@ -22,6 +23,7 @@ export class FootballMatchController {
     private readonly teamReportService:    TeamReportService,
     private readonly predictor:            StatisticsPredictorService,
     private readonly scraper:              ScraperService,
+    private readonly bracket: BracketService,
   ) {}
 
   /**
@@ -38,6 +40,15 @@ export class FootballMatchController {
       roundOf32Fixture: ROUND_OF_32_FIXTURE,
       roundOf16Pairs: ROUND_OF_16_PAIRS,
     };
+  }
+
+  /**
+   * Estado ATUAL e PERSISTIDO do bracket. Isso substitui qualquer cálculo
+   * feito no frontend — o frontend só renderiza o que essa resposta traz.
+   */
+  @Get('bracket')
+  getBracket() {
+    return this.bracket.getBracket();
   }
 
   @Get()
