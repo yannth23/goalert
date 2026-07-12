@@ -33,6 +33,29 @@ export interface SystemStatus {
   serverTime:          string;
 }
 
+export interface BracketSlot {
+  id: string;
+  gameNumber: number;
+  phase: 'r32' | 'r16' | 'quartas' | 'semi' | 'final';
+  homeSlot: string;
+  awaySlot: string;
+  homeTeam: string | null;
+  awayTeam: string | null;
+  matchId: string | null;
+  homeScore: number | null;
+  awayScore: number | null;
+  status: 'PENDING' | 'RESOLVED' | 'IN_PROGRESS' | 'DONE';
+  winner: string | null;
+}
+
+export interface BracketState {
+  r32: BracketSlot[];
+  r16: BracketSlot[];
+  quartas: BracketSlot[];
+  semi: BracketSlot[];
+  final: BracketSlot[];
+}
+
 export interface BracketMetadata {
   flags: Record<string, string>;
   groups: Record<string, string[]>;
@@ -77,6 +100,13 @@ export const api = {
 
   /** Fonte única de bandeiras/grupos/fixture do bracket — não duplique isso localmente. */
   getMetadata: () => request<BracketMetadata>('/matches/metadata'),
+
+  /**
+   * Estado PERSISTIDO e atual do bracket. O frontend NUNCA deve recalcular
+   * confrontos ou placares a partir do histórico de jogos — sempre renderiza
+   * exatamente o que esse endpoint retorna.
+   */
+  getBracket: () => request<BracketState>('/matches/bracket'),
 
   getByCompetition: (name: string) =>
     request<{
