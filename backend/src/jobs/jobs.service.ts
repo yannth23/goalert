@@ -55,12 +55,14 @@ export class JobsService implements OnApplicationBootstrap {
 
   /** Empurra standings + jogos atuais pro BracketService — idempotente, write-once por slot. */
   private async syncBracket(): Promise<void> {
+    this.logger.log('syncBracket called');
     try {
       const standings = await this.footballApiService.getStandings();
+      this.logger.log(`syncBracket: got ${standings.length} standings`);
       await this.bracket.syncFromDatabase(standings as any);
       this.logger.log('Bracket sync done');
     } catch (err: any) {
-      this.logger.error('syncBracket failed', err.message);
+      this.logger.error('syncBracket failed', err.message, err.stack);
     }
   }
 
