@@ -1,366 +1,124 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { api } from '../lib/api';
+import { api, type BracketMetadata, type BracketState, type BracketSlot } from '../lib/api';
 
-const FLAGS: Record<string, string> = {
-  'Brazil': '🇧🇷', 'Brasil': '🇧🇷',
-  'Argentina': '🇦🇷',
-  'France': '🇫🇷', 'França': '🇫🇷',
-  'Germany': '🇩🇪', 'Alemanha': '🇩🇪',
-  'Spain': '🇪🇸', 'Espanha': '🇪🇸',
-  'Portugal': '🇵🇹',
-  'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Inglaterra': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
-  'Italy': '🇮🇹', 'Itália': '🇮🇹',
-  'Netherlands': '🇳🇱', 'Holanda': '🇳🇱',
-  'Belgium': '🇧🇪', 'Bélgica': '🇧🇪',
-  'Uruguay': '🇺🇾', 'Uruguai': '🇺🇾',
-  'Croatia': '🇭🇷', 'Croácia': '🇭🇷',
-  'Morocco': '🇲🇦', 'Marrocos': '🇲🇦',
-  'Japan': '🇯🇵', 'Japão': '🇯🇵',
-  'South Korea': '🇰🇷', 'Coreia do Sul': '🇰🇷',
-  'United States': '🇺🇸', 'USA': '🇺🇸', 'EUA': '🇺🇸', 'Estados Unidos': '🇺🇸',
-  'Mexico': '🇲🇽', 'México': '🇲🇽',
-  'Canada': '🇨🇦', 'Canadá': '🇨🇦',
-  'Senegal': '🇸🇳',
-  'Ecuador': '🇪🇨', 'Equador': '🇪🇨',
-  'Colombia': '🇨🇴', 'Colômbia': '🇨🇴',
-  'Switzerland': '🇨🇭', 'Suíça': '🇨🇭',
-  'Denmark': '🇩🇰', 'Dinamarca': '🇩🇰',
-  'Poland': '🇵🇱', 'Polônia': '🇵🇱',
-  'Australia': '🇦🇺', 'Austrália': '🇦🇺',
-  'Qatar': '🇶🇦', 'Catar': '🇶🇦',
-  'Saudi Arabia': '🇸🇦', 'Arábia Saudita': '🇸🇦',
-  'Iran': '🇮🇷', 'Irã': '🇮🇷',
-  'Turkey': '🇹🇷', 'Türkiye': '🇹🇷', 'Turquia': '🇹🇷',
-  'Ukraine': '🇺🇦', 'Ucrânia': '🇺🇦',
-  'Austria': '🇦🇹', 'Áustria': '🇦🇹',
-  'Sweden': '🇸🇪', 'Suécia': '🇸🇪',
-  'Norway': '🇳🇴', 'Noruega': '🇳🇴',
-  'Serbia': '🇷🇸', 'Sérvia': '🇷🇸',
-  'Scotland': '🏴󠁧󠁢󠁳󠁣󠁴󠁿', 'Escócia': '🏴󠁧󠁢󠁳󠁣󠁴󠁿',
-  "Côte d'Ivoire": '🇨🇮', 'Ivory Coast': '🇨🇮', 'Costa do Marfim': '🇨🇮',
-  'Nigeria': '🇳🇬', 'Nigéria': '🇳🇬',
-  'Ghana': '🇬🇭', 'Gana': '🇬🇭',
-  'Cameroon': '🇨🇲', 'Camarões': '🇨🇲',
-  'Panama': '🇵🇦', 'Panamá': '🇵🇦',
-  'Peru': '🇵🇪',
-  'Chile': '🇨🇱',
-  'Venezuela': '🇻🇪',
-  'Paraguay': '🇵🇾', 'Paraguai': '🇵🇾',
-  'Bolivia': '🇧🇴', 'Bolívia': '🇧🇴',
-  'Curaçao': '🇨🇼', 'Curaçau': '🇨🇼',
-  'Cabo Verde': '🇨🇻', 'Cape Verde': '🇨🇻',
-  'Iraq': '🇮🇶', 'Iraque': '🇮🇶',
-  'Algeria': '🇩🇿', 'Argélia': '🇩🇿',
-  'Czechia': '🇨🇿', 'Czech Republic': '🇨🇿', 'Tchéquia': '🇨🇿',
-  'Haiti': '🇭🇹',
-  'Azerbaijan': '🇦🇿', 'Azerbaijão': '🇦🇿',
-  'South Africa': '🇿🇦', 'África do Sul': '🇿🇦',
-  'Bosnia and Herzegovina': '🇧🇦', 'Bosnia-Herzegovina': '🇧🇦', 'Bósnia e Herzegovina': '🇧🇦',
-  'New Zealand': '🇳🇿', 'Nova Zelândia': '🇳🇿',
-  'Egypt': '🇪🇬', 'Egito': '🇪🇬',
-  'Jordan': '🇯🇴', 'Jordânia': '🇯🇴',
-  'Congo DR': '🇨🇩', 'DR Congo': '🇨🇩', 'RD Congo': '🇨🇩',
-  'Uzbekistan': '🇺🇿', 'Uzbequistão': '🇺🇿',
-};
-
-// Composição OFICIAL dos 12 grupos da Copa do Mundo FIFA 2026 (sorteio de 5 dez 2025)
-// Composição oficial dos 12 grupos — nomes em português, iguais ao que o
-// backend salva via translateTeam() (translation.util.ts).
-const GROUP_TEAMS: Record<string, string[]> = {
-  'A': ['México', 'África do Sul', 'Coreia do Sul', 'Tchéquia'],
-  'B': ['Canadá', 'Bósnia e Herzegovina', 'Catar', 'Suíça'],
-  'C': ['Brasil', 'Marrocos', 'Haiti', 'Escócia'],
-  'D': ['Estados Unidos', 'Paraguai', 'Austrália', 'Turquia'],
-  'E': ['Alemanha', 'Curaçao', 'Costa do Marfim', 'Equador'],
-  'F': ['Holanda', 'Japão', 'Suécia', 'Tunísia'],
-  'G': ['Bélgica', 'Egito', 'Irã', 'Nova Zelândia'],
-  'H': ['Espanha', 'Cabo Verde', 'Arábia Saudita', 'Uruguai'],
-  'I': ['França', 'Senegal', 'Iraque', 'Noruega'],
-  'J': ['Argentina', 'Argélia', 'Áustria', 'Jordânia'],
-  'K': ['Portugal', 'RD Congo', 'Uzbequistão', 'Colômbia'],
-  'L': ['Inglaterra', 'Croácia', 'Gana', 'Panamá'],
-};
-
-// Round of 32 OFICIAL FIFA — 16 jogos (match 73-88), confirmado via Wikipedia/FIFA.com.
-// Os grupos cujos 3ºs lugares avançaram nesta edição (top 8): B, D, E, F, I, J, K, L.
-const ROUND_OF_32: { id: number; homeSlot: string; awaySlot: string }[] = [
-  { id: 73, homeSlot: '2A', awaySlot: '2B' },
-  { id: 74, homeSlot: '1E', awaySlot: '3ABCDF' },
-  { id: 75, homeSlot: '1F', awaySlot: '2C' },
-  { id: 76, homeSlot: '1C', awaySlot: '2F' },
-  { id: 77, homeSlot: '1I', awaySlot: '3CDFGH' },
-  { id: 78, homeSlot: '2E', awaySlot: '2I' },
-  { id: 79, homeSlot: '1A', awaySlot: '3CEFHI' },
-  { id: 80, homeSlot: '1L', awaySlot: '3EHIJK' },
-  { id: 81, homeSlot: '1D', awaySlot: '3BEFIJ' },
-  { id: 82, homeSlot: '1G', awaySlot: '3AEHIJ' },
-  { id: 83, homeSlot: '2K', awaySlot: '2L' },
-  { id: 84, homeSlot: '1H', awaySlot: '2J' },
-  { id: 85, homeSlot: '1B', awaySlot: '3EFGIJ' },
-  { id: 86, homeSlot: '1J', awaySlot: '2H' },
-  { id: 87, homeSlot: '1K', awaySlot: '3DEIJL' },
-  { id: 88, homeSlot: '2D', awaySlot: '2G' },
-];
-
-// Grupos cujos 3ºs colocados avançaram nesta edição (confirmado oficialmente).
-const QUALIFIED_THIRD_GROUPS = ['B', 'D', 'E', 'F', 'I', 'J', 'K', 'L'];
-
-// Round of 16 OFICIAL — usa vencedores específicos do R32, não pares sequenciais.
-const ROUND_OF_16_PAIRS: [number, number][] = [
-  [73, 75], [74, 77], [76, 78], [79, 80],
-  [81, 82], [83, 84], [86, 88], [85, 87],
-];
-
-interface RawMatch {
-  id: string;
-  date: string;
-  championship: string;
-  team1: string;
-  team2: string;
-  status: string;
-  team1Score?: number;
-  team2Score?: number;
-}
-
-interface TeamStats {
-  teamName: string;
-  played: number;
-  wins: number;
-  draws: number;
-  losses: number;
-  goalsFor: number;
-  goalsAgainst: number;
-  goalDifference: number;
-  points: number;
-}
-
-interface RawStandingEntry {
-  position: number;
-  teamName: string;
-  points: number;
-  played: number;
-  wins: number;
-  draws: number;
-  losses: number;
-  goalsFor: number;
-  goalsAgainst: number;
-  goalDifference: number;
-}
-
-interface RawStandingGroup {
-  group: string;
-  table: RawStandingEntry[];
-}
-
-interface ResolvedSlot {
-  id: number;
-  home: string;
-  away: string;
-  homeScore?: number;
-  awayScore?: number;
-  status?: string;
-  isResolved: boolean;
-}
-
-type Phase = 'r32' | 'r16' | 'quartas' | 'semi' | 'final';
+/**
+ * Este componente NÃO calcula nada. Todo o estado do bracket (quem joga com
+ * quem, placar, vencedor) vem PRONTO do backend via GET /matches/bracket,
+ * que lê de uma tabela persistida (BracketSlot) — não do histórico de jogos
+ * recalculado a cada render. Se um confronto aparecer errado, o bug está no
+ * backend (bracket.service.ts), não aqui. Não "conserte" isso adicionando
+ * lógica de cálculo de volta neste arquivo.
+ */
 
 const LIVE_STATUSES = new Set(['1H', 'HT', '2H', 'ET', 'PEN']);
 
-function getFlag(name: string): string {
-  return FLAGS[name] || '';
-}
+const PHASES: { key: keyof BracketState; label: string; emoji: string }[] = [
+  { key: 'r32',     label: 'Rd. de 32', emoji: '⚔️' },
+  { key: 'r16',     label: 'Oitavas',   emoji: '🎯' },
+  { key: 'quartas', label: 'Quartas',   emoji: '🔥' },
+  { key: 'semi',    label: 'Semifinal', emoji: '⚡' },
+  { key: 'final',   label: 'Final',     emoji: '🏆' },
+];
 
-function newTeamStats(name: string): TeamStats {
-  return { teamName: name, played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0 };
-}
-
-function normalizeGroupLetter(raw: string): string {
-  const m = raw.match(/([A-L])\s*$/i);
-  return m ? m[1].toUpperCase() : raw.trim().toUpperCase();
-}
-
-/** Calcula a tabela de um grupo a partir dos jogos finalizados entre os 4 times do grupo */
-function computeGroupTable(teams: string[], matches: RawMatch[]): TeamStats[] {
-  const table: Record<string, TeamStats> = {};
-  teams.forEach(t => { table[t] = newTeamStats(t); });
-
-  matches.forEach(m => {
-    if (m.status !== 'FT') return;
-    if (!teams.includes(m.team1) || !teams.includes(m.team2)) return;
-    if (m.team1Score === undefined || m.team2Score === undefined) return;
-
-    const h = table[m.team1];
-    const a = table[m.team2];
-    if (!h || !a) return;
-
-    h.played++; a.played++;
-    h.goalsFor += m.team1Score; h.goalsAgainst += m.team2Score;
-    a.goalsFor += m.team2Score; a.goalsAgainst += m.team1Score;
-
-    if (m.team1Score > m.team2Score) { h.wins++; h.points += 3; a.losses++; }
-    else if (m.team2Score > m.team1Score) { a.wins++; a.points += 3; h.losses++; }
-    else { h.draws++; h.points++; a.draws++; a.points++; }
-  });
-
-  Object.values(table).forEach(t => { t.goalDifference = t.goalsFor - t.goalsAgainst; });
-
-  return Object.values(table).sort((a, b) => {
-    if (b.points !== a.points) return b.points - a.points;
-    if (b.goalDifference !== a.goalDifference) return b.goalDifference - a.goalDifference;
-    if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
-    return a.teamName.localeCompare(b.teamName);
-  });
-}
-
-/**
- * Resolve um slot do bracket para o nome do time.
- * Slots como "1A"/"2B" apontam direto pra posição do grupo.
- * Slots como "3D|F|G" (melhor 3º entre D, F, G) usam o ranking de 3ºs lugares —
- * aqui simplificamos pegando o próximo 3º disponível na fila geral dos 8 melhores,
- * já que a tabela oficial de combinação (495 cenários) é complexa demais pra replicar 1:1
- * sem a definição final dos grupos classificados.
- */
-function resolveSlot(
-  slot: string,
-  groupTables: Record<string, TeamStats[]>,
-  best8Thirds: TeamStats[],
-  usedThirds: Set<string>
-): string {
-  const directMatch = slot.match(/^([12])([A-L])$/);
-  if (directMatch) {
-    const pos = parseInt(directMatch[1]);
-    const letter = directMatch[2];
-    return groupTables[letter]?.[pos - 1]?.teamName || slot;
-  }
-  if (slot.startsWith('3')) {
-    // slot tipo "3ABCDF" = melhor 3º entre os grupos A, B, C, D, F
-    const eligibleLetters = slot.slice(1).split('');
-    const candidate = best8Thirds.find(t =>
-      !usedThirds.has(t.teamName) &&
-      eligibleLetters.some(letter => groupTables[letter]?.[2]?.teamName === t.teamName)
-    );
-    if (candidate) { usedThirds.add(candidate.teamName); return candidate.teamName; }
-    return `3º melhor`;
-  }
-  return slot;
-}
-
-function SlotCard({ homeTeam, awayTeam, homeScore, awayScore, status, gameId, isResolved }: {
-  homeTeam: string;
-  awayTeam: string;
-  homeScore?: number;
-  awayScore?: number;
-  status?: string;
-  gameId: number;
-  isResolved: boolean;
-}) {
-  const isLive    = LIVE_STATUSES.has(status || '');
-  const isDone    = status === 'FT';
-  const isPending = !isResolved;
-  const homeWins  = isDone && (homeScore ?? 0) > (awayScore ?? 0);
-  const awayWins  = isDone && (awayScore ?? 0) > (homeScore ?? 0);
+function SlotCard({ slot, flags }: { slot: BracketSlot; flags: Record<string, string> }) {
+  const isLive = LIVE_STATUSES.has(slot.status === 'IN_PROGRESS' ? '1H' : '');
+  const isDone = slot.status === 'DONE';
+  const homeWins = isDone && slot.winner === slot.homeTeam;
+  const awayWins = isDone && slot.winner === slot.awayTeam;
 
   return (
     <div className={`rounded-xl overflow-hidden border transition-all ${
-      isLive ? 'border-yellow-500/70 shadow-lg shadow-yellow-900/20' :
+      slot.status === 'IN_PROGRESS' ? 'border-yellow-500/70 shadow-lg shadow-yellow-900/20' :
       isDone ? 'border-slate-700' : 'border-slate-800'
     }`}>
-      {isLive && (
+      {slot.status === 'IN_PROGRESS' && (
         <div className="bg-yellow-500 px-2.5 py-1 flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
           <span className="text-[9px] font-black text-black uppercase tracking-widest">Ao Vivo</span>
         </div>
       )}
       <div className="px-2.5 pt-1.5 pb-0 text-[9px] text-slate-600 font-bold uppercase tracking-widest">
-        Jogo {gameId}
+        Jogo {slot.gameNumber}
       </div>
       <div className="bg-slate-900 divide-y divide-slate-800/60">
         {[
-          { name: homeTeam, score: homeScore, wins: homeWins },
-          { name: awayTeam, score: awayScore, wins: awayWins },
-        ].map(({ name, score, wins }, i) => (
-          <div key={i} className={`flex items-center justify-between px-2.5 py-2 ${wins ? 'bg-yellow-950/30' : ''}`}>
-            <div className="flex items-center gap-1.5 min-w-0">
-              {getFlag(name) && <span className="text-base leading-none">{getFlag(name)}</span>}
-              <span className={`text-xs font-semibold truncate ${
-                isPending ? 'text-slate-500 italic' :
-                wins ? 'text-yellow-400' : 'text-slate-200'
+          { name: slot.homeTeam, slotNotation: slot.homeSlot, score: slot.homeScore, wins: homeWins },
+          { name: slot.awayTeam, slotNotation: slot.awaySlot, score: slot.awayScore, wins: awayWins },
+        ].map((side, i) => {
+          const displayName = side.name || side.slotNotation || 'A definir';
+          const flag = side.name ? (flags[side.name] || '') : '';
+          return (
+            <div key={i} className={`flex items-center justify-between px-2.5 py-2 ${side.wins ? 'bg-yellow-950/30' : ''}`}>
+              <div className="flex items-center gap-1.5 min-w-0">
+                {flag && <span className="text-base leading-none">{flag}</span>}
+                <span className={`text-xs font-semibold truncate ${
+                  !side.name ? 'text-slate-500 italic' :
+                  side.wins ? 'text-yellow-400' : 'text-slate-200'
+                }`}>
+                  {displayName}
+                </span>
+              </div>
+              <span className={`text-sm font-black tabular-nums ml-2 shrink-0 ${
+                side.wins ? 'text-yellow-400' :
+                (isLive || isDone) ? 'text-white' : 'text-slate-700'
               }`}>
-                {name || 'A definir'}
+                {(isLive || isDone) && side.score !== null ? side.score : '—'}
               </span>
             </div>
-            <span className={`text-sm font-black tabular-nums ml-2 shrink-0 ${
-              wins ? 'text-yellow-400' :
-              isLive ? 'text-white' :
-              isDone ? 'text-slate-300' : 'text-slate-700'
-            }`}>
-              {(isLive || isDone) ? (score ?? 0) : '—'}
-            </span>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function getWinner(slot: ResolvedSlot): string | null {
-  if (slot.status !== 'FT') return null;
-  const hs = slot.homeScore ?? 0;
-  const as_ = slot.awayScore ?? 0;
-  if (hs === as_) return null;
-  return hs > as_ ? slot.home : slot.away;
-}
-
-/**
- * Encontra o jogo real correspondente a um par de times, considerando que o
- * MESMO par pode ter se enfrentado mais de uma vez na competição (ex: dois
- * times do mesmo grupo se reencontram no mata-mata). Sem esse cuidado, um
- * .find() ingênuo pode pegar o placar de um confronto errado e o bracket
- * mostra resultado que não bate com o jogo real daquela fase.
- *
- * Estratégia: entre os candidatos que batem com o par de nomes, escolhe o
- * MAIS RECENTE por data que ainda não foi consumido por outro slot — e marca
- * esse jogo como usado para não vazar pra um segundo card do bracket.
- */
-function findMatchForPair(
-  homeTeam: string,
-  awayTeam: string,
-  allMatches: RawMatch[],
-  usedMatchIds: Set<string>
-): RawMatch | undefined {
-  const candidates = allMatches.filter(m =>
-    !usedMatchIds.has(m.id) &&
-    ((m.team1 === homeTeam && m.team2 === awayTeam) ||
-     (m.team1 === awayTeam && m.team2 === homeTeam))
+function PhaseGrid({ slots, flags, emptyLabel, gridCols }: {
+  slots: BracketSlot[];
+  flags: Record<string, string>;
+  emptyLabel: string;
+  gridCols: string;
+}) {
+  const hasContent = slots.some(s => s.homeTeam || s.awayTeam);
+  if (!hasContent) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
+        <span className="text-5xl">⏳</span>
+        <p className="text-white font-bold text-lg">{emptyLabel}</p>
+        <p className="text-slate-500 text-sm max-w-xs">
+          Aguardando a fase anterior terminar para definir os confrontos.
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className={`grid ${gridCols} gap-3`}>
+      {slots.map(slot => <SlotCard key={slot.id} slot={slot} flags={flags} />)}
+    </div>
   );
-  if (candidates.length === 0) return undefined;
-
-  // Mais recente por data primeiro — o jogo do mata-mata é sempre depois do
-  // jogo equivalente na fase de grupos, então isso resolve a ambiguidade.
-  candidates.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  const chosen = candidates[0];
-  usedMatchIds.add(chosen.id);
-  return chosen;
 }
 
 export function BracketSection() {
-  const [allMatches, setAllMatches]       = useState<RawMatch[]>([]);
-  const [realStandings, setRealStandings] = useState<RawStandingGroup[]>([]);
-  const [loading, setLoading]             = useState(true);
-  const [error, setError]                 = useState(false);
-  const [activePhase, setActivePhase]     = useState<Phase>('r32');
+  const [metadata, setMetadata] = useState<BracketMetadata | null>(null);
+  const [bracket, setBracket]   = useState<BracketState | null>(null);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState(false);
+  const [activePhase, setActivePhase] = useState<keyof BracketState>('r32');
 
+  // Metadata (bandeiras) muda raramente — busca uma vez.
+  useEffect(() => {
+    api.getMetadata().then(setMetadata).catch(() => {});
+  }, []);
+
+  // Estado do bracket — persistido no backend, só refletimos aqui. Poll a
+  // cada 30s só pega o que já foi resolvido do lado do servidor; não há
+  // cálculo nenhum acontecendo neste componente.
   useEffect(() => {
     const load = async () => {
       try {
-        const [matchesData, standingsData] = await Promise.all([
-          api.getByCompetition('World Cup'),
-          api.getStandings(),
-        ]);
-        setAllMatches(matchesData as RawMatch[]);
-        setRealStandings((standingsData as RawStandingGroup[]) || []);
+        const data = await api.getBracket();
+        setBracket(data);
         setError(false);
       } catch {
         setError(true);
@@ -372,169 +130,11 @@ export function BracketSection() {
     return () => clearInterval(t);
   }, []);
 
-  // Fonte primária: standings reais (ESPN). Fallback: cálculo local pelo histórico de jogos.
-  const groupTables: Record<string, TeamStats[]> = {};
+  const liveCount = bracket
+    ? Object.values(bracket).flat().filter(s => s.status === 'IN_PROGRESS').length
+    : 0;
 
-  if (realStandings.length > 0) {
-    realStandings.forEach(g => {
-      const letter = normalizeGroupLetter(g.group);
-      groupTables[letter] = g.table
-        .map(e => ({
-          teamName: e.teamName, played: e.played, wins: e.wins, draws: e.draws, losses: e.losses,
-          goalsFor: e.goalsFor, goalsAgainst: e.goalsAgainst, goalDifference: e.goalDifference, points: e.points,
-        }))
-        .sort((a, b) => {
-          if (b.points !== a.points) return b.points - a.points;
-          if (b.goalDifference !== a.goalDifference) return b.goalDifference - a.goalDifference;
-          return b.goalsFor - a.goalsFor;
-        });
-    });
-  }
-
-  Object.entries(GROUP_TEAMS).forEach(([letter, teams]) => {
-    if (!groupTables[letter] || groupTables[letter].length === 0) {
-      groupTables[letter] = computeGroupTable(teams, allMatches);
-    }
-  });
-
-  const allThirds = Object.values(groupTables)
-    .map(table => table[2])
-    .filter((t): t is TeamStats => !!t && t.played > 0)
-    .sort((a, b) => {
-      if (b.points !== a.points) return b.points - a.points;
-      if (b.goalDifference !== a.goalDifference) return b.goalDifference - a.goalDifference;
-      return b.goalsFor - a.goalsFor;
-    });
-  const best8Thirds = allThirds.slice(0, 8);
-
-  const groupsComplete = Object.values(groupTables).every(table => table.every(t => t.played >= 3));
-  const groupsStarted  = allMatches.some(m => m.status === 'FT');
-
-  const usedThirds = new Set<string>();
-  // Compartilhado entre TODAS as fases (Rd32, Rd16, QF, Semi, Final) — garante
-  // que um jogo real do banco nunca seja atribuído a mais de um card do bracket.
-  const usedMatchIds = new Set<string>();
-
-  const resolvedSlots: ResolvedSlot[] = ROUND_OF_32.map(slot => {
-    const homeResolved = resolveSlot(slot.homeSlot, groupTables, best8Thirds, usedThirds);
-    const awayResolved = resolveSlot(slot.awaySlot, groupTables, best8Thirds, usedThirds);
-
-    const homeIsTeam = !homeResolved.match(/^[12][A-L]$/) && homeResolved !== '3º melhor';
-    const awayIsTeam = !awayResolved.match(/^[12][A-L]$/) && awayResolved !== '3º melhor';
-    const isResolved = homeIsTeam && awayIsTeam;
-
-    const live = findMatchForPair(homeResolved, awayResolved, allMatches, usedMatchIds);
-
-    return {
-      id:         slot.id,
-      home:       live ? live.team1 : homeResolved,
-      away:       live ? live.team2 : awayResolved,
-      homeScore:  live?.team1Score,
-      awayScore:  live?.team2Score,
-      status:     live?.status,
-      isResolved,
-    };
-  });
-
-  function buildNextRound(prevSlots: ResolvedSlot[], startId: number): ResolvedSlot[] {
-    const next: ResolvedSlot[] = [];
-    for (let i = 0; i < prevSlots.length; i += 2) {
-      const a = prevSlots[i];
-      const b = prevSlots[i + 1];
-      if (!a || !b) continue;
-
-      const winnerA = getWinner(a);
-      const winnerB = getWinner(b);
-
-      const live = (winnerA && winnerB)
-        ? findMatchForPair(winnerA, winnerB, allMatches, usedMatchIds)
-        : undefined;
-
-      next.push({
-        id:         startId + next.length,
-        home:       live ? live.team1 : (winnerA || ''),
-        away:       live ? live.team2 : (winnerB || ''),
-        homeScore:  live?.team1Score,
-        awayScore:  live?.team2Score,
-        status:     live?.status,
-        isResolved: !!(winnerA && winnerB),
-      });
-    }
-    return next;
-  }
-
-  // Round of 16 usa pares OFICIAIS (não sequenciais) — ex: Winner 73 vs Winner 75
-  const slotById = new Map(resolvedSlots.map(s => [s.id, s]));
-  const roundOf16: ResolvedSlot[] = ROUND_OF_16_PAIRS.map(([idA, idB], i) => {
-    const a = slotById.get(idA);
-    const b = slotById.get(idB);
-    if (!a || !b) return { id: 89 + i, home: '', away: '', isResolved: false };
-
-    const winnerA = getWinner(a);
-    const winnerB = getWinner(b);
-
-    const live = (winnerA && winnerB)
-      ? findMatchForPair(winnerA, winnerB, allMatches, usedMatchIds)
-      : undefined;
-
-    return {
-      id:         89 + i,
-      home:       live ? live.team1 : (winnerA || `Venc. Jogo ${idA}`),
-      away:       live ? live.team2 : (winnerB || `Venc. Jogo ${idB}`),
-      homeScore:  live?.team1Score,
-      awayScore:  live?.team2Score,
-      status:     live?.status,
-      isResolved: !!(winnerA && winnerB),
-    };
-  });
-
-  const quarterfinals = buildNextRound(roundOf16, 97);     // jogos 97-100
-  const semifinals    = buildNextRound(quarterfinals, 101); // jogos 101-102
-  const final          = buildNextRound(semifinals, 104);   // jogo 104
-
-  const liveCount =
-    resolvedSlots.filter(s => LIVE_STATUSES.has(s.status || '')).length +
-    roundOf16.filter(s => LIVE_STATUSES.has(s.status || '')).length +
-    quarterfinals.filter(s => LIVE_STATUSES.has(s.status || '')).length +
-    semifinals.filter(s => LIVE_STATUSES.has(s.status || '')).length +
-    final.filter(s => LIVE_STATUSES.has(s.status || '')).length;
-
-  const PHASES: { key: Phase; label: string; emoji: string }[] = [
-    { key: 'r32',     label: 'Rd. de 32', emoji: '⚔️' },
-    { key: 'r16',     label: 'Oitavas',   emoji: '🎯' },
-    { key: 'quartas', label: 'Quartas',   emoji: '🔥' },
-    { key: 'semi',    label: 'Semifinal', emoji: '⚡' },
-    { key: 'final',   label: 'Final',     emoji: '🏆' },
-  ];
-
-  function renderPhase(slots: ResolvedSlot[], emptyIcon: string, emptyTitle: string, emptyDesc: string, gridCols: string) {
-    const hasContent = slots.some(s => s.isResolved || s.home || s.away);
-    if (!hasContent) {
-      return (
-        <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
-          <span className="text-5xl">{emptyIcon}</span>
-          <p className="text-white font-bold text-lg">{emptyTitle}</p>
-          <p className="text-slate-500 text-sm max-w-xs">{emptyDesc}</p>
-        </div>
-      );
-    }
-    return (
-      <div className={`grid ${gridCols} gap-3`}>
-        {slots.map(slot => (
-          <SlotCard
-            key={slot.id}
-            gameId={slot.id}
-            homeTeam={slot.home}
-            awayTeam={slot.away}
-            homeScore={slot.homeScore}
-            awayScore={slot.awayScore}
-            status={slot.status}
-            isResolved={slot.isResolved}
-          />
-        ))}
-      </div>
-    );
-  }
+  const champion = bracket?.final[0]?.status === 'DONE' ? bracket.final[0].winner : null;
 
   return (
     <section id="bracket" className="px-4 py-12 border-t border-slate-800/50">
@@ -546,29 +146,26 @@ export function BracketSection() {
               🏆 Chaveamento — Mata-mata
             </h2>
             <p className="text-slate-500 text-sm mt-0.5">
-              Copa do Mundo FIFA 2026 · 12 grupos → Rd. de 32 → Final
+              Copa do Mundo FIFA 2026 · Estado persistido, atualizado a cada resultado
             </p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {liveCount > 0 && (
-              <span className="flex items-center gap-1.5 text-xs font-bold text-yellow-400 bg-yellow-950/40 border border-yellow-800/50 px-3 py-1.5 rounded-full">
-                <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
-                {liveCount} ao vivo
-              </span>
-            )}
-            {!groupsStarted && (
-              <span className="text-xs text-slate-600 bg-slate-800 px-3 py-1.5 rounded-full">📋 Grupos ainda não começaram</span>
-            )}
-            {groupsStarted && !groupsComplete && (
-              <span className="text-xs text-slate-400 bg-slate-800 px-3 py-1.5 rounded-full">📊 Fase de grupos em andamento</span>
-            )}
-            {groupsComplete && (
-              <span className="text-xs text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-3 py-1.5 rounded-full">✅ Grupos encerrados</span>
-            )}
-          </div>
+          {liveCount > 0 && (
+            <span className="flex items-center gap-1.5 text-xs font-bold text-yellow-400 bg-yellow-950/40 border border-yellow-800/50 px-3 py-1.5 rounded-full">
+              <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
+              {liveCount} ao vivo
+            </span>
+          )}
         </div>
 
-        {/* Abas de fase */}
+        {champion && (
+          <div className="mb-6 text-center bg-gradient-to-r from-yellow-600/20 via-yellow-500/30 to-yellow-600/20 border border-yellow-500/40 rounded-xl py-4">
+            <p className="text-xs text-yellow-400 font-bold uppercase tracking-widest mb-1">🏆 Campeão da Copa</p>
+            <p className="text-2xl font-black text-white">
+              {metadata?.flags[champion] || ''} {champion}
+            </p>
+          </div>
+        )}
+
         <div className="flex gap-1.5 mb-6 overflow-x-auto scrollbar-hide">
           {PHASES.map(({ key, label, emoji }) => (
             <button
@@ -589,106 +186,26 @@ export function BracketSection() {
               <div key={i} className="h-24 rounded-xl bg-slate-800/40 animate-pulse" />
             ))}
           </div>
-        ) : error ? (
+        ) : error || !bracket ? (
           <div className="text-center py-10 text-slate-500 text-sm">
-            Não foi possível carregar os jogos da Copa. Tente novamente em instantes.
+            Não foi possível carregar o bracket. Tente novamente em instantes.
           </div>
         ) : (
           <>
-            {activePhase === 'r32' && renderPhase(
-              resolvedSlots, '⚔️', 'Rd. de 32',
-              'Confrontos definidos pelos classificados de cada grupo + 8 melhores 3ºs lugares.',
-              'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'
+            {activePhase === 'r32' && (
+              <PhaseGrid slots={bracket.r32} flags={metadata?.flags ?? {}} emptyLabel="Rd. de 32" gridCols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-4" />
             )}
-            {activePhase === 'r16' && renderPhase(
-              roundOf16, '🎯', 'Oitavas de Final',
-              'Aguardando o fim da Rd. de 32 para definir os confrontos.',
-              'grid-cols-2 sm:grid-cols-4'
+            {activePhase === 'r16' && (
+              <PhaseGrid slots={bracket.r16} flags={metadata?.flags ?? {}} emptyLabel="Oitavas de Final" gridCols="grid-cols-2 sm:grid-cols-4" />
             )}
-            {activePhase === 'quartas' && renderPhase(
-              quarterfinals, '🔥', 'Quartas de Final',
-              'Aguardando o fim das oitavas.',
-              'grid-cols-2 sm:grid-cols-4'
+            {activePhase === 'quartas' && (
+              <PhaseGrid slots={bracket.quartas} flags={metadata?.flags ?? {}} emptyLabel="Quartas de Final" gridCols="grid-cols-2 sm:grid-cols-4" />
             )}
-            {activePhase === 'semi' && renderPhase(
-              semifinals, '⚡', 'Semifinais',
-              'Aguardando o fim das quartas de final.',
-              'grid-cols-1 sm:grid-cols-2 max-w-xl mx-auto'
+            {activePhase === 'semi' && (
+              <PhaseGrid slots={bracket.semi} flags={metadata?.flags ?? {}} emptyLabel="Semifinais" gridCols="grid-cols-1 sm:grid-cols-2 max-w-xl mx-auto" />
             )}
             {activePhase === 'final' && (
-              final.some(s => s.isResolved || s.home || s.away) ? (
-                <div className="max-w-sm mx-auto">
-                  {final.map(slot => (
-                    <SlotCard
-                      key={slot.id}
-                      gameId={slot.id}
-                      homeTeam={slot.home}
-                      awayTeam={slot.away}
-                      homeScore={slot.homeScore}
-                      awayScore={slot.awayScore}
-                      status={slot.status}
-                      isResolved={slot.isResolved}
-                    />
-                  ))}
-                  {final[0] && getWinner(final[0]) && (
-                    <div className="mt-4 text-center bg-gradient-to-r from-yellow-600/20 via-yellow-500/30 to-yellow-600/20 border border-yellow-500/40 rounded-xl py-4">
-                      <p className="text-xs text-yellow-400 font-bold uppercase tracking-widest mb-1">Campeão</p>
-                      <p className="text-2xl font-black text-white">
-                        {getFlag(getWinner(final[0])!)} {getWinner(final[0])}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
-                  <span className="text-5xl">🏆</span>
-                  <p className="text-white font-bold text-lg">Grande Final</p>
-                  <p className="text-slate-500 text-sm max-w-xs">Aguardando o fim das semifinais.</p>
-                </div>
-              )
-            )}
-
-            {activePhase === 'r32' && !groupsComplete && (
-              <div className="mt-6 bg-slate-900 border border-slate-800 rounded-xl p-4">
-                <p className="text-xs font-black text-yellow-400 uppercase tracking-widest mb-3">Classificação por grupo</p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-                  {Object.entries(groupTables).map(([letter, table]) => {
-                    const allPlayed = table.every(t => t.played >= 3);
-                    return (
-                      <div key={letter} className="bg-slate-800/50 rounded-lg p-2.5">
-                        <p className="text-[10px] font-black text-yellow-400 uppercase tracking-widest mb-1.5">Grupo {letter}</p>
-                        {table.slice(0, 2).map((t, i) => (
-                          <div key={i} className="flex items-center gap-1.5 py-0.5">
-                            <span className={`text-[10px] font-black w-3 ${allPlayed ? 'text-emerald-400' : 'text-slate-600'}`}>{i + 1}</span>
-                            <span className="text-sm">{getFlag(t.teamName)}</span>
-                            <span className={`text-[11px] font-semibold truncate ${t.played > 0 ? 'text-white' : 'text-slate-500'}`}>{t.teamName}</span>
-                            <span className="ml-auto text-[10px] font-black text-yellow-500">{t.points}pts</span>
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {allThirds.length > 0 && (
-                  <div className="mt-4">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                      Melhores 3ºs lugares — top 8 avançam ({allThirds.length}/12 grupos com dados)
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {allThirds.map((t, i) => (
-                        <div key={i} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold ${
-                          i < 8 ? 'bg-yellow-950/40 border border-yellow-800/30 text-yellow-300' : 'bg-slate-800 text-slate-500'
-                        }`}>
-                          <span>{getFlag(t.teamName)}</span>
-                          <span>{t.teamName}</span>
-                          <span className="text-[10px] font-black ml-1">{t.points}pts</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <PhaseGrid slots={bracket.final} flags={metadata?.flags ?? {}} emptyLabel="Grande Final" gridCols="max-w-sm mx-auto" />
             )}
           </>
         )}
@@ -702,12 +219,8 @@ export function BracketSection() {
             <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
             <span>Ao vivo agora</span>
           </div>
-          <div className="flex items-center gap-1.5 italic text-slate-700">
-            <span>1A / 2B = Classificado do grupo (a definir)</span>
-          </div>
         </div>
       </div>
     </section>
   );
 }
-
