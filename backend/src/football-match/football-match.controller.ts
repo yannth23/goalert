@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Query, UseGuards, Param, Headers, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards, Param, Headers, UnauthorizedException } from '@nestjs/common';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { FootballMatchService } from './football-match.service';
 import { FootballApiService } from './football-api.service';
@@ -128,6 +128,24 @@ export class FootballMatchController {
   }
 
   /** Força sincronização do bracket - resolve slots e avança vencedores */
+  /**
+   * Corrige UM slot específico do bracket que foi resolvido errado (ex: com
+   * classificação parcial antes da trava de groupsComplete existir). Isso é
+   * a ÚNICA forma legítima de "desfazer" o write-once — uso manual, pontual,
+   * nunca automático. Depois de resetar, rode POST /bracket/sync de novo pra
+   * a Rd32 ser recalculada com a classificação já completa.
+   */
+  @SkipThrottle()
+  @Post('bracket/reset-slot')
+  async resetBracketSlot(
+    @Headers('x-admin-secret') secret: string,
+    @Body() body: { gameNumber: number },
+  ) {
+    const expected = process.env.ADMIN_SYNC_SECRET ?? process.env.JWT_SECRET;
+    if (!expected || secret !== expected) throw new UnauthorizedException('Invalid admin secret');
+    return this.bracket.resetSlot(body.gameNumber);
+  }
+
   @SkipThrottle()
   @Post('bracket/sync')
   async syncBracket(@Headers('x-admin-secret') secret: string) {
