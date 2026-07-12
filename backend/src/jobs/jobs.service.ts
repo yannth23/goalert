@@ -5,6 +5,7 @@ import { FootballApiService } from '../football-match/football-api.service';
 import { FootballMatchService } from '../football-match/football-match.service';
 import { ScraperService } from '../football-match/scraper.service';
 import { StatisticsPredictorService } from '../football-match/statistics-predictor.service';
+import { BracketService } from '../football-match/bracket.service';
 import { getTodayRange } from '../shared';
 
 @Injectable()
@@ -17,6 +18,7 @@ export class JobsService implements OnApplicationBootstrap {
     private readonly predictor: StatisticsPredictorService,
     private readonly footballMatchService: FootballMatchService,
     private readonly scraper: ScraperService,
+    private readonly bracket: BracketService,
   ) {}
 
   async onApplicationBootstrap() {
@@ -41,8 +43,24 @@ export class JobsService implements OnApplicationBootstrap {
       this.generateTacticsForAll().catch(err =>
         this.logger.error('Background tactics generation failed', err)
       );
+
+      // Bracket: preenche o que já dá pra preencher, nunca desfaz o que já existe
+      this.syncBracket().catch(err =>
+        this.logger.error('Bracket sync failed', err)
+      );
     } catch (err) {
       this.logger.error('Bootstrap sync failed', err);
+    }
+  }
+
+  /** Empurra standings + jogos atuais pro BracketService — idempotente, write-once por slot. */
+  private async syncBracket(): Promise<void> {
+    try {
+      const standings = await this.footballApiService.getStandings();
+      await this.bracket.syncFromDatabase(standings as any);
+      this.logger.log('Bracket sync done');
+    } catch (err: any) {
+      this.logger.error('syncBracket failed', err.message);
     }
   }
 
@@ -90,6 +108,7 @@ export class JobsService implements OnApplicationBootstrap {
       await this.footballMatchService.invalidateCache();
       await this.scraper.invalidateCache();
       this.logger.log(`Live sync done — ${r.synced} matches`);
+      await this.syncBracket();
     } catch (err) {
       this.logger.error('Live sync failed', err);
     }
