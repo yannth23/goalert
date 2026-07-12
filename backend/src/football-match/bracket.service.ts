@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BracketSeedService } from './bracket-seed.service';
+import { WORLD_CUP_GROUPS } from '../shared';
 
 /**
  * Único serviço com permissão de escrever em BracketSlot depois do seed inicial.
@@ -21,6 +22,53 @@ export class BracketService {
     private readonly seed: BracketSeedService,
   ) {}
 
+  /**
+   * Calcula a classificação dos 12 grupos oficiais direto dos jogos FT já
+   * sincronizados no nosso banco, e retorna também se a fase de grupos está
+   * 100% completa (todos os times com 3 jogos disputados). Essa flag é a
+   * trava que impede resolveRoundOf32 de gravar um time errado num slot
+   * write-once por causa de classificação provisória.
+   */
+  private async computeLocalGroupTables(): Promise<{
+    groupTables: Record<string, { teamName: string; points: number }[]>;
+    groupsComplete: boolean;
+  }> {
+    const finishedMatches = await this.prisma.footballMatch.findMany({
+      where: { status: 'FT', homeScore: { not: null }, awayScore: { not: null } },
+      select: { homeTeam: true, awayTeam: true, homeScore: true, awayScore: true },
+    });
+
+    const groupTables: Record<string, { teamName: string; points: number; goalDifference: number; goalsFor: number; played: number }[]> = {};
+    let allComplete = true;
+
+    for (const [letter, teams] of Object.entries(WORLD_CUP_GROUPS)) {
+      const stats: Record<string, { points: number; goalDifference: number; goalsFor: number; played: number }> = {};
+      teams.forEach(t => { stats[t] = { points: 0, goalDifference: 0, goalsFor: 0, played: 0 }; });
+
+      for (const m of finishedMatches) {
+        if (!teams.includes(m.homeTeam) || !teams.includes(m.awayTeam)) continue;
+        const hs = m.homeScore!, as_ = m.awayScore!;
+        stats[m.homeTeam].played++; stats[m.awayTeam].played++;
+        stats[m.homeTeam].goalsFor += hs; stats[m.awayTeam].goalsFor += as_;
+        stats[m.homeTeam].goalDifference += hs - as_;
+        stats[m.awayTeam].goalDifference += as_ - hs;
+        if (hs > as_) stats[m.homeTeam].points += 3;
+        else if (as_ > hs) stats[m.awayTeam].points += 3;
+        else { stats[m.homeTeam].points += 1; stats[m.awayTeam].points += 1; }
+      }
+
+      // Cada time de um grupo de 4 joga 3 jogos na fase de grupos.
+      const groupComplete = teams.every(t => stats[t].played >= 3);
+      if (!groupComplete) allComplete = false;
+
+      groupTables[letter] = teams
+        .map(name => ({ teamName: name, ...stats[name] }))
+        .sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference || b.goalsFor - a.goalsFor);
+    }
+
+    return { groupTables, groupsComplete: allComplete };
+  }
+
   async getBracket() {
     await this.seed.ensureSeeded();
     const slots = await this.prisma.bracketSlot.findMany({ orderBy: { gameNumber: 'asc' } });
@@ -38,9 +86,25 @@ export class BracketService {
    * grupos. Só escreve em slots que ainda estão com homeTeam/awayTeam nulos
    * — uma vez resolvido, o nome fica congelado ali para sempre.
    */
-  async resolveRoundOf32(groupTables: Record<string, { teamName: string }[]>, best8Thirds: string[]): Promise<void> {
+  async resolveRoundOf32(
+    groupTables: Record<string, { teamName: string }[]>,
+    best8Thirds: string[],
+    groupsComplete: boolean,
+  ): Promise<void> {
+    // TRAVA CRÍTICA: nunca resolve nenhum slot da Rd32 com classificação
+    // parcial. Uma tabela de grupo com 1 ou 2 jogos disputados já tem uma
+    // ordem (por pontos), mas ela pode mudar completamente no próximo jogo —
+    // resolver com esse dado provisório grava um time errado no slot PARA
+    // SEMPRE (write-once), e isso já causou pelo menos um bug de produção
+    // (França x Paraguai apareceu na Rd32 em vez das Oitavas porque o "melhor
+    // 3º" foi calculado antes da fase de grupos terminar).
+    if (!groupsComplete) {
+      this.logger.log('resolveRoundOf32: grupos ainda não completos, aguardando');
+      return;
+    }
+
     const r32 = await this.prisma.bracketSlot.findMany({ where: { phase: 'r32' } });
-    this.logger.log(`resolveRoundOf32: ${r32.length} slots to check`);
+    this.logger.log(`resolveRoundOf32: ${r32.length} slots to check (grupos completos)`);
 
     const usedThirds = new Set<string>();
     let resolved = 0;
@@ -185,25 +249,26 @@ export class BracketService {
    * syncMatchIntoSlot. Isso NÃO recalcula o bracket inteiro: só preenche o
    * que ainda está vazio e avança o que acabou de terminar.
    */
-  async syncFromDatabase(standings: { group: string; table: { teamName: string; points: number }[] }[]): Promise<void> {
-    this.logger.log(`syncFromDatabase called with ${standings.length} groups`);
-    
-    if (standings.length > 0) {
-      const groupTables: Record<string, { teamName: string }[]> = {};
-      for (const g of standings) {
-        const letter = (g.group.match(/([A-L])\s*$/i)?.[1] ?? g.group).toUpperCase();
-        groupTables[letter] = g.table.map(t => ({ teamName: t.teamName }));
-      }
-      const allThirds = standings
-        .map(g => g.table[2])
-        .filter((t): t is { teamName: string; points: number } => !!t)
-        .sort((a, b) => b.points - a.points)
-        .slice(0, 8)
-        .map(t => t.teamName);
+  async syncFromDatabase(externalStandings: { group: string; table: { teamName: string; points: number }[] }[]): Promise<void> {
+    this.logger.log(`syncFromDatabase called with ${externalStandings.length} external groups`);
 
-      this.logger.log(`Group tables built: ${Object.keys(groupTables).length} groups, ${allThirds.length} best thirds`);
-      await this.resolveRoundOf32(groupTables, allThirds);
-    }
+    // Fonte PRIMÁRIA e ÚNICA de verdade: jogos de fase de grupos já
+    // sincronizados no nosso próprio banco (FootballMatch, status FT). Não
+    // depende de ESPN/Football-Data terem essa Copa cadastrada — e mais
+    // importante, sabemos com certeza quantos jogos (played) cada time
+    // disputou, o que é exatamente o dado que faltava pra evitar resolver
+    // o bracket com classificação provisória.
+    const { groupTables, groupsComplete } = await this.computeLocalGroupTables();
+
+    const allThirds = Object.values(groupTables)
+      .map(table => table[2])
+      .filter((t): t is { teamName: string; points: number } => !!t)
+      .sort((a, b) => b.points - a.points)
+      .slice(0, 8)
+      .map(t => t.teamName);
+
+    this.logger.log(`Local group tables: ${Object.keys(groupTables).length} groups, groupsComplete=${groupsComplete}, ${allThirds.length} best thirds`);
+    await this.resolveRoundOf32(groupTables, allThirds, groupsComplete);
 
     // Sincroniza placar/status de todos os jogos que já batem com algum slot resolvido.
     const resolvedSlots = await this.prisma.bracketSlot.findMany({
@@ -232,3 +297,4 @@ export class BracketService {
     }
   }
 }
+
