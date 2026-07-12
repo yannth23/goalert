@@ -174,4 +174,55 @@ export class BracketService {
     if (gameNumber === 102) return { gameNumber: 104, side: 'away' };
     return null;
   }
+
+  /**
+   * Orquestrador único, chamado pelo cron. Lê standings + jogos do banco e
+   * empurra pro bracket. Idempotente e seguro de rodar quantas vezes quiser —
+   * toda a proteção contra sobrescrita já está em resolveRoundOf32 e
+   * syncMatchIntoSlot. Isso NÃO recalcula o bracket inteiro: só preenche o
+   * que ainda está vazio e avança o que acabou de terminar.
+   */
+  async syncFromDatabase(standings: { group: string; table: { teamName: string; points: number }[] }[]): Promise<void> {
+    if (standings.length > 0) {
+      const groupTables: Record<string, { teamName: string }[]> = {};
+      for (const g of standings) {
+        const letter = (g.group.match(/([A-L])\s*$/i)?.[1] ?? g.group).toUpperCase();
+        groupTables[letter] = g.table.map(t => ({ teamName: t.teamName }));
+      }
+      const allThirds = standings
+        .map(g => g.table[2])
+        .filter((t): t is { teamName: string; points: number } => !!t)
+        .sort((a, b) => b.points - a.points)
+        .slice(0, 8)
+        .map(t => t.teamName);
+
+      await this.resolveRoundOf32(groupTables, allThirds);
+    }
+
+    // Sincroniza placar/status de todos os jogos que já batem com algum slot resolvido.
+    const resolvedSlots = await this.prisma.bracketSlot.findMany({
+      where: { homeTeam: { not: null }, awayTeam: { not: null } },
+    });
+    if (resolvedSlots.length === 0) return;
+
+    const teamNames = new Set<string>();
+    resolvedSlots.forEach(s => { if (s.homeTeam) teamNames.add(s.homeTeam); if (s.awayTeam) teamNames.add(s.awayTeam); });
+
+    const candidateMatches = await this.prisma.footballMatch.findMany({
+      where: {
+        OR: [
+          { homeTeam: { in: Array.from(teamNames) } },
+          { awayTeam: { in: Array.from(teamNames) } },
+        ],
+      },
+      orderBy: { date: 'desc' },
+    });
+
+    for (const match of candidateMatches) {
+      await this.syncMatchIntoSlot(
+        match.id, match.homeTeam, match.awayTeam,
+        match.homeScore, match.awayScore, match.status,
+      );
+    }
+  }
 }
