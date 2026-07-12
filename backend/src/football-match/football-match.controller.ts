@@ -134,8 +134,14 @@ export class FootballMatchController {
     const expected = process.env.ADMIN_SYNC_SECRET ?? process.env.JWT_SECRET;
     if (!expected || secret !== expected) throw new UnauthorizedException('Invalid admin secret');
     const standings = await this.footballApiService.getStandings();
+    console.log('[DEBUG] Standings loaded:', standings.length, 'groups');
+    if (standings.length > 0) {
+      console.log('[DEBUG] First group:', JSON.stringify(standings[0], null, 2));
+    }
     await this.bracket.syncFromDatabase(standings as any);
-    return { success: true, message: 'Bracket sincronizado' };
+    const bracket = await this.bracket.getBracket();
+    const r32Resolved = bracket.r32.filter(s => s.homeTeam && s.awayTeam).length;
+    return { success: true, message: 'Bracket sincronizado', r32Resolved, totalR32: bracket.r32.length };
   }
 
   /** Limpa todos os caches (Redis + memCache) do sistema */
