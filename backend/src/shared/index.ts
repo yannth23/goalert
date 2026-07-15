@@ -5,3 +5,4 @@ export type { MatchDto } from './match-dto.util';
 export { withCache } from './cache.util';
 
 export * from './team-metadata.util';
+export * from './knockout-results.util';

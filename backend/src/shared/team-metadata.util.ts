@@ -82,10 +82,18 @@ export const ROUND_OF_32_FIXTURE: { id: number; homeSlot: string; awaySlot: stri
   { id: 88, homeSlot: '2D', awaySlot: '2G' },
 ];
 
-/** Pares oficiais (não-sequenciais) da Rd. de 16, ex: Vencedor(73) vs Vencedor(75). */
+/**
+ * Pares oficiais (não-sequenciais) da Rd. de 16, ex: Vencedor(73) vs Vencedor(75).
+ * A ordem posiciona cada par no jogo 89..96 (índice 0 → jogo 89, etc.).
+ *
+ * CORREÇÃO (árvore FIFA 2026): os pares do quadrante K/L estavam errados —
+ * estavam [83,84] e [85,87], o que montava Espanha×Colômbia e Suíça×Portugal.
+ * A árvore real gerou Espanha×Portugal (jogo 94) e Suíça×Colômbia (jogo 96),
+ * então os pares corretos são [84,87] e [83,85].
+ */
 export const ROUND_OF_16_PAIRS: [number, number][] = [
   [73, 75], [74, 77], [76, 78], [79, 80],
-  [81, 82], [83, 84], [86, 88], [85, 87],
+  [81, 82], [84, 87], [86, 88], [83, 85],
 ];
 
 export function getTeamFlag(teamName: string): string {

@@ -44,13 +44,27 @@ export class JobsService implements OnApplicationBootstrap {
         this.logger.error('Background tactics generation failed', err)
       );
 
-      // Bracket: preenche o que já dá pra preencher, nunca desfaz o que já existe
-      this.syncBracket().catch(err =>
-        this.logger.error('Bracket sync failed', err)
+      // Bracket: primeiro congela os resultados oficiais/estáticos do mata-mata
+      // (corrige qualquer confronto errado que o sync antigo tenha deixado),
+      // depois deixa o sync ao vivo preencher só o que ainda está em aberto
+      // (semi 102 e final). Slots DONE são imutáveis, então o sync não os desfaz.
+      this.freezeAndSyncBracket().catch(err =>
+        this.logger.error('Bracket freeze/sync failed', err)
       );
     } catch (err) {
       this.logger.error('Bootstrap sync failed', err);
     }
+  }
+
+  /** Congela os resultados oficiais e depois preenche os slots ainda vivos. */
+  private async freezeAndSyncBracket(): Promise<void> {
+    try {
+      const { frozen, opened } = await this.bracket.applyStaticResults();
+      this.logger.log(`Bracket congelado: ${frozen} jogos, ${opened} slots vivos`);
+    } catch (err: any) {
+      this.logger.error('applyStaticResults failed', err.message, err.stack);
+    }
+    await this.syncBracket();
   }
 
   /** Empurra standings + jogos atuais pro BracketService — idempotente, write-once por slot. */

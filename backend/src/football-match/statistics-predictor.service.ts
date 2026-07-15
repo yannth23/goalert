@@ -1,7 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ScraperService } from './scraper.service';
+import { KNOCKOUT_RESULTS } from '../shared';
 import OpenAI from 'openai';
+
+const KNOCKOUT_PHASE_LABEL: Record<string, string> = {
+  r32:     'Rd. de 32',
+  r16:     'Oitavas de final',
+  quartas: 'Quartas de final',
+  semi:    'Semifinal',
+  final:   'Final',
+};
 
 interface TeamStatistics {
   totalMatches: number;
@@ -382,6 +391,38 @@ Responda APENAS o JSON:
     };
   }
 
+  /**
+   * Se o confronto for um jogo de mata-mata da Copa 2026 (bate com KNOCKOUT_RESULTS),
+   * devolve um bloco de contexto para ancorar a análise da IA:
+   * - jogo já disputado → passa o placar/vencedor real e pede uma leitura PÓS-JOGO;
+   * - jogo ainda por vir → sinaliza a fase e a pressão de mata-mata.
+   * Retorna null para jogos que não são de mata-mata (o prompt segue genérico).
+   */
+  private knockoutContext(homeTeam: string, awayTeam: string): string | null {
+    const r = KNOCKOUT_RESULTS.find(
+      k =>
+        (k.homeTeam === homeTeam && k.awayTeam === awayTeam) ||
+        (k.homeTeam === awayTeam && k.awayTeam === homeTeam),
+    );
+    if (!r) return null;
+
+    const stage = KNOCKOUT_PHASE_LABEL[r.phase] ?? r.phase;
+    if (r.status === 'DONE' && r.winner && r.homeScore !== null && r.awayScore !== null) {
+      const pens = r.homeScore === r.awayScore;
+      return (
+        `CONTEXTO REAL — ${stage} da Copa do Mundo 2026, jogo JÁ DISPUTADO. ` +
+        `Placar oficial: ${r.homeTeam} ${r.homeScore} x ${r.awayScore} ${r.awayTeam}` +
+        `${pens ? ` (${r.winner} venceu nos pênaltis)` : ''}. Quem avançou: ${r.winner}. ` +
+        `Escreva uma análise PÓS-JOGO: explique taticamente por que ${r.winner} passou, ` +
+        `onde o jogo foi decidido e o que faltou pro perdedor. Coerente com o resultado real.`
+      );
+    }
+    return (
+      `CONTEXTO REAL — ${stage} da Copa do Mundo 2026: mata-mata, jogo único, ` +
+      `sem margem pra erro. Considere a pressão do confronto eliminatório na análise.`
+    );
+  }
+
   private async generateMatchTacticalAnalysis(
     homeTeam: string,
     awayTeam: string,
@@ -478,8 +519,10 @@ REGRAS:
 6. "winProbHome", "drawProb", "winProbAway": inteiros que SOMAM 100.
 7. "keyDuels": 3 duelos específicos (ataque, meio, defesa). Nomes REAIS dos jogadores, contexto curto (máx 50 chars), vantagem: "home", "away" ou "equal".`;
 
-    const analysisUserMsg = `Copa 2026: ${homeTeam} (${homeTactics.formation}, craque: ${homeTactics.keyPlayer}, xG: ${homeXG || '?'}) vs ${awayTeam} (${awayTactics.formation}, craque: ${awayTactics.keyPlayer}, xG: ${awayXG || '?'}).
+    const knockout = this.knockoutContext(homeTeam, awayTeam);
 
+    const analysisUserMsg = `Copa 2026: ${homeTeam} (${homeTactics.formation}, craque: ${homeTactics.keyPlayer}, xG: ${homeXG || '?'}) vs ${awayTeam} (${awayTactics.formation}, craque: ${awayTactics.keyPlayer}, xG: ${awayXG || '?'}).
+${knockout ? `\n${knockout}\n` : ''}
 Analise este confronto. Onde será decidido? Qual o ponto fraco de cada um? Quem leva vantagem?
 
 Responda APENAS este JSON:

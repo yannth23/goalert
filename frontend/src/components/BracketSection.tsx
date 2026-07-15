@@ -27,6 +27,8 @@ function SlotCard({ slot, flags }: { slot: BracketSlot; flags: Record<string, st
   const isDone = slot.status === 'DONE';
   const homeWins = isDone && slot.winner === slot.homeTeam;
   const awayWins = isDone && slot.winner === slot.awayTeam;
+  // Empate no tempo normal/prorrogação com vencedor definido = decidido nos pênaltis.
+  const decidedOnPens = isDone && slot.homeScore !== null && slot.homeScore === slot.awayScore && !!slot.winner;
 
   return (
     <div className={`rounded-xl overflow-hidden border transition-all ${
@@ -39,8 +41,15 @@ function SlotCard({ slot, flags }: { slot: BracketSlot; flags: Record<string, st
           <span className="text-[9px] font-black text-black uppercase tracking-widest">Ao Vivo</span>
         </div>
       )}
-      <div className="px-2.5 pt-1.5 pb-0 text-[9px] text-slate-600 font-bold uppercase tracking-widest">
-        Jogo {slot.gameNumber}
+      <div className="px-2.5 pt-1.5 pb-0 flex items-center justify-between">
+        <span className="text-[9px] text-slate-600 font-bold uppercase tracking-widest">
+          Jogo {slot.gameNumber}
+        </span>
+        {decidedOnPens && (
+          <span className="text-[9px] text-yellow-500/80 font-bold uppercase tracking-widest">
+            Pênaltis
+          </span>
+        )}
       </div>
       <div className="bg-slate-900 divide-y divide-slate-800/60">
         {[

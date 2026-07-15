@@ -146,6 +146,21 @@ export class FootballMatchController {
     return this.bracket.resetSlot(body.gameNumber);
   }
 
+  /**
+   * Congela o bracket com os resultados oficiais e estáticos do mata-mata
+   * (KNOCKOUT_RESULTS). Sobrescreve dados errados que o sync antigo tenha
+   * deixado e deixa apenas semi 102 (Inglaterra×Argentina) e a final em aberto.
+   * É a forma recomendada de "deixar o bracket estático".
+   */
+  @SkipThrottle()
+  @Post('bracket/apply-static')
+  async applyStaticBracket(@Headers('x-admin-secret') secret: string) {
+    const expected = process.env.ADMIN_SYNC_SECRET ?? process.env.JWT_SECRET;
+    if (!expected || secret !== expected) throw new UnauthorizedException('Invalid admin secret');
+    const result = await this.bracket.applyStaticResults();
+    return { success: true, message: 'Bracket congelado com resultados oficiais', ...result };
+  }
+
   @SkipThrottle()
   @Post('bracket/sync')
   async syncBracket(@Headers('x-admin-secret') secret: string) {
