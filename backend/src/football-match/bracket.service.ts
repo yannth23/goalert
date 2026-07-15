@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BracketSeedService } from './bracket-seed.service';
-import { WORLD_CUP_GROUPS } from '../shared';
+import { WORLD_CUP_GROUPS, KNOCKOUT_RESULTS } from '../shared';
 
 /**
  * Único serviço com permissão de escrever em BracketSlot depois do seed inicial.
@@ -69,15 +69,104 @@ export class BracketService {
     return { groupTables, groupsComplete: allComplete };
   }
 
+  /**
+   * Congela no banco os resultados oficiais e estáticos do mata-mata
+   * (KNOCKOUT_RESULTS). Jogos DONE são gravados como verdade absoluta —
+   * sobrescrevem qualquer dado errado que o sync antigo tenha deixado. Slots
+   * ainda vivos (semi 102 e final) só têm os times definidos, sem nunca apagar
+   * um resultado que o sync ao vivo já tenha registrado. Idempotente: pode
+   * rodar quantas vezes quiser.
+   */
+  async applyStaticResults(): Promise<{ frozen: number; opened: number }> {
+    await this.seed.ensureSeeded();
+    let frozen = 0;
+    let opened = 0;
+
+    for (const r of KNOCKOUT_RESULTS) {
+      const slot = await this.prisma.bracketSlot.findUnique({ where: { gameNumber: r.gameNumber } });
+      if (!slot) continue;
+
+      if (r.status === 'DONE') {
+        await this.prisma.bracketSlot.update({
+          where: { gameNumber: r.gameNumber },
+          data: {
+            homeTeam:  r.homeTeam,
+            awayTeam:  r.awayTeam,
+            homeScore: r.homeScore,
+            awayScore: r.awayScore,
+            winner:    r.winner,
+            status:    'DONE',
+          },
+        });
+        frozen++;
+        continue;
+      }
+
+      // RESOLVED: semi/final ainda em aberto — nunca clobbera um resultado já
+      // finalizado pelo sync ao vivo.
+      if (slot.status === 'DONE') continue;
+      await this.prisma.bracketSlot.update({
+        where: { gameNumber: r.gameNumber },
+        data: {
+          homeTeam: r.homeTeam ?? slot.homeTeam,
+          awayTeam: r.awayTeam ?? slot.awayTeam,
+          status:   slot.status === 'IN_PROGRESS' ? 'IN_PROGRESS' : 'RESOLVED',
+        },
+      });
+      opened++;
+    }
+
+    this.logger.log(`applyStaticResults: ${frozen} jogos congelados, ${opened} slots vivos definidos`);
+    return { frozen, opened };
+  }
+
+  /**
+   * Reseta UM slot resolvido de volta pra "não resolvido" (limpa times, placar,
+   * vencedor e vínculo com o jogo). Única forma legítima de desfazer o
+   * write-once — uso manual e pontual (ex: corrigir um slot gravado errado
+   * antes das travas atuais existirem). Depois de resetar, rode
+   * POST /bracket/apply-static ou /bracket/sync pra repreencher corretamente.
+   */
+  async resetSlot(gameNumber: number): Promise<{ success: boolean; gameNumber: number }> {
+    const slot = await this.prisma.bracketSlot.findUnique({ where: { gameNumber } });
+    if (!slot) return { success: false, gameNumber };
+    await this.prisma.bracketSlot.update({
+      where: { gameNumber },
+      data: {
+        homeTeam:  null,
+        awayTeam:  null,
+        homeScore: null,
+        awayScore: null,
+        winner:    null,
+        matchId:   null,
+        status:    'PENDING',
+      },
+    });
+    this.logger.log(`resetSlot: jogo ${gameNumber} resetado`);
+    return { success: true, gameNumber };
+  }
+
   async getBracket() {
     await this.seed.ensureSeeded();
     const slots = await this.prisma.bracketSlot.findMany({ orderBy: { gameNumber: 'asc' } });
+
+    // Nota de desempate (pênaltis/prorrogação) vem dos dados estáticos e é
+    // anexada só na resposta — não é persistida no banco (evita migração de
+    // schema). Só aparece em jogos já finalizados (DONE).
+    const noteByGame = new Map(
+      KNOCKOUT_RESULTS.filter(r => r.note).map(r => [r.gameNumber, r.note as string]),
+    );
+    const enriched = slots.map(s => ({
+      ...s,
+      note: s.status === 'DONE' ? noteByGame.get(s.gameNumber) ?? null : null,
+    }));
+
     return {
-      r32:     slots.filter(s => s.phase === 'r32'),
-      r16:     slots.filter(s => s.phase === 'r16'),
-      quartas: slots.filter(s => s.phase === 'quartas'),
-      semi:    slots.filter(s => s.phase === 'semi'),
-      final:   slots.filter(s => s.phase === 'final'),
+      r32:     enriched.filter(s => s.phase === 'r32'),
+      r16:     enriched.filter(s => s.phase === 'r16'),
+      quartas: enriched.filter(s => s.phase === 'quartas'),
+      semi:    enriched.filter(s => s.phase === 'semi'),
+      final:   enriched.filter(s => s.phase === 'final'),
     };
   }
 
@@ -169,9 +258,11 @@ export class BracketService {
     });
     if (!slot) return; // não é um jogo de mata-mata, ou slot ainda não resolvido
 
-    // Se esse slot JÁ está DONE e vinculado a outro matchId, nunca sobrescreve
-    // (protege contra o mesmo par de times jogando duas vezes na história).
-    if (slot.status === 'DONE' && slot.matchId && slot.matchId !== matchId) return;
+    // Resultado congelado é imutável: qualquer slot DONE (seja resultado
+    // estático oficial ou já finalizado pelo sync ao vivo) nunca é sobrescrito.
+    // Isso sustenta o bracket "estático" — o sync só preenche o que ainda está
+    // em aberto (times vivos das semis/final).
+    if (slot.status === 'DONE') return;
 
     const isDone = status === 'FT';
     let winner: string | null = slot.winner;
@@ -231,11 +322,15 @@ export class BracketService {
       const idx = gameNumber - 89;
       return { gameNumber: 97 + Math.floor(idx / 2), side: idx % 2 === 0 ? 'home' : 'away' };
     }
-    // Quartas (97-100) -> Semi (101-102)
-    if (gameNumber >= 97 && gameNumber <= 100) {
-      const idx = gameNumber - 97;
-      return { gameNumber: 101 + Math.floor(idx / 2), side: idx % 2 === 0 ? 'home' : 'away' };
-    }
+    // Quartas (97-100) -> Semi (101-102).
+    // CORREÇÃO (árvore FIFA 2026): o mapeamento sequencial (97,98->101 e
+    // 99,100->102) montava França×Inglaterra e Espanha×Argentina. A árvore
+    // real cruza os chaveamentos: 101 = QF97×QF99 (França×Espanha) e
+    // 102 = QF98×QF100 (Inglaterra×Argentina).
+    if (gameNumber === 97)  return { gameNumber: 101, side: 'home' };
+    if (gameNumber === 99)  return { gameNumber: 101, side: 'away' };
+    if (gameNumber === 98)  return { gameNumber: 102, side: 'home' };
+    if (gameNumber === 100) return { gameNumber: 102, side: 'away' };
     // Semi (101-102) -> Final (104)
     if (gameNumber === 101) return { gameNumber: 104, side: 'home' };
     if (gameNumber === 102) return { gameNumber: 104, side: 'away' };

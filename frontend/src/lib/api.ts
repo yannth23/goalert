@@ -46,6 +46,8 @@ export interface BracketSlot {
   awayScore: number | null;
   status: 'PENDING' | 'RESOLVED' | 'IN_PROGRESS' | 'DONE';
   winner: string | null;
+  /** Nota de desempate (ex: "Pênaltis 3–4", "Após prorrogação"), quando houver. */
+  note?: string | null;
 }
 
 export interface BracketState {

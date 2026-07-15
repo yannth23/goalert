@@ -26,10 +26,17 @@ const ROUND_OF_32_FIXTURE: { gameNumber: number; homeSlot: string; awaySlot: str
   { gameNumber: 88, homeSlot: '2D', awaySlot: '2G' },
 ];
 
-/** Pares oficiais (não-sequenciais) que formam a Rd. de 16 a partir dos vencedores da Rd32. */
+/**
+ * Pares oficiais (não-sequenciais) que formam a Rd. de 16 a partir dos vencedores
+ * da Rd32. A ordem posiciona cada par no jogo 89..96.
+ *
+ * CORREÇÃO (árvore FIFA 2026): o quadrante K/L estava com [83,84] e [85,87],
+ * que montava Espanha×Colômbia e Suíça×Portugal. O correto é [84,87]
+ * (Espanha×Portugal, jogo 94) e [83,85] (Colômbia×Suíça, jogo 96).
+ */
 const ROUND_OF_16_PAIRS: [number, number][] = [
   [73, 75], [74, 77], [76, 78], [79, 80],
-  [81, 82], [83, 84], [86, 88], [85, 87],
+  [81, 82], [84, 87], [86, 88], [83, 85],
 ];
 
 @Injectable()
