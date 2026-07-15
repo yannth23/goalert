@@ -27,8 +27,10 @@ function SlotCard({ slot, flags }: { slot: BracketSlot; flags: Record<string, st
   const isDone = slot.status === 'DONE';
   const homeWins = isDone && slot.winner === slot.homeTeam;
   const awayWins = isDone && slot.winner === slot.awayTeam;
-  // Empate no tempo normal/prorrogação com vencedor definido = decidido nos pênaltis.
+  // Nota de desempate: usa a nota oficial do backend (ex: "Pênaltis 3–4") e,
+  // se não vier, infere "Pênaltis" quando o jogo DONE terminou empatado com vencedor.
   const decidedOnPens = isDone && slot.homeScore !== null && slot.homeScore === slot.awayScore && !!slot.winner;
+  const tiebreak = slot.note || (decidedOnPens ? 'Pênaltis' : null);
 
   return (
     <div className={`rounded-xl overflow-hidden border transition-all ${
@@ -45,9 +47,9 @@ function SlotCard({ slot, flags }: { slot: BracketSlot; flags: Record<string, st
         <span className="text-[9px] text-slate-600 font-bold uppercase tracking-widest">
           Jogo {slot.gameNumber}
         </span>
-        {decidedOnPens && (
+        {tiebreak && (
           <span className="text-[9px] text-yellow-500/80 font-bold uppercase tracking-widest">
-            Pênaltis
+            {tiebreak}
           </span>
         )}
       </div>
