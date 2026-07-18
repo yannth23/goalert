@@ -19,7 +19,8 @@ export function Navbar() {
             </span>
           </Link>
           <nav className="hidden md:flex items-center gap-6">
-            <Link href="/" className="text-sm font-bold text-slate-400 hover:text-white transition-colors">Jogos</Link>
+            <Link href="/" className="text-sm font-bold text-slate-400 hover:text-white transition-colors">Clubes</Link>
+            <Link href="/copa" className="text-sm font-bold text-slate-400 hover:text-white transition-colors">🏆 Copa</Link>
             <Link href="/comparar" className="text-sm font-bold text-indigo-400 hover:text-indigo-300 transition-colors">Comparador AI</Link>
           </nav>
         </div>
@@ -51,7 +52,14 @@ export function Navbar() {
             onClick={() => setOpen(false)}
             className="text-sm font-bold text-slate-300 hover:text-white py-2.5 px-3 rounded-xl hover:bg-slate-800 transition"
           >
-            Jogos
+            Clubes
+          </Link>
+          <Link
+            href="/copa"
+            onClick={() => setOpen(false)}
+            className="text-sm font-bold text-slate-300 hover:text-white py-2.5 px-3 rounded-xl hover:bg-slate-800 transition"
+          >
+            🏆 Copa
           </Link>
           <Link
             href="/comparar"

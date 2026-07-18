@@ -7,6 +7,7 @@ import { StatisticsPredictorService } from './statistics-predictor.service';
 import { ScraperService } from './scraper.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { BracketService } from './bracket.service';
+import { ClubAnalysisService } from './club-analysis.service';
 import {
   TEAM_FLAGS,
   WORLD_CUP_GROUPS,
@@ -24,7 +25,30 @@ export class FootballMatchController {
     private readonly predictor:            StatisticsPredictorService,
     private readonly scraper:              ScraperService,
     private readonly bracket: BracketService,
+    private readonly clubAnalysis: ClubAnalysisService,
   ) {}
+
+  /**
+   * Jogos de clube (Brasileirão + Top 5 da Europa) em torno de hoje, com liga,
+   * placar e status — base da página de Clubes ao vivo. `days` controla a
+   * janela (padrão 2 dias pra cada lado).
+   */
+  @Get('clubs')
+  getClubMatches(@Query('days') days?: string) {
+    const n = days ? Math.min(7, Math.max(1, parseInt(days, 10) || 2)) : 2;
+    return this.footballMatchService.getClubMatches(n);
+  }
+
+  /**
+   * Dinâmica tática ao vivo de UM jogo de clube — probabilidades e "o que pode
+   * vir a ocorrer", geradas por LLM (Claude nos momentos-chave, Groq no resto).
+   * Cache no Redis por placar/status pra não repetir chamada a cada refresh.
+   */
+  @Throttle({ strict: { limit: 30, ttl: 60_000 } })
+  @Get('clubs/:id/dynamics')
+  getClubDynamics(@Param('id') id: string) {
+    return this.clubAnalysis.getLiveDynamics(id);
+  }
 
   /**
    * Metadata estática de times/grupos/bracket — bandeiras, composição dos 12

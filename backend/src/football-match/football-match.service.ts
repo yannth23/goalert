@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { FootballApiService } from './football-api.service';
 import { ScraperService } from './scraper.service';
-import { mapMatchToDto, getTodayBrazil, addOneDay, subtractOneDay } from '../shared';
+import { mapMatchToDto, getTodayBrazil, addOneDay, subtractOneDay, matchClubLeague } from '../shared';
 import { RedisService } from '../redis/redis.service';
 
 const LIVE_STATUSES       = new Set(['1H', 'HT', '2H', 'ET', 'PEN']);
@@ -108,6 +108,32 @@ export class FootballMatchService {
       orderBy: { date: 'asc' },
     });
     return matches.map(mapMatchToDto);
+  }
+
+  /**
+   * Jogos de clube (Brasileirão + Top 5 da Europa) numa janela de dias em torno
+   * de hoje, agrupados por liga. Filtra a partir de `matchClubLeague`, então só
+   * traz as competições que a página de Clubes cobre (a Copa fica de fora).
+   * Ordena ao vivo primeiro, depois por horário.
+   */
+  async getClubMatches(daysAround = 2) {
+    const now = Date.now();
+    const from = new Date(now - daysAround * 24 * 60 * 60 * 1000);
+    const to   = new Date(now + daysAround * 24 * 60 * 60 * 1000);
+
+    const rows = await this.prisma.footballMatch.findMany({
+      where: { date: { gte: from, lte: to } },
+      orderBy: { date: 'asc' },
+    });
+
+    const liveRank = (s: string) => (LIVE_STATUSES.has(s) ? 0 : s === 'FT' ? 2 : 1);
+    return rows
+      .map(m => ({ dto: mapMatchToDto(m), league: matchClubLeague(m.championship) }))
+      .filter((x): x is { dto: ReturnType<typeof mapMatchToDto>; league: NonNullable<ReturnType<typeof matchClubLeague>> } => x.league !== null)
+      .sort((a, b) =>
+        liveRank(a.dto.status) - liveRank(b.dto.status) ||
+        +new Date(a.dto.date) - +new Date(b.dto.date))
+      .map(x => ({ ...x.dto, league: x.league.name, leagueCode: x.league.code, leagueEmoji: x.league.emoji }));
   }
 
   async getCalendarData(month?: string): Promise<{ date: string; count: number }[]> {

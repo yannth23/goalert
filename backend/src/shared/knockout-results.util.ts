@@ -72,10 +72,9 @@ export const KNOCKOUT_RESULTS: KnockoutResult[] = [
 
   // ── Semifinais (jogos 101-102) ───────────────────────────────────────────
   { gameNumber: 101, phase: 'semi', homeTeam: 'França',            awayTeam: 'Espanha',              homeScore: 0, awayScore: 2, winner: 'Espanha',       status: 'DONE' },
-  // Inglaterra x Argentina — 15/07/2026, ainda não decidido. Teams travados, resultado em aberto.
-  { gameNumber: 102, phase: 'semi', homeTeam: 'Inglaterra',        awayTeam: 'Argentina',            homeScore: null, awayScore: null, winner: null,      status: 'RESOLVED' },
+  { gameNumber: 102, phase: 'semi', homeTeam: 'Inglaterra',        awayTeam: 'Argentina',            homeScore: 1, awayScore: 2, winner: 'Argentina',    status: 'DONE' },
 
   // ── Final (jogo 104) ─────────────────────────────────────────────────────
-  // Espanha (vencedor da SF1) x vencedor de Inglaterra/Argentina. 19/07/2026.
-  { gameNumber: 104, phase: 'final', homeTeam: 'Espanha',          awayTeam: null,                   homeScore: null, awayScore: null, winner: null,      status: 'RESOLVED' },
+  // Espanha (vencedor da SF1) x Argentina (vencedor da SF2). 19/07/2026 — em aberto.
+  { gameNumber: 104, phase: 'final', homeTeam: 'Espanha',          awayTeam: 'Argentina',            homeScore: null, awayScore: null, winner: null,      status: 'RESOLVED' },
 ];

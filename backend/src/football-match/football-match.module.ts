@@ -7,6 +7,7 @@ import { StatisticsPredictorService } from './statistics-predictor.service';
 import { TeamReportService } from './team-report.service';
 import { BracketSeedService } from './bracket-seed.service';
 import { BracketService } from './bracket.service';
+import { ClubAnalysisService } from './club-analysis.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { RedisModule } from '../redis/redis.module';
 
@@ -21,6 +22,7 @@ import { RedisModule } from '../redis/redis.module';
     TeamReportService,
     BracketSeedService,
     BracketService,
+    ClubAnalysisService,
   ],
   exports: [
     FootballMatchService,
@@ -29,6 +31,7 @@ import { RedisModule } from '../redis/redis.module';
     StatisticsPredictorService,
     TeamReportService,
     BracketService,
+    ClubAnalysisService,
   ],
 })
 export class FootballMatchModule {}
