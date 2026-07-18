@@ -6,3 +6,4 @@ export { withCache } from './cache.util';
 
 export * from './team-metadata.util';
 export * from './knockout-results.util';
+export * from './club-leagues.util';

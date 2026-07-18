@@ -66,6 +66,35 @@ export interface BracketMetadata {
   roundOf16Pairs: [number, number][];
 }
 
+export interface ClubMatch {
+  id: string;
+  date: string;
+  championship: string;
+  league: string;
+  leagueCode: string;
+  leagueEmoji: string;
+  team1: string;
+  team2: string;
+  team1Flag?: string;
+  team2Flag?: string;
+  status: string;
+  team1Score?: number;
+  team2Score?: number;
+}
+
+export interface LiveDynamics {
+  winProbHome: number;
+  drawProb: number;
+  winProbAway: number;
+  momentum: 'home' | 'away' | 'balanced';
+  nextGoal: { home: number; away: number };
+  tacticalRead: string;
+  whatMayHappen: string[];
+  keyRisk: string;
+  provider: 'claude' | 'groq' | 'fallback';
+  phase: 'pre' | 'live' | 'post';
+}
+
 export interface H2HData {
   homeTeam: string;
   awayTeam: string;
@@ -109,6 +138,14 @@ export const api = {
    * exatamente o que esse endpoint retorna.
    */
   getBracket: () => request<BracketState>('/matches/bracket'),
+
+  /** Jogos de clube (Brasileirão + Top 5 da Europa) em torno de hoje. */
+  getClubMatches: (days?: number) =>
+    request<ClubMatch[]>(`/matches/clubs${days ? `?days=${days}` : ''}`),
+
+  /** Dinâmica tática ao vivo (LLM) de um jogo de clube. */
+  getClubDynamics: (id: string) =>
+    request<LiveDynamics>(`/matches/clubs/${id}/dynamics`),
 
   getByCompetition: (name: string) =>
     request<{
