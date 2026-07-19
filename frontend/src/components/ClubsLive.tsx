@@ -85,9 +85,7 @@ function Dynamics({ match }: { match: ClubMatch }) {
     return <div className="px-3 py-4 text-center text-xs text-slate-500">Não foi possível gerar a análise agora.</div>;
   }
 
-  const providerBadge = data.provider === 'claude'
-    ? { label: 'Claude Opus 4.8', cls: 'bg-indigo-950/60 text-indigo-300 border-indigo-800/60' }
-    : data.provider === 'groq'
+  const providerBadge = data.provider === 'groq'
     ? { label: 'Llama 3.3 70B', cls: 'bg-orange-950/50 text-orange-300 border-orange-800/50' }
     : { label: 'Heurística', cls: 'bg-slate-800 text-slate-400 border-slate-700' };
 

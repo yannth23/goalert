@@ -91,7 +91,7 @@ export interface LiveDynamics {
   tacticalRead: string;
   whatMayHappen: string[];
   keyRisk: string;
-  provider: 'claude' | 'groq' | 'fallback';
+  provider: 'groq' | 'fallback';
   phase: 'pre' | 'live' | 'post';
 }
 

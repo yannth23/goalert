@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { matchClubLeague } from '../shared';
-import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
 
 const LIVE_STATUSES = new Set(['1H', 'HT', '2H', 'ET', 'PEN', 'LIVE']);
@@ -22,40 +21,36 @@ export interface LiveDynamics {
   whatMayHappen: string[];
   /** O maior risco/decisão do jogo agora. */
   keyRisk: string;
-  /** Modelo que gerou (claude | groq | fallback). */
-  provider: 'claude' | 'groq' | 'fallback';
+  /** Modelo que gerou (groq | fallback). */
+  provider: 'groq' | 'fallback';
   /** Fase considerada (pré-jogo, ao vivo, encerrado). */
   phase: 'pre' | 'live' | 'post';
 }
 
+// Cadeia de modelos Groq gratuitos — mais capaz → mais rápido.
 const GROQ_MODELS = ['llama-3.3-70b-versatile', 'qwen/qwen3-32b', 'llama-3.1-8b-instant'];
 
 @Injectable()
 export class ClubAnalysisService {
   private readonly logger = new Logger(ClubAnalysisService.name);
-  private readonly anthropic: Anthropic | null;
   private readonly groq: OpenAI | null;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
   ) {
-    this.anthropic = process.env.ANTHROPIC_API_KEY
-      ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-      : null;
     this.groq = process.env.GROQ_API_KEY
       ? new OpenAI({ apiKey: process.env.GROQ_API_KEY, baseURL: 'https://api.groq.com/openai/v1' })
       : null;
 
-    if (!this.anthropic) {
-      this.logger.warn('ANTHROPIC_API_KEY ausente — análise ao vivo cairá no Groq/fallback');
+    if (!this.groq) {
+      this.logger.warn('GROQ_API_KEY ausente — análise ao vivo cairá no fallback determinístico');
     }
   }
 
   /**
    * Dinâmica tática ao vivo de um jogo de clube, com probabilidade "do que pode
-   * vir a ocorrer". Usa Claude (Opus 4.8) nos MOMENTOS-CHAVE (jogo ao vivo) e
-   * Groq/Llama no resto (pré-jogo/encerrado), com cache no Redis por
+   * vir a ocorrer". Gerada pelo Groq/Llama, com cache no Redis por
    * (jogo, status, placar) para não repetir chamada de LLM a cada refresh.
    */
   async getLiveDynamics(matchId: string): Promise<LiveDynamics | null> {
@@ -84,23 +79,12 @@ export class ClubAnalysisService {
       phase,
     };
 
-    // Momento-chave (ao vivo) → Claude, se disponível. Senão Groq. Senão fallback.
     let result: LiveDynamics | null = null;
-    if (isLive && this.anthropic) {
-      result = await this.viaClaude(ctx).catch(err => {
-        this.logger.warn(`Claude falhou (${err.message}) — tentando Groq`);
-        return null;
-      });
-    }
-    if (!result && this.groq) {
+    if (this.groq) {
       result = await this.viaGroq(ctx).catch(err => {
         this.logger.warn(`Groq falhou (${err.message}) — usando fallback`);
         return null;
       });
-    }
-    if (!result && this.anthropic && !isLive) {
-      // Pré/pós sem Groq: ainda tenta Claude uma vez.
-      result = await this.viaClaude(ctx).catch(() => null);
     }
     if (!result) result = this.fallback(ctx);
 
@@ -143,22 +127,6 @@ export class ClubAnalysisService {
     return { system, user };
   }
 
-  private async viaClaude(ctx: Parameters<ClubAnalysisService['buildPrompt']>[0]): Promise<LiveDynamics> {
-    const { system, user } = this.buildPrompt(ctx);
-    // Sem extended thinking: resposta rápida e barata para o ao vivo.
-    const res = await this.anthropic!.messages.create({
-      model: 'claude-opus-4-8',
-      max_tokens: 1024,
-      system,
-      messages: [{ role: 'user', content: user }],
-    });
-    const text = res.content
-      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-      .map(b => b.text)
-      .join('');
-    return this.parse(text, ctx, 'claude');
-  }
-
   private async viaGroq(ctx: Parameters<ClubAnalysisService['buildPrompt']>[0]): Promise<LiveDynamics> {
     const { system, user } = this.buildPrompt(ctx);
     for (const model of GROQ_MODELS) {
@@ -172,7 +140,7 @@ export class ClubAnalysisService {
           response_format: { type: 'json_object' },
         } as any);
         const text = res.choices[0]?.message?.content ?? '';
-        return this.parse(text, ctx, 'groq');
+        return this.parse(text, ctx);
       } catch {
         // tenta próximo modelo
       }
@@ -184,7 +152,6 @@ export class ClubAnalysisService {
   private parse(
     raw: string,
     ctx: Parameters<ClubAnalysisService['buildPrompt']>[0],
-    provider: 'claude' | 'groq',
   ): LiveDynamics {
     const cleaned = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
     const start = cleaned.indexOf('{');
@@ -219,12 +186,12 @@ export class ClubAnalysisService {
       tacticalRead: String(data.tacticalRead || `${ctx.home} x ${ctx.away}: confronto de estilos.`).slice(0, 240),
       whatMayHappen,
       keyRisk: String(data.keyRisk || 'Bola parada e transições podem definir.').slice(0, 160),
-      provider,
+      provider: 'groq',
       phase: ctx.phase,
     };
   }
 
-  /** Fallback determinístico quando nenhum LLM responde. */
+  /** Fallback determinístico quando o Groq não responde. */
   private fallback(ctx: Parameters<ClubAnalysisService['buildPrompt']>[0]): LiveDynamics {
     const hs = ctx.homeScore ?? 0;
     const as_ = ctx.awayScore ?? 0;
